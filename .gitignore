@@ -1,0 +1,20 @@
+# Environments & secrets — API keys must NEVER be committed
+.env
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Local data / index artifacts (project marker file + any local data)
+.tool_router
+data/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
