@@ -1,88 +1,144 @@
-# Tool Router — Intelligent Tool Router for Large Tool Catalogs
+# Tool Router
 
-## Project Overview
-**Routing-as-a-service for AI agents.** An agent with 60+ tools can't carry every schema in its
-prompt — token cost explodes and selection accuracy collapses among look-alike tools. This router
-sits between the query and the catalog: register your tools once (bulk JSON, or auto-import from
-any **MCP server** / **OpenAPI spec** — all validated by a strict intake guardrail), then every
-query returns the **minimal, ordered, high-precision tool plan** the agent should see.
+**Find the right tools for an AI agent without sending the entire tool catalog into every prompt.**
 
-**Measured on an internal 29-case evaluation suite** (64-tool catalog; methodology and full
-breakdown in [docs/eval_report.md](docs/eval_report.md)):
+Tool Router is a Python routing service for large tool catalogs. Register tools once, then submit a natural-language request to receive a small, ordered tool plan. It combines local retrieval and deterministic safeguards with an optional LLM planner.
 
-| Configuration | Accuracy | Token savings |
-|---|---|---|
-| Naive keyword/cluster baseline | 7/29 (24%) | 94% |
-| This router — local-only (zero LLM, offline) | 24/29 (83%) | 98% |
-| **This router — hybrid (LLM planner + HyDE + scope-arbiter)** | **26/29 (90%)** | **98%** |
+## Evaluation snapshot
 
-**Note**: the 90% hybrid number was measured with a **free-tier Gemini API key** on
-**`gemini-3.1-flash-lite`** (the lightweight, free-tier-friendly model) — a paid tier or a larger
-model in the same family would plausibly push accuracy higher still; see
-[docs/eval_report.md](docs/eval_report.md) for the full breakdown.
+Measured during development on an internal **29-query evaluation suite** and a **64-tool catalog**. The evaluation harness and catalog are not included in this repository, so these are reported development results rather than independently reproducible results from a fresh checkout.
 
-Plus: registry guardrail **11/11** fixtures · catalog-churn scenarios **8/8** (add / remove /
-replace / version / scale 64→104). These historical numbers were measured against a larger
-internal catalog/test suite that isn't bundled with this repo (see below for what *is* included
-and runnable out of the box).
+| Configuration | Accuracy | Prompt-token savings |
+|---|---:|---:|
+| Keyword/cluster baseline | 7/29 (24%) | 94% |
+| Local-only router | 24/29 (83%) | 98% |
+| Hybrid router (LLM + HyDE + scope arbitration) | **26/29 (90%)** | **98%** |
 
-**How it works:** fused local retrieval (TF-IDF/dense embeddings + BM25 + capability signals +
-side-effect/version/PII penalties, all combined into one score) → version/duplicate collapse +
-confidence gate (dynamic-K, clarify/refuse) → **one** LLM call for final ordering/repeat-counts/
-version reasoning. On low-confidence queries it adds **conditional HyDE** (hypothetical-doc
-retrieval) for recall, with the LLM as an explicit **scope arbiter** so out-of-scope queries
-still return nothing. A deterministic local planner sits beneath it all, so the engine **never
-crashes and runs fully offline** if no key is present. One engine, **three entry points**: a plain
-Python class (for programmatic/batch use), a REST API (any language), and an MCP tool
-`find_tools` (any MCP-based agent).
+Additional development checks:
+- Registry validation fixtures: **11/11** passed.
+- Catalog mutation scenarios: **8/8** passed.
+- Held-out query set: **10/12 (83%)**.
+- At 104 tools, the measured token-savings ratio was **97%**.
 
-## Live URL
-Not deployed — runs locally in one command (see below).
+See [the evaluation report](docs/eval_report.md) for methodology, category breakdowns, trade-offs and limitations.
 
-## Technical Design / Architecture Decision Record
-- **[docs/design/architecture.md](docs/design/architecture.md)** — master architecture + diagram
-  (rendered image: [docs/design/architechure_diagram.png](docs/design/architechure_diagram.png))
-- [docs/design/engine-design.md](docs/design/engine-design.md) — engine internals & cost model
-- [docs/eval_report.md](docs/eval_report.md) — measured iteration trajectory (24%→90%)
+## What it does
 
-## Tech Stack
-Python 3.11+ · pydantic · platformdirs · FastAPI/uvicorn (REST) · MCP SDK · provider-agnostic
-LLM/embedding layer — **local TF-IDF is the default (no LLM, fully offline)**, **Gemini is
-live-verified**, an **AWS Bedrock provider exists in code but is not live-tested** · Docker.
-Lean core — hosted providers are optional extras; the engine runs with zero external
-dependencies out of the box. Storage is a plain JSON file cache (no vector DB — see
-`docs/design/storage.md` for why that's the right call at this scale).
+1. **Register tools** from JSON, an MCP server or an OpenAPI specification.
+2. **Validate and normalize** tool definitions before they enter the catalog.
+3. **Retrieve candidates** using lexical, dense and capability signals.
+4. **Apply safeguards** for confidence, duplicates, versions, side effects and out-of-scope requests.
+5. **Build a compact plan** locally or with an optional LLM.
+6. **Return ordered tool selections** to the calling agent.
 
-## Setup & Run Instructions
+Tool Router selects tools; it does **not** execute them.
 
-```bash
-# 1. install (venv recommended)
-python3 -m venv .venv && .venv/bin/pip install -e ".[api,mcp]"
+## Interfaces
 
-# 2. (optional) configure an LLM — engine runs fully offline without it
-.venv/bin/tool-router init          # wizard: provider, key (hidden), model
-# or: export GEMINI_API_KEY=... TOOL_ROUTER_LLM_PROVIDER=gemini \
-#            TOOL_ROUTER_LLM_MODEL=gemini-flash-lite-latest
+The same routing engine is available through:
 
-# 3. run the REST service (docs at /docs, config page at /setup)
-.venv/bin/tool-router serve --catalog path/to/tools_catalog.json
-curl -X POST localhost:8080/route -H 'content-type: application/json' \
-     -d '{"query": "Pull last quarter revenue and email the chart to finance"}'
+- Python API: use the `Router` class in application code.
+- CLI: initialize configuration, import catalogs and run the service.
+- REST API: expose routing and registry operations through FastAPI.
+- MCP server: expose the `find_tools` capability to MCP-compatible agents.
+- Docker: run the service in a container.
 
-# or as an MCP server (find_tools / register_tools):
-.venv/bin/tool-router mcp --catalog path/to/tools_catalog.json
+## Architecture
 
-# or Docker:
-docker build -t tool-router . && docker run -p 8080:8080 tool-router
-
-# auto-import a catalog instead of hand-writing one:
-.venv/bin/tool-router import-mcp --command <mcp-server-cmd> -o tools.json
-.venv/bin/tool-router import-openapi openapi.json -o tools.json
+```mermaid
+flowchart LR
+  A[JSON / MCP / OpenAPI] --> B[Import and validation]
+  B --> C[Tool catalog and local index]
+  Q[Agent request] --> D[Hybrid retrieval]
+  C --> D
+  D --> E[Confidence, deduplication and safety checks]
+  E --> F{LLM configured?}
+  F -->|No| G[Local planner]
+  F -->|Yes| H[LLM planner and scope arbitration]
+  G --> I[Ordered tool plan]
+  H --> I
+  I --> J[Calling agent executes tools]
 ```
 
-**Real vs. mocked:** the router, guardrail, churn engine, REST/MCP surfaces, importers and
-persistence are fully real and tested. The router selects tools; it never executes them, so any
-catalog (mock or real) works the same way — bring your own tool definitions.
+For the detailed design, see [architecture](docs/design/architecture.md), [engine design](docs/design/engine-design.md), and [integration notes](docs/design/integrations.md).
 
-## Additional Links / Resources
-- `.env.example` — full configuration reference (no secrets in this repo)
+## Technology
+
+- Python 3.11+
+- Pydantic
+- TF-IDF and BM25 retrieval
+- Optional Gemini / AWS Bedrock provider integrations
+- FastAPI and Uvicorn (optional API extra)
+- MCP SDK (optional MCP extra)
+- Docker
+
+The default local path works without an LLM API key. Gemini was used for the reported live hybrid evaluation. The Bedrock provider exists in code but is **not live-tested**. ChromaDB and sentence-transformers are listed as exploratory optional dependencies and are not used by the current routing engine.
+
+## Quick start
+
+Create an environment and install the API and MCP extras:
+
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[api,mcp]"
+```
+
+Initialize configuration (optional for local-only routing):
+
+```bash
+tool-router init
+```
+
+Run the service with a tool catalog:
+
+```bash
+tool-router serve --catalog path/to/tools_catalog.json
+```
+
+The REST API documentation is available at `http://localhost:8080/docs` when the service is running.
+
+To run the MCP server instead:
+
+```bash
+tool-router mcp --catalog path/to/tools_catalog.json
+```
+
+To import existing tool definitions:
+
+```bash
+tool-router import-mcp --command <mcp-server-command> -o tools.json
+tool-router import-openapi openapi.json -o tools.json
+```
+
+For Docker:
+
+```bash
+docker build -t tool-router .
+docker run -p 8080:8080 tool-router
+```
+
+See `.env.example` and [onboarding documentation](docs/design/onboarding.md) for configuration and catalog details.
+
+## Evaluation and limitations
+
+The headline figures above come from a development evaluation suite that is not shipped in this repository. Treat them as measured project results, not a guarantee for a different catalog or workload. The report documents known failure categories and the difference between local-only and LLM-assisted routing.
+
+The local planner is deterministic and works offline. LLM-assisted features depend on provider availability, model behaviour, credentials and rate limits; failures are designed to fall back to the local path.
+
+## Repository guide
+
+| Path | Purpose |
+|---|---|
+| `tool_router/engine/` | Retrieval, confidence, planning and routing pipeline |
+| `tool_router/importers/` | MCP and OpenAPI catalog importers |
+| `tool_router/providers/` | Local and hosted model providers |
+| `tool_router/api.py` | REST API |
+| `tool_router/mcp_server.py` | MCP server |
+| `tool_router/cli.py` | Command-line interface |
+| `docs/eval_report.md` | Evaluation results and methodology |
+| `docs/design/` | Architecture and design decisions |
+
+## License
+
+The package metadata currently identifies the project license as **Proprietary**. Check the repository's licensing terms before redistributing or reusing the code.
