@@ -287,7 +287,8 @@ spine; MCP is the plug-and-play showcase).
 - **Auto-derive** clusters / near-dup groups / version families so it generalizes to unseen
   catalogs (validated against the catalog's provided maps).
 
-**Import paths:** bulk API / JSON and **MCP-server auto-import** (`tool-router import-mcp`)
+**Import paths:** bulk API / JSON, and **MCP-server auto-import** — scanned at startup
+(`--import-mcp`, CLI only) or written to a file for review (`tool-router import-mcp`) —
 are built; code-introspection import (reading
 Python function signatures directly) is not built.
 
@@ -392,6 +393,7 @@ tool-router/
 │   ├── mcp_server.py            MCP tools: find_tools · registry_status (read-only)
 │   ├── cli.py                   tool-router version | validate | serve | mcp | init | config
 │   │                            | import-mcp
+│   ├── catalog_loader.py        startup catalog: file and/or live MCP scans
 │   ├── store.py                 persistence: JSON embedding/enrichment cache, config, secrets
 │   ├── config.py · log.py       settings + logging
 ```

@@ -2,7 +2,7 @@
 
 Exposes the routing engine to ANY MCP-compatible agent as callable tools. Both are
 read-only: an agent can ask which tool to use but cannot change the registry. The
-catalog is loaded once, at startup.
+catalog is assembled once, at startup (a file and/or a scan of other MCP servers).
 
 - ``find_tools(query, k?)``   — the meta-tool: returns the minimal set of
   relevant tools (original schemas), the ordered call plan, and clarify info.
@@ -10,6 +10,7 @@ catalog is loaded once, at startup.
 - ``registry_status()``       — tool count + derived-map stats.
 
 Run:  tool-router mcp --catalog catalog.json
+      tool-router mcp --import-mcp "python my_server.py"
 Host config (e.g. Claude Desktop):
     {"mcpServers": {"tool-router": {"command": "tool-router",
                                     "args": ["mcp", "--catalog", "/path/catalog.json"]}}}
@@ -80,9 +81,6 @@ def create_mcp_server(catalog: dict[str, Any]):
     return server
 
 
-def run_mcp(catalog_path: str) -> None:
+def run_mcp(catalog: dict[str, Any]) -> None:
     """Entry point used by `tool-router mcp` (stdio transport)."""
-    with open(catalog_path, encoding="utf-8") as fh:
-        catalog = json.load(fh)
-    logger.info("mcp server loading registry from %s", catalog_path)
     create_mcp_server(catalog).run()  # stdio transport (MCP default)

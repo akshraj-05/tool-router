@@ -62,7 +62,8 @@ likely to outweigh the risk.
 | Source | How | Status |
 |---|---|---|
 | **Bulk API / JSON file** | one `POST /registry` with the whole catalog | ✅ NOW |
-| **MCP server** | connect + `list_tools` (self-describing tools) (`tool-router import-mcp`) | ✅ **BUILT + verified** |
+| **MCP server, scanned at startup** | `serve` / `mcp` with `--import-mcp "<command>"`: all pages of `list_tools`, strict guardrail, loaded into memory | ✅ BUILT, tested with sample servers |
+| **MCP server, to a file** | `tool-router import-mcp` writes the accepted tools for review | ✅ BUILT, tested with sample servers |
 | **LangChain / Python** | introspect `.name` / `.description` / `.args_schema` / signatures | 🟨 LATER |
 | **Other registries / gateways** | dedicated connectors | 🔮 FUTURE |
 

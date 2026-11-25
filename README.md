@@ -103,10 +103,30 @@ To run the MCP server instead:
 tool-router mcp --catalog path/to/tools_catalog.json
 ```
 
-To import existing tool definitions:
+### Load tools straight from an MCP server
+
+Point the router at an MCP server and it scans the server's tools at startup:
 
 ```bash
-tool-router import-mcp --command <mcp-server-command> -o tools.json
+tool-router serve --host 127.0.0.1 --import-mcp "python my_server.py"
+tool-router mcp --import-mcp "python my_server.py"
+```
+
+- Quote the whole command. Repeat `--import-mcp` for several servers, and add `--catalog file.json` to combine them with a file.
+- The server gets only a minimal environment. Pass a variable it needs by name: `--mcp-env GITHUB_TOKEN`.
+- The scan gives up after 30 seconds (`--mcp-timeout`). If it fails, or finds no usable tools, the router does not start.
+- Tools that fail the intake checks are skipped and listed, for example for a description shorter than 6 words or more than 12 parameters.
+- Each tool keeps its original name in `source.name`; use that name to call it on its server.
+- A tool is marked destructive if the server says so or its name contains a word such as `delete` or `restart`. Other destructive tools may not be recognised.
+- Only local (stdio) servers are supported. Restart the router to pick up changes.
+
+`--import-mcp` runs the command you give it, so only use servers you trust. It is available on the command line only, not through the REST API.
+
+To review the tools before loading them, write them to a file instead:
+
+```bash
+tool-router import-mcp --command python --args my_server.py -o tools.json
+tool-router serve --catalog tools.json
 ```
 
 For Docker:

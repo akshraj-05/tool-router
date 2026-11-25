@@ -36,6 +36,26 @@ def _cmd_validate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _load_startup_catalog(args: argparse.Namespace):
+    """Combine --catalog and --import-mcp. Returns (ok, catalog or None).
+
+    The report goes to stderr: in `mcp` mode stdout carries the protocol itself.
+    """
+    from tool_router.catalog_loader import build_catalog
+    from tool_router.domain.errors import ToolRouterError
+
+    try:
+        catalog, report = build_catalog(
+            args.catalog, args.import_mcp, env_names=args.mcp_env, timeout=args.mcp_timeout,
+        )
+    except (ToolRouterError, OSError, ValueError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return False, None
+    for line in report:
+        print(line, file=sys.stderr)
+    return True, catalog
+
+
 def _cmd_serve(args: argparse.Namespace) -> int:
     """Run the REST service (requires the `api` extra)."""
     try:
@@ -48,11 +68,9 @@ def _cmd_serve(args: argparse.Namespace) -> int:
     if args.rebuild:
         import os
         os.environ["TOOL_ROUTER_REBUILD"] = "1"
-    catalog = None
-    if args.catalog:
-        with open(args.catalog, encoding="utf-8") as fh:
-            catalog = json.load(fh)
-        print(f"pre-loading registry from {args.catalog}")
+    ok, catalog = _load_startup_catalog(args)
+    if not ok:
+        return 1
     app = create_app(catalog)
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
     return 0
@@ -110,6 +128,24 @@ def _cmd_config(args: argparse.Namespace) -> int:
     return 1
 
 
+def _add_source_options(parser: argparse.ArgumentParser) -> None:
+    """Where `serve` and `mcp` get their tools from."""
+    parser.add_argument("--catalog", default=None, help="catalog JSON file to load")
+    parser.add_argument(
+        "--import-mcp", action="append", default=None, metavar="COMMAND",
+        help='start this MCP server, scan its tools and load them (quote the whole command, '
+             'e.g. "python my_server.py"; repeat for several servers)',
+    )
+    parser.add_argument(
+        "--mcp-env", action="append", default=None, metavar="NAME",
+        help="pass this environment variable on to the scanned MCP server(s); repeatable",
+    )
+    parser.add_argument(
+        "--mcp-timeout", type=float, default=30.0, metavar="SECONDS",
+        help="give up on an MCP scan after this long (default: 30)",
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="tool-router", description="Intelligent tool router")
     sub = parser.add_subparsers(dest="command")
@@ -123,8 +159,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_serve = sub.add_parser("serve", help="run the REST routing service")
     p_serve.add_argument("--host", default="0.0.0.0")
     p_serve.add_argument("--port", type=int, default=8080)
-    p_serve.add_argument("--catalog", default=None,
-                         help="optional catalog JSON to pre-load the registry")
+    _add_source_options(p_serve)
     p_serve.add_argument("--rebuild", action="store_true",
                          help="wipe caches and re-derive the index (escape hatch)")
 
@@ -136,8 +171,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_config.add_argument("value", nargs="?", default=None)
 
     p_mcp = sub.add_parser("mcp", help="run the MCP server (stdio) exposing find_tools")
-    p_mcp.add_argument("--catalog", required=True,
-                       help="catalog JSON to load (required: MCP clients cannot add tools)")
+    _add_source_options(p_mcp)
 
     p_imp_mcp = sub.add_parser(
         "import-mcp", help="auto-import tools from an MCP server into registry schema"
@@ -145,7 +179,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_imp_mcp.add_argument("--command", dest="server_command", required=True,
                            help="MCP server launch command")
     p_imp_mcp.add_argument("--args", nargs="*", default=[], help="arguments for the command")
-    p_imp_mcp.add_argument("--prefix", default=None, help="cluster/id prefix (default: command name)")
+    p_imp_mcp.add_argument("--prefix", default=None, help="cluster/id prefix (default: the server's name)")
+    p_imp_mcp.add_argument("--env", action="append", default=None, metavar="NAME",
+                           help="pass this environment variable on to the server; repeatable")
+    p_imp_mcp.add_argument("--timeout", type=float, default=30.0, metavar="SECONDS",
+                           help="give up after this long (default: 30)")
     p_imp_mcp.add_argument("-o", "--output", default=None, help="write tools JSON here (default: stdout)")
 
     return parser
@@ -166,37 +204,51 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "config":
         return _cmd_config(args)
     if args.command == "mcp":
+        if not args.catalog and not args.import_mcp:
+            parser.error("mcp needs tools: give --catalog and/or --import-mcp")
         from tool_router.mcp_server import run_mcp
-        run_mcp(args.catalog)
+        ok, catalog = _load_startup_catalog(args)
+        if not ok:
+            return 1
+        run_mcp(catalog)
         return 0
     if args.command == "import-mcp":
-        from tool_router.importers import import_from_mcp
-        tools = import_from_mcp(args.server_command, args.args, args.prefix)
+        from tool_router.importers.mcp_importer import MCPImportError, import_from_mcp
+        try:
+            tools = import_from_mcp(args.server_command, args.args, args.prefix,
+                                    env_names=args.env, timeout=args.timeout)
+        except MCPImportError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
         return _emit_imported(tools, args.output)
     parser.print_help()
     return 1
 
 
 def _emit_imported(tools: list[dict], output: str | None) -> int:
-    """Report guardrail verdicts for imported tools, then emit them as JSON."""
-    known: set[str] = set()
-    accepted = 0
-    for tool in tools:
-        verdict = validate_submission(tool, known_ids=known)
-        if verdict.accepted:
-            accepted += 1
-            known.add(tool["id"])
-            print(f"IMPORT OK      {tool['id']}")
-        else:
-            print(f"IMPORT REJECT  {tool.get('id')}  [{verdict.primary_reason}] "
-                  f"{verdict.issues[0].message}")
-    payload = json.dumps({"tools": tools}, indent=1)
+    """Write the imported tools that pass the guardrail; report the rest on stderr.
+
+    Reports go to stderr so that, without -o, stdout is clean catalog JSON.
+    """
+    from tool_router.catalog_loader import split_valid
+
+    accepted, rejected = split_valid(tools)
+    for tool in accepted:
+        print(f"IMPORT OK      {tool['id']}  ({tool.get('side_effects', 'read')})", file=sys.stderr)
+    for message in rejected:
+        print(f"IMPORT REJECT  {message}", file=sys.stderr)
+    summary = f"{len(accepted)}/{len(tools)} tools pass the guardrail"
+    if not accepted:
+        print(f"{summary} · nothing written", file=sys.stderr)
+        return 1
+    payload = json.dumps({"tools": accepted}, indent=1)
     if output:
         with open(output, "w", encoding="utf-8") as fh:
             fh.write(payload)
-        print(f"\n{accepted}/{len(tools)} pass the guardrail · written to {output}")
+        print(f"{summary} · written to {output}", file=sys.stderr)
     else:
         print(payload)
+        print(summary, file=sys.stderr)
     return 0
 
 

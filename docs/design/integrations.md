@@ -71,8 +71,10 @@ binds that one tool; the LLM calls it mid-reasoning and gets the relevant tools 
 tool: find_tools(query: str, k?: int) -> [ {name, description, inputSchema}, ... ]
 tool: registry_status()               -> tool count and registry stats
 ```
-Both are read-only. The catalog is loaded at startup with `--catalog`; an agent cannot
-change it over MCP.
+Both are read-only. The catalog is assembled at startup, from `--catalog` and/or a scan
+of other MCP servers with `--import-mcp "<command>"`; an agent cannot change it over MCP.
+Scanned tools keep their original name in `source.name`, which is the name to use when
+calling the tool on its own server.
 
 ### Any MCP host (e.g. Claude Desktop / mcp.json)
 ```json
