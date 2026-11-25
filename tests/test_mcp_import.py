@@ -145,7 +145,7 @@ def test_unset_environment_variable_is_an_error(monkeypatch):
 
 
 def test_scan_loads_only_valid_tools_and_reports_the_rest():
-    catalog, report = build_catalog(mcp_commands=[command(SHOP)])
+    catalog, report = build_catalog(mcp_sources=[command(SHOP)])
     names = {t["name"] for t in catalog["tools"]}
     assert "get_order_status" in names and "ping" not in names
     assert any("ping" in line and "DESCRIPTION_TOO_VAGUE" in line for line in report)
@@ -158,8 +158,8 @@ def test_file_and_scan_are_combined():
 
 
 def test_duplicate_server_does_not_duplicate_tools():
-    once, _ = build_catalog(mcp_commands=[command(SHOP)])
-    twice, report = build_catalog(mcp_commands=[command(SHOP), command(SHOP)])
+    once, _ = build_catalog(mcp_sources=[command(SHOP)])
+    twice, report = build_catalog(mcp_sources=[command(SHOP), command(SHOP)])
     assert len(twice["tools"]) == len(once["tools"])
     assert any("DUPLICATE_ID" in line for line in report)
 
@@ -168,7 +168,7 @@ def test_no_usable_tools_is_an_error():
     code = ("from mcp.server.fastmcp import FastMCP\n"
             "s = FastMCP('empty')\ns.run()\n")
     with pytest.raises(CatalogError, match="No usable tools"):
-        build_catalog(mcp_commands=[command("-c", code)])
+        build_catalog(mcp_sources=[command("-c", code)])
 
 
 def test_no_source_returns_nothing():

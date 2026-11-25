@@ -388,12 +388,12 @@ tool-router/
 │   │                            dedup · derive (clusters/versions/dup-groups) · ingest ·
 │   │                            guardrail · planner (local) · llm_planner · hyde · enrich
 │   ├── providers/               base (interface) · local_tfidf (default) · gemini
-│   ├── importers/               mcp_importer · common
+│   ├── importers/               mcp_importer · mcp_remote · common
 │   ├── api.py                  FastAPI: /registry (+ /tools CRUD, /mutate) /route /health /setup
 │   ├── mcp_server.py            MCP tools: find_tools · registry_status (read-only)
 │   ├── cli.py                   tool-router version | validate | serve | mcp | init | config
 │   │                            | import-mcp
-│   ├── catalog_loader.py        startup catalog: file and/or live MCP scans
+│   ├── catalog_loader.py        startup catalog: file and/or live MCP scans (local or remote)
 │   ├── store.py                 persistence: JSON embedding/enrichment cache, config, secrets
 │   ├── config.py · log.py       settings + logging
 ```

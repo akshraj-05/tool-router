@@ -100,7 +100,13 @@ class GeminiEmbedding:
     def _embed_one(self, text: str) -> list[float]:
         data = _post(f"{_BASE}/{self._model}:embedContent",
                      {"content": {"parts": [{"text": text[:8000]}]}})
-        return data["embedding"]["values"]
+        try:
+            values = data["embedding"]["values"]
+        except (KeyError, TypeError) as exc:
+            raise ProviderError("Gemini embedding reply had no vector") from exc
+        if not (isinstance(values, list) and values and all(isinstance(v, (int, float)) for v in values)):
+            raise ProviderError("Gemini embedding reply had an unusable vector")
+        return values
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return [self._embed_one(t) for t in texts]

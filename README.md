@@ -118,14 +118,44 @@ tool-router mcp --import-mcp "python my_server.py"
 - Tools that fail the intake checks are skipped and listed, for example for a description shorter than 6 words or more than 12 parameters.
 - Each tool keeps its original name in `source.name`; use that name to call it on its server.
 - A tool is marked destructive if the server says so or its name contains a word such as `delete` or `restart`. Other destructive tools may not be recognised.
-- Only local (stdio) servers are supported. Restart the router to pick up changes.
+- Restart the router to pick up changes on a server.
 
-`--import-mcp` runs the command you give it, so only use servers you trust. It is available on the command line only, not through the REST API.
+`--import-mcp` runs the command or contacts the address you give it, so only use servers you trust. It is available on the command line only, not through the REST API.
+
+#### Remote servers
+
+Give a URL instead of a command (Streamable HTTP):
+
+Authentication is by HTTP header. `--mcp-header-env HEADER=NAME` sends `HEADER` with the value of the environment variable `NAME`:
+
+```bash
+read -rs TOKEN                                  # paste the token; it stays out of shell history
+export SHOP_AUTH="Bearer $TOKEN"; unset TOKEN
+tool-router serve --host 127.0.0.1 \
+    --import-mcp "https://shop.example.com/mcp" --mcp-header-env Authorization=SHOP_AUTH
+```
+
+| The server expects | Variable holds | Option |
+|---|---|---|
+| Nothing | — | none |
+| Bearer token | `Bearer <token>` | `--mcp-header-env Authorization=NAME` |
+| API key or another header | the key | `--mcp-header-env X-API-Key=NAME` |
+| Basic | `Basic <encoded>` | `--mcp-header-env Authorization=NAME` |
+| Several headers | one variable each | repeat the option |
+
+- Values are read from environment variables and are not printed or stored with the tools.
+- `https` is required; plain `http` is accepted for `localhost` only.
+- Redirects are followed only within the same server. A redirect to another server is refused, so your token is never sent elsewhere.
+- A user name or password inside the URL is refused.
+- `--mcp-header-env` works with **one** remote server at a time, so one server's secret is never sent to another.
+- **Not supported:** OAuth (including browser sign-in), client certificates and the older SSE transport.
+- If any server cannot be scanned, the router does not start.
 
 To review the tools before loading them, write them to a file instead:
 
 ```bash
 tool-router import-mcp --command python --args my_server.py -o tools.json
+# remote: tool-router import-mcp --url https://shop.example.com/mcp --header-env Authorization=SHOP_AUTH -o tools.json
 tool-router serve --catalog tools.json
 ```
 
@@ -204,6 +234,8 @@ See `.env.example` and [onboarding documentation](docs/design/onboarding.md) for
 The headline figures above come from a development evaluation suite that is not shipped in this repository. Treat them as measured project results, not a guarantee for a different catalog or workload. The report documents known failure categories and the difference between local-only and LLM-assisted routing.
 
 **Language:** English only. Other languages are not supported, including the confirmation check for destructive requests.
+
+If Gemini embeddings fail, the router uses local embeddings for that query (or for that index, if the failure happens while indexing) and records `embedding_fallback` in the trace for query failures. Rate limits are retried first, so a request can wait over a minute before falling back.
 
 The local planner is deterministic and works offline. LLM-assisted features depend on provider availability, model behaviour, credentials and rate limits; failures are designed to fall back to the local path.
 

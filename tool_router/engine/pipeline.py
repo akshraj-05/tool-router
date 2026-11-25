@@ -33,6 +33,7 @@ from tool_router.domain.errors import (
     DuplicateToolError,
     InvalidCatalogError,
     InvalidToolError,
+    ProviderError,
     ToolInUseError,
     ToolNotFoundError,
 )
@@ -50,6 +51,7 @@ from tool_router.engine.text import STOPWORDS, strip_purpose_clause, tokenize
 from tool_router.log import get_logger
 from tool_router.providers import make_embedding_provider
 from tool_router.providers.base import ChatClient
+from tool_router.providers.local_tfidf import LocalTfidfEmbedding
 from tool_router.store import content_hash, project_cache
 
 logger = get_logger("pipeline")
@@ -77,6 +79,17 @@ class _Index:
     planner: Any                      # LLMPlanner (with local fallback) or the LocalPlanner
     full_catalog_tokens: int
     raw_by_id: dict[str, dict[str, Any]]
+    # Local TF-IDF (provider, entries) used if a hosted embedding provider fails
+    # during a query. None when the primary provider is already local.
+    fallback: Optional[tuple[Any, list[IndexedTool]]] = None
+
+
+def _local_vectors(entries: list[IndexedTool]) -> tuple[Any, list[Any]]:
+    """A fitted local TF-IDF provider and one vector per entry (no network, no cache)."""
+    provider = LocalTfidfEmbedding()
+    texts = [e.search_text for e in entries]
+    provider.fit_documents(texts)
+    return provider, provider.embed_documents(texts)
 
 
 class RoutingEngine:
@@ -183,22 +196,23 @@ class RoutingEngine:
 
         # --- embed (content-hash cached) + lexical index ---------------------
         provider = make_embedding_provider(self._settings.embedding_provider)
-        texts = [e.search_text for e in entries]
-        provider.fit_documents(texts)
-        cache = project_cache_for(provider, rebuild=self._settings.rebuild)
-        hashes = [content_hash(t) for t in texts]
-        missing = [i for i, h in enumerate(hashes) if cache.get(h) is None]
-        if missing:
-            vectors = provider.embed_documents([texts[i] for i in missing])
-            for i, vec in zip(missing, vectors):
-                cache.put(hashes[i], vec)
-            cache.save()
-        if len(missing) < len(texts):
-            logger.info(
-                "embedding cache: reused %d/%d vectors", len(texts) - len(missing), len(texts)
+        try:
+            self._embed_entries(provider, entries)
+        except ProviderError as exc:
+            # The whole index must live in one vector space, so use local for all of it.
+            logger.warning(
+                "embedding provider failed while indexing (%s) — this index uses local "
+                "TF-IDF until the next successful rebuild", exc,
             )
-        for entry, h in zip(entries, hashes):
-            entry.embedding = cache.get(h)
+            provider = LocalTfidfEmbedding()
+            self._embed_entries(provider, entries)
+        fallback = None
+        if not isinstance(provider, LocalTfidfEmbedding):
+            local, vectors = _local_vectors(entries)
+            fallback = (local, [
+                entry.model_copy(update={"embedding": vector})
+                for entry, vector in zip(entries, vectors)
+            ])
         # Lexical index over CONTENT tokens only: stopwords carry no routing
         # signal and would otherwise inflate scores for unrelated queries
         # (breaking out-of-scope detection) — standard IR practice.
@@ -234,7 +248,27 @@ class RoutingEngine:
             planner=planner,
             full_catalog_tokens=_approx_tokens(raw_tools),
             raw_by_id={e.tool.id: e.raw for e in entries},
+            fallback=fallback,
         )
+
+    def _embed_entries(self, provider: Any, entries: list[IndexedTool]) -> None:
+        """Set every entry's vector, reusing the content-hash cache where possible."""
+        texts = [e.search_text for e in entries]
+        provider.fit_documents(texts)
+        cache = project_cache_for(provider, rebuild=self._settings.rebuild)
+        hashes = [content_hash(t) for t in texts]
+        missing = [i for i, h in enumerate(hashes) if cache.get(h) is None]
+        if missing:
+            vectors = provider.embed_documents([texts[i] for i in missing])
+            for i, vec in zip(missing, vectors):
+                cache.put(hashes[i], vec)
+            cache.save()
+        if len(missing) < len(texts):
+            logger.info(
+                "embedding cache: reused %d/%d vectors", len(texts) - len(missing), len(texts)
+            )
+        for entry, h in zip(entries, hashes):
+            entry.embedding = cache.get(h)
 
     # ------------------------------------------------------------------ API
 
@@ -455,7 +489,8 @@ class RoutingEngine:
 
         idx = self._index      # one snapshot for the whole request (see module docstring)
         signals = analyze_query(query)
-        candidates, dropped = self._score_and_collapse(query, idx)
+        notes: dict[str, Any] = {}        # facts about this request, added to the trace
+        candidates, dropped = self._score_and_collapse(query, idx, notes)
 
         # Conditional HyDE: fires whenever confidence is NOT already high and a
         # chat model exists — INCLUDING below the floor, because colloquial
@@ -473,7 +508,7 @@ class RoutingEngine:
             from tool_router.engine.hyde import apply_hyde
             candidates, hyde_info = apply_hyde(
                 query, candidates, self._chat,
-                functools.partial(self._score_and_collapse, idx=idx),
+                functools.partial(self._score_and_collapse, idx=idx, notes=notes),
                 idx.maps, signals,
             )
 
@@ -490,6 +525,8 @@ class RoutingEngine:
             "dropped": dropped,
         }
 
+        trace.update(notes)
+
         if decision.kind == "empty":
             return RouteResult(trace=trace)
         if decision.kind == "clarify":
@@ -497,7 +534,7 @@ class RoutingEngine:
                 clarify=True, clarify_question=decision.clarify_question, trace=trace
             )
 
-        scorer = lambda text: self._score_and_collapse(text, idx)[0]  # noqa: E731
+        scorer = lambda text: self._score_and_collapse(text, idx, notes)[0]  # noqa: E731
         shortlist = decision.shortlist
         outcome: PlanOutcome = idx.planner.plan(query, signals, shortlist, scorer)
 
@@ -556,6 +593,7 @@ class RoutingEngine:
                 trace=trace,
             )
 
+        trace.update(notes)
         selected = list(dict.fromkeys(outcome.plan))   # unique, order-preserving
         trace["segments"] = outcome.segments
 
@@ -606,7 +644,7 @@ class RoutingEngine:
         return result[:cap]
 
     def _score_and_collapse(
-        self, text: str, idx: Optional[_Index] = None
+        self, text: str, idx: Optional[_Index] = None, notes: Optional[dict[str, Any]] = None
     ) -> tuple[list[Candidate], dict[str, list[str]]]:
         """Fused scoring + version/dup collapse for any piece of text.
 
@@ -614,12 +652,30 @@ class RoutingEngine:
         main clause ("store this file ..."), while purpose vocabulary ("... so
         people can search it") would otherwise pull the ranking toward the
         wrong action (see text.strip_purpose_clause).
+
+        If a hosted embedding provider fails here, this text is scored with local
+        TF-IDF instead, and ``notes["embedding_fallback"]`` is set. Once one call
+        in a request has failed, the rest of that request stays local, so it does
+        not wait on a broken provider again.
         """
         idx = idx or self._index
+        notes = notes if notes is not None else {}
         scored_text = strip_purpose_clause(text)
         signals = analyze_query(scored_text)
-        query_vec = idx.provider.embed_query(scored_text)
+        entries = idx.entries
+        query_vec = None
+        if not notes.get("embedding_fallback"):
+            try:
+                query_vec = idx.provider.embed_query(scored_text)
+            except ProviderError as exc:
+                if idx.fallback is None:
+                    raise
+                logger.warning("embedding provider failed (%s) — using local TF-IDF for this query", exc)
+                notes["embedding_fallback"] = True
+        if query_vec is None:
+            local, entries = idx.fallback
+            query_vec = local.embed_query(scored_text)
         candidates = score_tools(
-            idx.entries, idx.bm25, query_vec, signals, self._settings.weights
+            entries, idx.bm25, query_vec, signals, self._settings.weights
         )
         return collapse(candidates, idx.maps, signals)

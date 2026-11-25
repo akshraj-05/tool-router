@@ -46,6 +46,7 @@ def _load_startup_catalog(args: argparse.Namespace):
     try:
         catalog, report = build_catalog(
             args.catalog, args.import_mcp, env_names=args.mcp_env, timeout=args.mcp_timeout,
+            header_envs=args.mcp_header_env,
         )
     except (ToolRouterError, OSError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -135,13 +136,19 @@ def _add_source_options(parser: argparse.ArgumentParser) -> None:
     """Where `serve` and `mcp` get their tools from."""
     parser.add_argument("--catalog", default=None, help="catalog JSON file to load")
     parser.add_argument(
-        "--import-mcp", action="append", default=None, metavar="COMMAND",
-        help='start this MCP server, scan its tools and load them (quote the whole command, '
-             'e.g. "python my_server.py"; repeat for several servers)',
+        "--import-mcp", action="append", default=None, metavar="COMMAND_OR_URL",
+        help='scan an MCP server and load its tools: a command that starts a local server '
+             '(quote it, e.g. "python my_server.py") or the https:// URL of a remote one; '
+             'repeat for several servers',
+    )
+    parser.add_argument(
+        "--mcp-header-env", action="append", default=None, metavar="HEADER=NAME",
+        help="remote server authentication: send HEADER with the value of environment variable "
+             "NAME (for a bearer token the value is 'Bearer <token>'); repeatable",
     )
     parser.add_argument(
         "--mcp-env", action="append", default=None, metavar="NAME",
-        help="pass this environment variable on to the scanned MCP server(s); repeatable",
+        help="local servers: pass this environment variable on to them; repeatable",
     )
     parser.add_argument(
         "--mcp-timeout", type=float, default=30.0, metavar="SECONDS",
@@ -179,8 +186,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_imp_mcp = sub.add_parser(
         "import-mcp", help="auto-import tools from an MCP server into registry schema"
     )
-    p_imp_mcp.add_argument("--command", dest="server_command", required=True,
-                           help="MCP server launch command")
+    target = p_imp_mcp.add_mutually_exclusive_group(required=True)
+    target.add_argument("--command", dest="server_command", help="command that starts a local MCP server")
+    target.add_argument("--url", default=None, help="https:// URL of a remote MCP server")
+    p_imp_mcp.add_argument("--header-env", action="append", default=None, metavar="HEADER=NAME",
+                           help="with --url: send HEADER with this variable's value; repeatable")
     p_imp_mcp.add_argument("--args", nargs="*", default=[], help="arguments for the command")
     p_imp_mcp.add_argument("--prefix", default=None, help="cluster/id prefix (default: the server's name)")
     p_imp_mcp.add_argument("--env", action="append", default=None, metavar="NAME",
@@ -220,10 +230,20 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         return 0
     if args.command == "import-mcp":
-        from tool_router.importers.mcp_importer import MCPImportError, import_from_mcp
+        from tool_router.importers.mcp_importer import import_from_mcp, import_from_mcp_url
+        from tool_router.importers.mcp_remote import MCPImportError, build_headers
         try:
-            tools = import_from_mcp(args.server_command, args.args, args.prefix,
-                                    env_names=args.env, timeout=args.timeout)
+            if args.url:
+                if args.env or args.args:
+                    raise MCPImportError("--args and --env apply to --command, not to --url")
+                tools = import_from_mcp_url(
+                    args.url, headers=build_headers(args.header_env),
+                    prefix=args.prefix, timeout=args.timeout)
+            else:
+                if args.header_env:
+                    raise MCPImportError("--header-env applies to --url only")
+                tools = import_from_mcp(args.server_command, args.args, args.prefix,
+                                        env_names=args.env, timeout=args.timeout)
         except MCPImportError as exc:
             print(f"error: {exc}", file=sys.stderr)
             return 1
