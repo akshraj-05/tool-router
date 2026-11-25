@@ -7,11 +7,24 @@ Route per query: analyze → fused scoring → version/dup collapse →
 
 Every route returns a full trace (why each tool was chosen) — this powers the
 demo and the REST response; the harness adapter simply drops it.
+
+Concurrency model
+-----------------
+Everything derived from the catalog (entries, BM25 index, maps, planners) lives
+in one immutable ``_Index`` snapshot. ``route()`` reads ``self._index`` exactly
+once and uses that snapshot for the whole request. ``apply_mutation()`` builds a
+complete new snapshot off to the side, under a lock that serializes writers, and
+publishes it with a single reference assignment. A reader therefore sees either
+the complete old index or the complete new one, never a mixture, and never has
+to wait for a rebuild.
 """
 
 from __future__ import annotations
 
+import functools
 import json
+import threading
+from dataclasses import dataclass
 from typing import Any, Optional
 
 from tool_router.config import Settings
@@ -28,6 +41,7 @@ from tool_router.engine.retrieval import Candidate, analyze_query, score_tools
 from tool_router.engine.text import STOPWORDS, strip_purpose_clause, tokenize
 from tool_router.log import get_logger
 from tool_router.providers import make_embedding_provider
+from tool_router.providers.base import ChatClient
 from tool_router.store import content_hash, project_cache
 
 logger = get_logger("pipeline")
@@ -43,33 +57,56 @@ def _approx_tokens(obj: Any) -> int:
     return max(1, len(json.dumps(obj)) // 4)
 
 
-class RoutingEngine:
-    """One instance per registered catalog. Thread-safe for reads after init."""
+@dataclass(frozen=True)
+class _Index:
+    """Everything derived from one version of the catalog. Never mutated after build."""
 
-    def __init__(self, catalog: dict[str, Any], settings: Optional[Settings] = None) -> None:
+    entries: list[IndexedTool]
+    provider: Any
+    bm25: BM25Index
+    maps: DerivedMaps
+    local_planner: LocalPlanner
+    planner: Any                      # LLMPlanner (with local fallback) or the LocalPlanner
+    full_catalog_tokens: int
+    raw_by_id: dict[str, dict[str, Any]]
+
+
+class RoutingEngine:
+    """One instance per registered catalog. Safe to route from many threads,
+    including while the catalog is being mutated (see the module docstring)."""
+
+    def __init__(
+        self,
+        catalog: dict[str, Any],
+        settings: Optional[Settings] = None,
+        chat: Optional[ChatClient] = None,
+    ) -> None:
+        """``chat`` injects a generation-LLM client (tests, custom providers).
+        When omitted, one is built from ``settings.llm_provider`` or left unset."""
         if not isinstance(catalog, dict) or not isinstance(catalog.get("tools"), list):
             raise CatalogError("Catalog must be a dict with a 'tools' list.")
         self._settings = settings or Settings.from_env()
         self._catalog_meta = {k: v for k, v in catalog.items() if k != "tools"}
         self._raw_tools: list[dict[str, Any]] = list(catalog["tools"])
+        self._mutation_lock = threading.Lock()
 
         validate_catalog(self._raw_tools)   # lenient: logs issues; trusted catalog is kept
-        self._chat = self._make_chat()      # shared generation-LLM client (or None)
-        self._build_index()
-        self._planner = self._make_planner()
+        self._chat = chat if chat is not None else self._make_chat()
+        self._index: _Index = self._build_index(self._raw_tools)
         self._log_summary()
 
     def _make_chat(self):
-        """One Bedrock chat client shared by planner + enrichment (or None)."""
+        """One chat client shared by planner, HyDE and enrichment (or None)."""
         provider = self._settings.llm_provider
-        if provider not in ("bedrock", "gemini"):
+        if provider == "none":
             return None
+        if provider != "gemini":
+            logger.warning("unknown llm provider %r (supported: none, gemini) — local-only mode", provider)
+            return None
+        model = self._settings.llm_model or None     # None = Gemini's default model
         try:
-            if provider == "gemini":
-                from tool_router.providers.gemini import GeminiChat
-                return GeminiChat()
-            from tool_router.providers.bedrock import BedrockChat
-            return BedrockChat()
+            from tool_router.providers.gemini import GeminiChat
+            return GeminiChat(model_id=model)
         except Exception as exc:
             logger.warning("generation LLM unavailable (%s) — local-only mode", exc)
             return None
@@ -77,45 +114,46 @@ class RoutingEngine:
     def _log_summary(self) -> None:
         """Startup one-liner (storage.md): what's active — never the key value."""
         from tool_router.store import data_dir, load_secret
+        idx = self._index
         logger.info(
             "tool-router ready · tools=%d · embedding=%s · planner=%s · "
             "llm=%s · key=%s · data=%s",
-            self.tool_count,
-            getattr(self._provider, "stamp", "?").split(":")[0],
-            type(self._planner).__name__,
+            len(idx.entries),
+            getattr(idx.provider, "stamp", "?").split(":")[0],
+            type(idx.planner).__name__,
             self._settings.llm_provider,
-            "present" if (load_secret("bedrock_key") or load_secret("gemini_key")) else "absent",
+            "present" if (load_secret("gemini_key")) else "absent",
             data_dir(),
         )
 
-    def _build_index(self) -> None:
-        """(Re)build every derived structure from the current raw tool list.
+    def _build_index(self, raw_tools: list[dict[str, Any]]) -> _Index:
+        """Build every derived structure from a raw tool list and return it.
 
-        Called at construction AND after every mutation — churn resilience is
+        Pure with respect to the engine's published state: nothing is assigned
+        to ``self`` here, so a failure part-way leaves the live index untouched.
+        Called at construction AND for every mutation — churn resilience is
         literally "rebuild the index from the new truth" (catalog_mutations
-        invariants). At catalog scale this is milliseconds; the persistent
-        store phase adds content-hash caching to skip unchanged embeddings.
+        invariants). At catalog scale this is milliseconds.
         """
-        self._entries: list[IndexedTool] = ingest_tools(self._raw_tools)
+        entries: list[IndexedTool] = ingest_tools(raw_tools)
 
         # --- one-time LLM enrichment (internal-only, cached, optional) ------
         if self._chat is not None and self._settings.llm_enrich:
             from tool_router.engine.enrich import enrich_entries
-            from tool_router.store import project_cache
             enrich_entries(
-                self._entries, self._chat,
+                entries, self._chat,
                 project_cache("enrichment", "llm-enrich-v1", rebuild=self._settings.rebuild),
             )
 
         # --- embed (content-hash cached) + lexical index ---------------------
-        self._provider = make_embedding_provider(self._settings.embedding_provider)
-        texts = [e.search_text for e in self._entries]
-        self._provider.fit_documents(texts)
-        cache = project_cache_for(self._provider, rebuild=self._settings.rebuild)
+        provider = make_embedding_provider(self._settings.embedding_provider)
+        texts = [e.search_text for e in entries]
+        provider.fit_documents(texts)
+        cache = project_cache_for(provider, rebuild=self._settings.rebuild)
         hashes = [content_hash(t) for t in texts]
         missing = [i for i, h in enumerate(hashes) if cache.get(h) is None]
         if missing:
-            vectors = self._provider.embed_documents([texts[i] for i in missing])
+            vectors = provider.embed_documents([texts[i] for i in missing])
             for i, vec in zip(missing, vectors):
                 cache.put(hashes[i], vec)
             cache.save()
@@ -123,35 +161,43 @@ class RoutingEngine:
             logger.info(
                 "embedding cache: reused %d/%d vectors", len(texts) - len(missing), len(texts)
             )
-        for entry, h in zip(self._entries, hashes):
+        for entry, h in zip(entries, hashes):
             entry.embedding = cache.get(h)
         # Lexical index over CONTENT tokens only: stopwords carry no routing
         # signal and would otherwise inflate scores for unrelated queries
         # (breaking out-of-scope detection) — standard IR practice.
-        self._bm25 = BM25Index(
-            [[t for t in e.tokens if t not in STOPWORDS] for e in self._entries]
-        )
+        bm25 = BM25Index([[t for t in e.tokens if t not in STOPWORDS] for e in entries])
 
         # --- derive registry maps ------------------------------------------
-        self._maps: DerivedMaps = derive_maps(
-            self._entries, catalog_meta=self._catalog_meta,
+        maps: DerivedMaps = derive_maps(
+            entries, catalog_meta=self._catalog_meta,
             thresholds=self._settings.confidence,
         )
 
         # Planner verb lexicon: leading verbs of tool names (catalog-derived).
-        tool_verbs = {e.tool.name.split("_")[0] for e in self._entries}
-        self._local_planner = LocalPlanner(
-            tool_verbs=tool_verbs,
-            idf=self._bm25.idf,
-            mean_idf=self._bm25.mean_idf,
+        tool_verbs = {e.tool.name.split("_")[0] for e in entries}
+        local_planner = LocalPlanner(
+            tool_verbs=tool_verbs, idf=bm25.idf, mean_idf=bm25.mean_idf,
         )
+        planner: Any = local_planner
+        if self._chat is not None:
+            from tool_router.engine.llm_planner import LLMPlanner
+            logger.info("planner: LLM (%s) with local fallback", self._settings.llm_provider)
+            planner = LLMPlanner(self._chat, fallback=local_planner)
 
-        self._full_catalog_tokens = _approx_tokens(self._raw_tools)
-        self._raw_by_id = {e.tool.id: e.raw for e in self._entries}
         logger.info(
             "index ready: %d tools, %d clusters, %d dup groups, %d version families",
-            len(self._entries), len(self._maps.clusters),
-            len(self._maps.dup_groups), len(self._maps.version_families),
+            len(entries), len(maps.clusters), len(maps.dup_groups), len(maps.version_families),
+        )
+        return _Index(
+            entries=entries,
+            provider=provider,
+            bm25=bm25,
+            maps=maps,
+            local_planner=local_planner,
+            planner=planner,
+            full_catalog_tokens=_approx_tokens(raw_tools),
+            raw_by_id={e.tool.id: e.raw for e in entries},
         )
 
     # ------------------------------------------------------------------ API
@@ -166,6 +212,9 @@ class RoutingEngine:
         - The whole index is rebuilt from the new truth: add/remove/replace/
           upgrade all reduce to "the registry changed, re-derive everything",
           which is what keeps routing keyed to capability, not to ids.
+        - The rebuild happens off to the side and is published in one step, so
+          concurrent ``route()`` calls are never affected, and a failure while
+          rebuilding leaves the live catalog exactly as it was.
         """
         if not isinstance(delta, dict):
             raise CatalogError("Mutation delta must be a dict with 'add' and/or 'remove'.")
@@ -174,33 +223,38 @@ class RoutingEngine:
         if not isinstance(to_add, list) or not isinstance(to_remove, list):
             raise CatalogError("'add' must be a list of tools; 'remove' a list of ids.")
 
-        removed, missing = [], []
-        remove_set = set(to_remove)
-        if remove_set:
-            before = {t.get("id") for t in self._raw_tools}
-            self._raw_tools = [t for t in self._raw_tools if t.get("id") not in remove_set]
-            removed = sorted(remove_set & before)
-            missing = sorted(remove_set - before)
+        with self._mutation_lock:
+            raw_tools = list(self._raw_tools)
 
-        accepted, rejected = [], []
-        known_ids = {t.get("id") for t in self._raw_tools}
-        known_tools = {t.get("id"): t for t in self._raw_tools}
-        for raw in to_add:
-            verdict = validate_submission(raw, known_ids=known_ids, known_tools=known_tools)
-            if verdict.accepted:
-                self._raw_tools.append(raw)
-                known_ids.add(raw["id"])
-                known_tools[raw["id"]] = raw
-                accepted.append(raw["id"])
-            else:
-                rejected.append({
-                    "id": verdict.tool_id,
-                    "reason": verdict.primary_reason,
-                    "issues": [i.message for i in verdict.issues],
-                })
+            removed, missing = [], []
+            remove_set = set(to_remove)
+            if remove_set:
+                before = {t.get("id") for t in raw_tools}
+                raw_tools = [t for t in raw_tools if t.get("id") not in remove_set]
+                removed = sorted(remove_set & before)
+                missing = sorted(remove_set - before)
 
-        self._build_index()
-        self._planner = self._make_planner()   # rebind fallback to the new index
+            accepted, rejected = [], []
+            known_ids = {t.get("id") for t in raw_tools}
+            known_tools = {t.get("id"): t for t in raw_tools}
+            for raw in to_add:
+                verdict = validate_submission(raw, known_ids=known_ids, known_tools=known_tools)
+                if verdict.accepted:
+                    raw_tools.append(raw)
+                    known_ids.add(raw["id"])
+                    known_tools[raw["id"]] = raw
+                    accepted.append(raw["id"])
+                else:
+                    rejected.append({
+                        "id": verdict.tool_id,
+                        "reason": verdict.primary_reason,
+                        "issues": [i.message for i in verdict.issues],
+                    })
+
+            new_index = self._build_index(raw_tools)   # may raise: nothing is published yet
+            self._raw_tools = raw_tools
+            self._index = new_index                    # the single publishing step
+
         logger.info(
             "mutation applied: +%d accepted, %d rejected, -%d removed (%d unknown)",
             len(accepted), len(rejected), len(removed), len(missing),
@@ -210,30 +264,34 @@ class RoutingEngine:
             "rejected": rejected,
             "removed": removed,
             "unknown_remove_ids": missing,
-            "tool_count": len(self._raw_tools),
+            "tool_count": len(raw_tools),
         }
 
     @property
     def tool_count(self) -> int:
-        return len(self._entries)
+        return len(self._index.entries)
 
     @property
     def maps(self) -> DerivedMaps:
         """Derived registry maps (clusters / dup groups / version families)."""
-        return self._maps
+        return self._index.maps
 
     @property
     def planner(self):
         """The active planner (LLMPlanner or LocalPlanner)."""
-        return self._planner
+        return self._index.planner
 
     def raw_tool(self, tool_id: str) -> dict[str, Any]:
         """The ORIGINAL registered schema for a tool — what clients receive
         (enrichment never leaves the retrieval layer, see onboarding.md)."""
-        return self._raw_by_id[tool_id]
+        return self._index.raw_by_id[tool_id]
 
     def route(self, query: str, context: Optional[dict] = None) -> RouteResult:
-        """Route one query to a minimal, ordered set of tools."""
+        """Route one query to a minimal, ordered set of tools.
+
+        ``context`` is accepted so callers can already pass it, but the engine
+        does not use it yet: routing depends on ``query`` and the catalog only.
+        """
         if not isinstance(query, str) or not query.strip():
             return RouteResult(
                 clarify=True,
@@ -241,9 +299,9 @@ class RoutingEngine:
                 trace={"reason": "empty query"},
             )
 
+        idx = self._index      # one snapshot for the whole request (see module docstring)
         signals = analyze_query(query)
-        ranked = self._score_and_collapse(query)
-        candidates, dropped = ranked
+        candidates, dropped = self._score_and_collapse(query, idx)
 
         # Conditional HyDE: fires whenever confidence is NOT already high and a
         # chat model exists — INCLUDING below the floor, because colloquial
@@ -260,11 +318,12 @@ class RoutingEngine:
         if self._chat is not None and top0 < conf.hyde_max:
             from tool_router.engine.hyde import apply_hyde
             candidates, hyde_info = apply_hyde(
-                query, candidates, self._chat, self._score_and_collapse,
-                self._maps, signals,
+                query, candidates, self._chat,
+                functools.partial(self._score_and_collapse, idx=idx),
+                idx.maps, signals,
             )
 
-        decision = decide(candidates, signals, self._settings.confidence)
+        decision = decide(candidates, signals, conf)
         trace: dict[str, Any] = {
             "decision": decision.kind,
             "reason": decision.reason,
@@ -284,9 +343,9 @@ class RoutingEngine:
                 clarify=True, clarify_question=decision.clarify_question, trace=trace
             )
 
-        scorer = lambda text: self._score_and_collapse(text)[0]  # noqa: E731
+        scorer = lambda text: self._score_and_collapse(text, idx)[0]  # noqa: E731
         shortlist = decision.shortlist
-        outcome: PlanOutcome = self._planner.plan(query, signals, shortlist, scorer)
+        outcome: PlanOutcome = idx.planner.plan(query, signals, shortlist, scorer)
 
         # Scope arbiter: the LLM's explicit out_of_scope verdict is how we stay
         # safe after HyDE lifts a query above the floor — a hypothetical can
@@ -314,7 +373,7 @@ class RoutingEngine:
                 "added": [c.tool_id for c in widened if c not in shortlist],
             })
             shortlist = widened
-            outcome = self._planner.plan(query, signals, shortlist, scorer)
+            outcome = idx.planner.plan(query, signals, shortlist, scorer)
 
         # Arbitration: a planner-level clarify is a SECOND opinion. When the
         # local gate already established high confidence (strong top score,
@@ -324,14 +383,14 @@ class RoutingEngine:
         if (
             outcome.clarify
             and shortlist
-            and shortlist[0].fused >= 0.45
+            and shortlist[0].fused >= conf.arbitration_min_fused
             and not signals.destructive_intent
         ):
             logger.warning(
                 "planner clarified but local confidence is high (%.2f) — using local plan",
                 shortlist[0].fused,
             )
-            outcome = self._local_planner.plan(query, signals, shortlist, scorer)
+            outcome = idx.local_planner.plan(query, signals, shortlist, scorer)
 
         # The planner can raise its own (semantic) clarify — honor it.
         if outcome.clarify:
@@ -346,28 +405,15 @@ class RoutingEngine:
         selected = list(dict.fromkeys(outcome.plan))   # unique, order-preserving
         trace["segments"] = outcome.segments
 
-        routed_tokens = _approx_tokens([self._raw_by_id[t] for t in selected])
+        routed_tokens = _approx_tokens([idx.raw_by_id[t] for t in selected])
         return RouteResult(
             selected_tools=selected,
             plan=outcome.plan,
-            tokens_saved_pct=round(1 - routed_tokens / self._full_catalog_tokens, 4),
+            tokens_saved_pct=round(1 - routed_tokens / idx.full_catalog_tokens, 4),
             trace=trace,
         )
 
     # ------------------------------------------------------------- helpers
-
-    def _make_planner(self):
-        """Select the planner per config: LLM (with local fallback) or local.
-
-        Failure to initialize the LLM (no boto3 / no credentials) is a
-        WARNING, never an error — the engine must run keyless (degradation
-        guarantee), just with the deterministic planner.
-        """
-        if self._chat is not None:
-            from tool_router.engine.llm_planner import LLMPlanner
-            logger.info("planner: LLM (%s) with local fallback", self._settings.llm_provider)
-            return LLMPlanner(self._chat, fallback=self._local_planner)
-        return self._local_planner
 
     def _widen_shortlist(
         self,
@@ -406,7 +452,7 @@ class RoutingEngine:
         return result[:cap]
 
     def _score_and_collapse(
-        self, text: str
+        self, text: str, idx: Optional[_Index] = None
     ) -> tuple[list[Candidate], dict[str, list[str]]]:
         """Fused scoring + version/dup collapse for any piece of text.
 
@@ -415,10 +461,11 @@ class RoutingEngine:
         people can search it") would otherwise pull the ranking toward the
         wrong action (see text.strip_purpose_clause).
         """
+        idx = idx or self._index
         scored_text = strip_purpose_clause(text)
         signals = analyze_query(scored_text)
-        query_vec = self._provider.embed_query(scored_text)
+        query_vec = idx.provider.embed_query(scored_text)
         candidates = score_tools(
-            self._entries, self._bm25, query_vec, signals, self._settings.weights
+            idx.entries, idx.bm25, query_vec, signals, self._settings.weights
         )
-        return collapse(candidates, self._maps, signals)
+        return collapse(candidates, idx.maps, signals)
