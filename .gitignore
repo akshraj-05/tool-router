@@ -12,7 +12,7 @@ dist/
 
 # Local data / index artifacts (project marker file + any local data)
 .tool_router
-data/
+/data/
 
 # Editors / OS
 .vscode/
