@@ -8,23 +8,20 @@ Checks run in a fixed precedence order; ALL failures are collected, but the
 FIRST (highest-precedence) one is the primary reason, so a single
 `expected_reason` can be reported even when several rules fail at once.
 
-Two modes:
-- ``validate_submission`` — strict intake gate for NEW tools (rejects).
-- ``validate_catalog``    — lenient pass for the initial trusted catalog
-  (logs issues, never drops tools: the catalog is the routing ground truth).
+Every path is strict: a catalog file, ``POST /registry``, the create / update /
+mutate endpoints and MCP scans all apply the same rules.
+
+- ``validate_submission`` — one tool against the tools already registered.
+- ``validate_catalog``    — a whole batch, where tools may refer to each other.
 """
 
 from __future__ import annotations
 
-import json
 import re
 from typing import Any
 
 from tool_router.domain.models import GuardrailIssue, GuardrailResult
 from tool_router.domain.naming import SIDE_EFFECTS
-from tool_router.log import get_logger
-
-logger = get_logger("guardrail")
 
 # ``id`` and ``cluster`` are optional: see domain/naming.py, which fills them in.
 REQUIRED_FIELDS = ("name", "description", "parameters")
@@ -35,145 +32,142 @@ DESCRIPTION_MIN_WORDS = 6
 DESCRIPTION_MAX_CHARS = 500
 MAX_PARAMETERS = 12
 ALLOWED_PARAM_TYPES = frozenset({"string", "number", "integer", "boolean", "array", "object"})
+MAX_NAME_CHARS = 128
+
+TOOL_FIELDS = frozenset(
+    "id name cluster description side_effects parameters tags version deprecated replaced_by source".split()
+)
+PARAM_FIELDS = frozenset("name type required description".split())
+# Fields that earlier versions defined. Old catalogs may still carry them: ignored.
+LEGACY_FIELDS = frozenset("returns aliases replaces".split())
+_STRING_FIELDS = ("id", "name", "cluster", "description", "side_effects")
+_OPTIONAL_STRING_FIELDS = ("version", "replaced_by")
 
 
 def validate_submission(
     submission: Any,
     known_ids: set[str],
     known_tools: dict[str, dict] | None = None,
+    reference_ids: set[str] | None = None,
 ) -> GuardrailResult:
     """Validate one submitted tool against the intake spec.
 
     Args:
-        submission: the raw submission — may be a dict or a JSON string.
-        known_ids: ids already registered (for DUPLICATE_ID / DANGLING_REPLACED_BY).
+        submission: the tool definition (a dict).
+        known_ids: ids already registered (for DUPLICATE_ID).
         known_tools: optional id -> raw tool map (for CIRCULAR_VERSION_REF).
+        reference_ids: ids ``replaced_by`` may point to; defaults to ``known_ids``.
     """
     issues: list[GuardrailIssue] = []
 
-    # 1. MALFORMED_JSON_STRUCTURE — must be a JSON object.
-    if isinstance(submission, str):
-        try:
-            submission = json.loads(submission)
-        except (json.JSONDecodeError, ValueError):
-            return GuardrailResult(
-                accepted=False,
-                issues=[GuardrailIssue(
-                    code="MALFORMED_JSON_STRUCTURE",
-                    message="Submission is not valid JSON.",
-                )],
-            )
+    def fail(code: str, message: str) -> None:
+        issues.append(GuardrailIssue(code=code, message=message))
+
+    # MALFORMED_JSON_STRUCTURE — must be a JSON object (text is never re-parsed: a
+    # string that happens to contain JSON would otherwise be indexed as a string).
     if not isinstance(submission, dict):
-        return GuardrailResult(
-            accepted=False,
-            issues=[GuardrailIssue(
-                code="MALFORMED_JSON_STRUCTURE",
-                message=f"Submission must be a JSON object, got {type(submission).__name__}.",
-            )],
-        )
+        return GuardrailResult(accepted=False, issues=[GuardrailIssue(
+            code="MALFORMED_JSON_STRUCTURE",
+            message=f"A tool must be a JSON object, got {type(submission).__name__}.")])
 
     tool_id = submission.get("id") if isinstance(submission.get("id"), str) else None
 
-    # 2. MISSING_REQUIRED_FIELD
+    # MISSING_REQUIRED_FIELD
     missing = [f for f in REQUIRED_FIELDS if f not in submission]
     if missing:
-        issues.append(GuardrailIssue(
-            code="MISSING_REQUIRED_FIELD",
-            message=f"Missing required field(s): {', '.join(missing)}.",
-        ))
+        fail("MISSING_REQUIRED_FIELD", f"Missing required field(s): {', '.join(missing)}.")
 
-    # 3. BAD_ID_FORMAT
-    if tool_id is not None and not ID_PATTERN.match(tool_id):
-        issues.append(GuardrailIssue(
-            code="BAD_ID_FORMAT",
-            message=f"id '{tool_id}' must match {ID_PATTERN.pattern} (cluster-prefixed snake_case).",
-        ))
+    # UNKNOWN_FIELD — a typo such as "side_effect" must not be silently ignored.
+    unknown = sorted(str(k) for k in set(submission) - TOOL_FIELDS - LEGACY_FIELDS)
+    if unknown:
+        fail("UNKNOWN_FIELD", f"Unknown field(s): {', '.join(unknown)}.")
 
-    # 4. BAD_NAME_FORMAT
+    # INVALID_FIELD_TYPE
+    wrong = [f"{f} must be a string" for f in _STRING_FIELDS
+             if f in submission and not isinstance(submission[f], str)]
+    wrong += [f"{f} must be a string or null" for f in _OPTIONAL_STRING_FIELDS
+              if submission.get(f) is not None and not isinstance(submission[f], str)]
+    if "deprecated" in submission and not isinstance(submission["deprecated"], bool):
+        wrong.append("deprecated must be true or false")
+    tags = submission.get("tags", [])
+    if not (isinstance(tags, list) and all(isinstance(t, str) for t in tags)):
+        wrong.append("tags must be a list of strings")
+    if "parameters" in submission and not isinstance(submission["parameters"], list):
+        wrong.append("parameters must be a list")
+    if "source" in submission and not isinstance(submission["source"], dict):
+        wrong.append("source must be an object")
+    if wrong:
+        fail("INVALID_FIELD_TYPE", "; ".join(wrong) + ".")
+
+    # BAD_ID_FORMAT
+    if tool_id is not None and (len(tool_id) > MAX_NAME_CHARS or not ID_PATTERN.match(tool_id)):
+        fail("BAD_ID_FORMAT",
+             f"id '{tool_id[:60]}' must match {ID_PATTERN.pattern} (cluster-prefixed snake_case), "
+             f"at most {MAX_NAME_CHARS} characters.")
+
+    # BAD_NAME_FORMAT
     name = submission.get("name")
-    if isinstance(name, str) and not NAME_PATTERN.match(name):
-        issues.append(GuardrailIssue(
-            code="BAD_NAME_FORMAT",
-            message=f"name '{name}' must match {NAME_PATTERN.pattern}.",
-        ))
+    if isinstance(name, str) and (len(name) > MAX_NAME_CHARS or not NAME_PATTERN.match(name)):
+        fail("BAD_NAME_FORMAT",
+             f"name '{name[:60]}' must match {NAME_PATTERN.pattern}, at most {MAX_NAME_CHARS} characters.")
 
-    # 5/6. DESCRIPTION_TOO_VAGUE / DESCRIPTION_TOO_LONG
+    # DESCRIPTION_TOO_VAGUE / DESCRIPTION_TOO_LONG
     description = submission.get("description")
     if isinstance(description, str):
         if len(description.split()) < DESCRIPTION_MIN_WORDS:
-            issues.append(GuardrailIssue(
-                code="DESCRIPTION_TOO_VAGUE",
-                message=f"Description has fewer than {DESCRIPTION_MIN_WORDS} words — "
-                        "too vague to categorize safely.",
-            ))
+            fail("DESCRIPTION_TOO_VAGUE",
+                 f"Description has fewer than {DESCRIPTION_MIN_WORDS} words — "
+                 "too vague to categorize safely.")
         if len(description) > DESCRIPTION_MAX_CHARS:
-            issues.append(GuardrailIssue(
-                code="DESCRIPTION_TOO_LONG",
-                message=f"Description exceeds {DESCRIPTION_MAX_CHARS} characters.",
-            ))
+            fail("DESCRIPTION_TOO_LONG", f"Description exceeds {DESCRIPTION_MAX_CHARS} characters.")
 
-    # 7/8. TOO_MANY_PARAMETERS / INVALID_PARAM_TYPE
+    # TOO_MANY_PARAMETERS / INVALID_PARAMETER / INVALID_PARAM_TYPE
     params = submission.get("parameters")
     if isinstance(params, list):
         if len(params) > MAX_PARAMETERS:
-            issues.append(GuardrailIssue(
-                code="TOO_MANY_PARAMETERS",
-                message=f"{len(params)} parameters exceeds the maximum of {MAX_PARAMETERS}.",
-            ))
+            fail("TOO_MANY_PARAMETERS",
+                 f"{len(params)} parameters exceeds the maximum of {MAX_PARAMETERS}.")
+        problem = _parameter_problem(params)
+        if problem:
+            fail("INVALID_PARAMETER", problem)
         for p in params:
             ptype = p.get("type") if isinstance(p, dict) else None
-            if ptype is not None and ptype not in ALLOWED_PARAM_TYPES:
-                issues.append(GuardrailIssue(
-                    code="INVALID_PARAM_TYPE",
-                    message=f"Parameter type '{ptype}' is not one of {sorted(ALLOWED_PARAM_TYPES)}.",
-                ))
+            if ptype is not None and (not isinstance(ptype, str) or ptype not in ALLOWED_PARAM_TYPES):
+                fail("INVALID_PARAM_TYPE",
+                     f"Parameter type '{ptype}' is not one of {sorted(ALLOWED_PARAM_TYPES)}.")
                 break  # one representative issue is enough
 
-    # 9. BAD_VERSION_FORMAT
+    # BAD_VERSION_FORMAT
     version = submission.get("version")
-    if version is not None and not (isinstance(version, str) and VERSION_PATTERN.match(version)):
-        issues.append(GuardrailIssue(
-            code="BAD_VERSION_FORMAT",
-            message=f"version '{version}' is not semver x.y.z.",
-        ))
+    if isinstance(version, str) and not VERSION_PATTERN.match(version):
+        fail("BAD_VERSION_FORMAT", f"version '{version}' is not semver x.y.z.")
 
     # INVALID_SIDE_EFFECTS — a typo here would silently switch off safety checks.
     side_effects = submission.get("side_effects")
-    if side_effects is not None and side_effects not in SIDE_EFFECTS:
-        issues.append(GuardrailIssue(
-            code="INVALID_SIDE_EFFECTS",
-            message=f"side_effects '{side_effects}' must be one of {', '.join(SIDE_EFFECTS)}.",
-        ))
+    if isinstance(side_effects, str) and side_effects not in SIDE_EFFECTS:
+        fail("INVALID_SIDE_EFFECTS",
+             f"side_effects '{side_effects}' must be one of {', '.join(SIDE_EFFECTS)}.")
 
-    # 10. DUPLICATE_ID
+    # DUPLICATE_ID
     if tool_id is not None and tool_id in known_ids:
-        issues.append(GuardrailIssue(
-            code="DUPLICATE_ID",
-            message=f"id '{tool_id}' is already registered.",
-        ))
+        fail("DUPLICATE_ID", f"id '{tool_id}' is already registered.")
 
-    # 11. DANGLING_REPLACED_BY — deprecated tools must point at a real successor.
+    # DANGLING_REPLACED_BY — the successor must exist, deprecated or not.
     replaced_by = submission.get("replaced_by")
-    if submission.get("deprecated") and isinstance(replaced_by, str):
-        if replaced_by not in known_ids:
-            issues.append(GuardrailIssue(
-                code="DANGLING_REPLACED_BY",
-                message=f"replaced_by '{replaced_by}' does not exist in the catalog.",
-            ))
+    if isinstance(replaced_by, str):
+        targets = known_ids if reference_ids is None else reference_ids
+        if replaced_by != tool_id and replaced_by not in targets:
+            fail("DANGLING_REPLACED_BY", f"replaced_by '{replaced_by}' does not exist in the catalog.")
 
-    # 12. CIRCULAR_VERSION_REF — follow the replaced_by chain looking for a loop.
-    # The submitted tool is not in ``known_tools`` yet, so the loop must test for
-    # "back at a tool we already visited" BEFORE looking the next tool up;
-    # otherwise a cycle through the submission itself is never seen.
+    # CIRCULAR_VERSION_REF — follow the replaced_by chain looking for a loop.
+    # The submitted tool may not be in ``known_tools`` yet, so the loop tests for
+    # "back at a tool we already visited" BEFORE looking the next tool up.
     if tool_id is not None and isinstance(replaced_by, str):
         seen = {tool_id}
         cursor: Any = replaced_by
         while isinstance(cursor, str):
             if cursor in seen:
-                issues.append(GuardrailIssue(
-                    code="CIRCULAR_VERSION_REF",
-                    message="replaced_by chain forms a cycle.",
-                ))
+                fail("CIRCULAR_VERSION_REF", "replaced_by chain forms a cycle.")
                 break
             seen.add(cursor)
             cursor = (known_tools or {}).get(cursor, {}).get("replaced_by")
@@ -181,32 +175,44 @@ def validate_submission(
     return GuardrailResult(tool_id=tool_id, accepted=not issues, issues=issues)
 
 
-def validate_catalog(tools: list[dict]) -> list[GuardrailResult]:
-    """Lenient validation for the initial trusted catalog.
+def _parameter_problem(params: list[Any]) -> str | None:
+    """The first structural problem in a parameter list, or None."""
+    names: set[str] = set()
+    for position, p in enumerate(params):
+        where = f"parameters[{position}]"
+        if not isinstance(p, dict):
+            return f"{where} must be an object."
+        extra = sorted(str(k) for k in set(p) - PARAM_FIELDS)
+        if extra:
+            return f"{where} has unknown field(s): {', '.join(extra)}."
+        name = p.get("name")
+        if not isinstance(name, str) or not name.strip():
+            return f"{where} needs a non-empty string 'name'."
+        if name in names:
+            return f"{where} repeats the parameter name '{name}'."
+        names.add(name)
+        if "required" in p and not isinstance(p["required"], bool):
+            return f"{where}.required must be true or false."
+        if "description" in p and not isinstance(p["description"], str):
+            return f"{where}.description must be a string."
+    return None
 
-    Issues are logged for observability but tools are NOT dropped — the
-    loaded catalog is the routing ground truth; the strict gate applies to
-    *new* submissions only (see module docstring).
+
+def validate_catalog(
+    tools: list[Any], existing_ids: set[str] | None = None
+) -> list[GuardrailResult]:
+    """Validate a batch of tools together; one result per tool, in order.
+
+    Tools may point at each other with ``replaced_by`` in any order. The first
+    tool with a given id is accepted; later ones are duplicates.
     """
-    ids = {t.get("id") for t in tools if isinstance(t.get("id"), str)}
+    by_id = {t["id"]: t for t in tools if isinstance(t, dict) and isinstance(t.get("id"), str)}
+    seen = set(existing_ids or ())
+    references = seen | set(by_id)
     results: list[GuardrailResult] = []
     for raw in tools:
-        # For catalog validation, a tool's own id counts as known for
-        # replaced_by resolution, and duplicates are checked across the batch.
-        other_ids = ids - {raw.get("id")} if isinstance(raw.get("id"), str) else ids
-        result = validate_submission(raw, known_ids=set(), known_tools=None)
-        # Re-check referential rules against the full batch (not "already registered").
-        replaced_by = raw.get("replaced_by")
-        if raw.get("deprecated") and isinstance(replaced_by, str) and replaced_by not in ids:
-            result.issues.append(GuardrailIssue(
-                code="DANGLING_REPLACED_BY",
-                message=f"replaced_by '{replaced_by}' not found in catalog.",
-            ))
-        _ = other_ids  # duplicates within a well-formed catalog are caught by dict keying upstream
-        if result.issues:
-            logger.warning(
-                "catalog tool %s has intake issues (kept anyway): %s",
-                raw.get("id"), [i.code for i in result.issues],
-            )
+        result = validate_submission(raw, known_ids=seen, known_tools=by_id, reference_ids=references)
+        if result.tool_id is not None:
+            seen.add(result.tool_id)
         results.append(result)
     return results

@@ -149,18 +149,20 @@ tool definition
 is the registry intake validator, verified against an internal set of valid/invalid submission
 fixtures (11/11 pass with the exact expected reason codes).
 
-The **initial catalog** is validated **leniently** (issues logged, tools kept — it's the trusted
-ground truth); **new submissions** via the REST create/update/mutate endpoints or an MCP import are
-validated **strictly** (rejected with a reason).
+Every path is **strict** and applies the same rules: a catalog file, `POST /registry`, the
+create / update / mutate endpoints and MCP imports. A catalog load reports **every** invalid tool
+at once and loads nothing; an invalid single tool is rejected and the registry is unchanged; an
+MCP scan skips invalid tools and lists them.
 
 | Category | Rule |
 |---|---|
-| Structural | JSON parses; required fields present; `id` matches the guardrail's id pattern; each param `type` is a known type; param count within limit; `version` is valid semver if present |
-| Referential | `id` unique within the catalog; `replaced_by` (if present) points to an existing tool |
-| Quality | description not too vague/short, not too long |
+| Structural | JSON object; required fields present; no unknown fields; correct data types; `id` and `name` formats; parameters are objects with unique non-empty names and a known `type`; at most 12 parameters; `version` is `x.y.z` if present |
+| Referential | `id` unique; `replaced_by` points to an existing tool and forms no cycle; a tool that is pointed to cannot be deleted; `near_duplicate_groups` names existing tools |
+| Quality | description at least 6 words and at most 500 characters |
+| Limits | input at most 5 MB (`TOOL_ROUTER_MAX_BYTES`); at most 5,000 tools (`TOOL_ROUTER_MAX_TOOLS`) |
 
 **Result per tool:** `accepted`, or `rejected` with a specific reason code (e.g.
-`DESCRIPTION_TOO_VAGUE`, `DUPLICATE_ID`, `MALFORMED_JSON`).
+`DESCRIPTION_TOO_VAGUE`, `DUPLICATE_ID`, `UNKNOWN_FIELD`, `INVALID_FIELD_TYPE`).
 
 ## Step 2 — Enrichment — deterministic part + optional LLM part
 

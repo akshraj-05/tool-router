@@ -32,6 +32,7 @@ Requires the `api` extra: pip install .[api]
 
 from __future__ import annotations
 
+import json
 from html import escape as _escape
 from typing import Any, Optional
 
@@ -42,17 +43,21 @@ from tool_router.config import Settings
 from tool_router.domain.errors import (
     CatalogError,
     DuplicateToolError,
+    InvalidCatalogError,
     InvalidToolError,
+    ToolInUseError,
     ToolNotFoundError,
 )
 from tool_router.engine.pipeline import RoutingEngine
+from tool_router.limits import max_input_bytes
 from tool_router.log import get_logger
 
 logger = get_logger("api")
 
 
 class RegistryRequest(BaseModel):
-    tools: list[dict[str, Any]] = Field(..., min_length=1, description="Tool definitions")
+    # `Any`, so the guardrail sees every entry and can report all problems together.
+    tools: list[Any] = Field(..., min_length=1, description="Tool definitions")
     # Optional catalog-level metadata (near_duplicate_groups etc.) is honored.
     model_config = {"extra": "allow"}
 
@@ -66,8 +71,52 @@ class RouteRequest(BaseModel):
 
 
 class MutateRequest(BaseModel):
-    add: list[dict[str, Any]] = Field(default_factory=list)
+    add: list[Any] = Field(default_factory=list)
     remove: list[str] = Field(default_factory=list)
+
+
+class _BodyLimit:
+    """ASGI middleware: refuse request bodies over the limit with 413.
+
+    Counts the bytes actually received, so a missing or false Content-Length
+    cannot get a large body through.
+    """
+
+    def __init__(self, app, limit: int) -> None:
+        self.app, self.limit = app, limit
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        chunks: list[bytes] = []
+        size = 0
+        while True:
+            message = await receive()
+            if message["type"] != "http.request":
+                return                                  # client went away
+            chunk = message.get("body", b"")
+            size += len(chunk)
+            if size > self.limit:
+                body = json.dumps({"detail": f"Request body exceeds {self.limit} bytes."}).encode()
+                await send({"type": "http.response.start", "status": 413, "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"content-length", str(len(body)).encode())]})
+                await send({"type": "http.response.body", "body": body})
+                return
+            chunks.append(chunk)
+            if not message.get("more_body"):
+                break
+        replayed = False
+
+        async def replay():
+            nonlocal replayed
+            if replayed:
+                return await receive()
+            replayed = True
+            return {"type": "http.request", "body": b"".join(chunks), "more_body": False}
+
+        await self.app(scope, replay, send)
 
 
 def create_app(catalog: Optional[dict[str, Any]] = None):
@@ -85,6 +134,7 @@ def create_app(catalog: Optional[dict[str, Any]] = None):
         version=__version__,
         description="Intelligent tool routing: large catalog in, minimal ordered tool plan out.",
     )
+    app.add_middleware(_BodyLimit, limit=max_input_bytes())
     state: dict[str, Optional[RoutingEngine]] = {"engine": None}
 
     if catalog is not None:
@@ -101,10 +151,7 @@ def create_app(catalog: Optional[dict[str, Any]] = None):
 
     @app.post("/registry")
     def register(req: RegistryRequest) -> dict[str, Any]:
-        try:
-            engine = RoutingEngine(req.model_dump(), settings=Settings.from_env())
-        except CatalogError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        engine = _apply(lambda: RoutingEngine(req.model_dump(), settings=Settings.from_env()))
         state["engine"] = engine
         return {
             "status": "indexed",
@@ -129,10 +176,7 @@ def create_app(catalog: Optional[dict[str, Any]] = None):
     @app.patch("/registry/mutate")
     def mutate(req: MutateRequest) -> dict[str, Any]:
         engine = _engine_or_400()
-        try:
-            return engine.apply_mutation({"add": req.add, "remove": req.remove})
-        except CatalogError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return _apply(lambda: engine.apply_mutation({"add": req.add, "remove": req.remove}))
 
     def _apply(action):
         """Run a registry operation, translating its errors into HTTP responses."""
@@ -142,6 +186,12 @@ def create_app(catalog: Optional[dict[str, Any]] = None):
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except DuplicateToolError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except ToolInUseError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except InvalidCatalogError as exc:      # before CatalogError, its base class
+            raise HTTPException(
+                status_code=422, detail={"reason": "INVALID_CATALOG", "rejected": exc.rejected}
+            ) from exc
         except InvalidToolError as exc:
             raise HTTPException(
                 status_code=422, detail={"reason": exc.reason, "issues": exc.issues}

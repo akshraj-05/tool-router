@@ -17,12 +17,13 @@ Legend: ✅ **NOW** (current plan) · 🟨 **LATER, if time (Day 5–6)** · �
 ## Stage 1 — Guardrail (validation)  ✅ NOW
 
 The registry intake validator. Reject with a clear reason:
-- **Structural:** valid JSON, required fields present, valid id/name format, valid param types,
-  not too many params, valid semver.
-- **Referential:** no duplicate id, no dangling `replaced_by`.
+- **Structural:** valid JSON, required fields present, no unknown fields, correct data types, valid
+  id/name format, valid parameters, not too many of them, valid semver.
+- **Referential:** no duplicate id, no dangling or circular `replaced_by`.
 - **Quality:** description not too vague, not too long.
+- **Limits:** input size and tool count.
 
-Runs on every path (bulk API + auto-import), so automation never sneaks in junk.
+Runs strictly on every path (file, bulk API, single-tool API and MCP import), so nothing sneaks in.
 
 ## Stage 2 — Enrichment (make it routable)
 

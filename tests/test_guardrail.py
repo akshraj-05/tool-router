@@ -56,10 +56,10 @@ def test_duplicate_id_is_rejected():
     assert result.primary_reason == "DUPLICATE_ID"
 
 
-def test_malformed_json_string_and_non_object():
-    assert validate_submission("{not json", known_ids=set()).primary_reason == "MALFORMED_JSON_STRUCTURE"
-    assert validate_submission("[1, 2]", known_ids=set()).primary_reason == "MALFORMED_JSON_STRUCTURE"
-    assert validate_submission(json.dumps(VALID), known_ids=set()).accepted
+@pytest.mark.parametrize("submission", ["{not json", json.dumps(VALID), [1, 2], 5, None])
+def test_only_a_json_object_is_a_tool(submission):
+    result = validate_submission(submission, known_ids=set())
+    assert result.primary_reason == "MALFORMED_JSON_STRUCTURE"
 
 
 def test_circular_replacement_chain_is_detected():

@@ -148,6 +148,23 @@ tool-router serve --catalog tools.json
 
 A catalog file is `{"tools": [ ... ]}`.
 
+### Validation
+
+A catalog file, an API upload, single-tool requests and MCP scans all apply the same rules.
+
+| Rule | Limit |
+|---|---|
+| Required | `name`, `description`, `parameters` |
+| Unknown fields and wrong data types | Refused |
+| `name` | snake_case, up to 128 characters |
+| `description` | 6 words to 500 characters |
+| `parameters` | Up to 12 objects, each with a unique `name`; `type` is `string`, `number`, `integer`, `boolean`, `array` or `object` |
+| `replaced_by` | Must name an existing tool, with no cycle; that tool cannot be deleted while referenced |
+| Catalog file or request body | Up to 5 MB (`TOOL_ROUTER_MAX_BYTES`) |
+| Tools in a registry | Up to 5,000 (`TOOL_ROUTER_MAX_TOOLS`) |
+
+If a catalog has invalid tools, **nothing is loaded** and every problem is listed (over REST: status 422 with a `rejected` list). Check a file beforehand with `tool-router validate tools.json`, which accepts a list of tools or a `{"tools": [...]}` object. An MCP scan skips invalid tools and lists them.
+
 ### Manage tools over REST
 
 | Request | Action |

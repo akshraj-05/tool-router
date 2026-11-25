@@ -47,7 +47,7 @@ def test_an_inferred_destructive_tool_triggers_the_safety_question():
 
 @pytest.mark.parametrize("value", ["Destructive", "delete", "READ", "none"])
 def test_misspelled_value_refuses_the_catalog(value):
-    with pytest.raises(CatalogError, match="side_effects must be one of"):
+    with pytest.raises(CatalogError, match="INVALID_SIDE_EFFECTS"):
         RoutingEngine({"tools": [tool("delete_user", side_effects=value)]}, settings=Settings())
 
 

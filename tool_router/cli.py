@@ -12,8 +12,9 @@ import json
 import sys
 
 from tool_router import __version__
+from tool_router.domain.errors import ToolRouterError
 from tool_router.domain.naming import prepare_tool
-from tool_router.engine.guardrail import validate_submission
+from tool_router.engine.guardrail import validate_catalog
 
 
 def _cmd_validate(args: argparse.Namespace) -> int:
@@ -24,13 +25,10 @@ def _cmd_validate(args: argparse.Namespace) -> int:
     known_ids: set[str] = set(args.known_ids.split(",")) if args.known_ids else set()
 
     failures = 0
-    for submitted in submissions:
-        sub = prepare_tool(submitted)
-        result = validate_submission(sub, known_ids=known_ids)
+    for result in validate_catalog([prepare_tool(t) for t in submissions], known_ids):
         tool_id = result.tool_id or "<no id>"
         if result.accepted:
             print(f"ACCEPT  {tool_id}")
-            known_ids.add(tool_id)
         else:
             failures += 1
             print(f"REJECT  {tool_id}  [{result.primary_reason}] {result.issues[0].message}")
@@ -44,7 +42,6 @@ def _load_startup_catalog(args: argparse.Namespace):
     The report goes to stderr: in `mcp` mode stdout carries the protocol itself.
     """
     from tool_router.catalog_loader import build_catalog
-    from tool_router.domain.errors import ToolRouterError
 
     try:
         catalog, report = build_catalog(
@@ -73,7 +70,11 @@ def _cmd_serve(args: argparse.Namespace) -> int:
     ok, catalog = _load_startup_catalog(args)
     if not ok:
         return 1
-    app = create_app(catalog)
+    try:
+        app = create_app(catalog)
+    except ToolRouterError as exc:           # e.g. invalid tools in the catalog
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
     return 0
 
@@ -212,7 +213,11 @@ def main(argv: list[str] | None = None) -> int:
         ok, catalog = _load_startup_catalog(args)
         if not ok:
             return 1
-        run_mcp(catalog)
+        try:
+            run_mcp(catalog)
+        except ToolRouterError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
         return 0
     if args.command == "import-mcp":
         from tool_router.importers.mcp_importer import MCPImportError, import_from_mcp

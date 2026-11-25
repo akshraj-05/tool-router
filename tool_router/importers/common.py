@@ -57,6 +57,6 @@ def params_from_json_schema(schema: dict[str, Any] | None) -> list[dict[str, Any
             "name": pname,
             "type": map_param_type(pdef.get("type", "string")),
             "required": pname in required,
-            "description": pdef.get("description", ""),
+            "description": str(pdef.get("description") or ""),
         })
     return params

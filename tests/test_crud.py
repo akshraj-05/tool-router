@@ -51,7 +51,7 @@ def test_catalog_without_ids_or_clusters_loads_and_routes():
 
 
 def test_two_tools_that_would_share_an_id_are_refused():
-    with pytest.raises(CatalogError, match="Duplicate tool id"):
+    with pytest.raises(CatalogError, match="DUPLICATE_ID"):
         RoutingEngine({"tools": [MINIMAL, dict(MINIMAL)]}, settings=Settings())
 
 

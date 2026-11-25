@@ -11,7 +11,6 @@ taken, the earlier source wins.
 
 from __future__ import annotations
 
-import json
 import shlex
 from typing import Any, Optional
 
@@ -19,6 +18,7 @@ from tool_router.domain.errors import CatalogError
 from tool_router.domain.naming import prepare_tool
 from tool_router.engine.guardrail import validate_submission
 from tool_router.importers.mcp_importer import DEFAULT_TIMEOUT, MCPImportError, import_from_mcp
+from tool_router.limits import read_catalog_file
 
 
 def split_valid(
@@ -60,10 +60,7 @@ def build_catalog(
     catalog: dict[str, Any] = {"tools": []}
     report: list[str] = []
     if catalog_path:
-        with open(catalog_path, encoding="utf-8") as fh:
-            catalog = json.load(fh)
-        if not isinstance(catalog, dict) or not isinstance(catalog.get("tools"), list):
-            raise CatalogError("Catalog must be a dict with a 'tools' list.")
+        catalog = read_catalog_file(catalog_path)
         catalog["tools"] = [prepare_tool(t) for t in catalog["tools"]]
         report.append(f"loaded {len(catalog['tools'])} tools from {catalog_path}")
 
@@ -72,7 +69,8 @@ def build_catalog(
         if not parts:
             raise MCPImportError("--import-mcp needs a command, e.g. \"python my_server.py\"")
         found = import_from_mcp(parts[0], parts[1:], env_names=env_names, timeout=timeout)
-        known = {t.get("id") for t in catalog["tools"]}
+        known = {t["id"] for t in catalog["tools"]
+                 if isinstance(t, dict) and isinstance(t.get("id"), str)}
         accepted, rejected = split_valid(found, known_ids=known)
         catalog["tools"] = [*catalog["tools"], *accepted]
         report.append(f"scanned {line!r}: {len(accepted)} of {len(found)} tools accepted")

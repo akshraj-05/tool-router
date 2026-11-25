@@ -30,3 +30,25 @@ class InvalidToolError(ToolRouterError):
         super().__init__(f"{reason}: {'; '.join(issues)}")
         self.reason = reason
         self.issues = issues
+
+
+class InvalidCatalogError(CatalogError):
+    """One or more tools in a catalog failed the intake guardrail.
+
+    ``rejected`` lists EVERY failing tool, so they can all be fixed in one pass:
+    ``{"index": int, "id": str | None, "reason": str, "issues": [str, ...]}``.
+    """
+
+    def __init__(self, rejected: list[dict]) -> None:
+        shown = [
+            f"  tools[{r['index']}] {r['id'] or '(no id)'}  [{r['reason']}] {r['issues'][0]}"
+            for r in rejected[:20]
+        ]
+        if len(rejected) > 20:
+            shown.append(f"  … and {len(rejected) - 20} more")
+        super().__init__(f"{len(rejected)} invalid tool(s) in the catalog:\n" + "\n".join(shown))
+        self.rejected = rejected
+
+
+class ToolInUseError(ToolRouterError):
+    """Another tool points at this one with ``replaced_by``."""

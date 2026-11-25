@@ -71,6 +71,7 @@ class Settings:
     llm_enrich: bool = False
     max_widen_rounds: int = 1           # bounded shortlist-widening re-plans (LLM cost cap)
     rebuild: bool = False               # wipe caches and re-derive (escape hatch)
+    max_tools: int = 5000               # largest registry accepted
 
     @staticmethod
     def from_env() -> "Settings":
@@ -123,5 +124,6 @@ class Settings:
             llm_model=pick("TOOL_ROUTER_LLM_MODEL", "llm_model", ""),
             llm_enrich=pick("TOOL_ROUTER_LLM_ENRICH", "llm_enrich", "off") in ("on", "1", "true"),
             max_widen_rounds=int(_env_float("TOOL_ROUTER_MAX_WIDEN_ROUNDS", 1)),
+            max_tools=int(_env_float("TOOL_ROUTER_MAX_TOOLS", Settings.max_tools)),
             rebuild=os.environ.get("TOOL_ROUTER_REBUILD", "") in ("1", "true", "yes"),
         )

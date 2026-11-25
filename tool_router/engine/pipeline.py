@@ -1,6 +1,6 @@
 """RoutingEngine — the orchestrator (architecture.md §7).
 
-Onboard once:  guardrail (lenient for the trusted catalog) → ingest/enrich →
+Onboard once:  guardrail (strict) → ingest/enrich →
                embed + BM25-index → derive maps (clusters/dups/versions).
 Route per query: analyze → fused scoring → version/dup collapse →
                confidence gate (empty/clarify/proceed) → plan → assemble.
@@ -31,11 +31,13 @@ from tool_router.config import Settings
 from tool_router.domain.errors import (
     CatalogError,
     DuplicateToolError,
+    InvalidCatalogError,
     InvalidToolError,
+    ToolInUseError,
     ToolNotFoundError,
 )
 from tool_router.domain.models import DerivedMaps, IndexedTool, RouteResult
-from tool_router.domain.naming import SIDE_EFFECTS, prepare_tool
+from tool_router.domain.naming import prepare_tool
 from tool_router.engine.bm25 import BM25Index
 from tool_router.engine.confidence import decide
 from tool_router.engine.dedup import collapse
@@ -94,26 +96,40 @@ class RoutingEngine:
         self._settings = settings or Settings.from_env()
         self._catalog_meta = {k: v for k, v in catalog.items() if k != "tools"}
         self._raw_tools: list[dict[str, Any]] = [prepare_tool(t) for t in catalog["tools"]]
-        ids = [t["id"] for t in self._raw_tools if isinstance(t, dict) and t.get("id")]
-        repeated = sorted({i for i in ids if ids.count(i) > 1})
-        if repeated:          # a repeated id would silently hide all but one of the tools
-            raise CatalogError(f"Duplicate tool id(s) in catalog: {', '.join(repeated)}")
-        # The rest of the first load is lenient, but not this: a misspelled value
-        # such as "Destructive" would silently switch off the safety checks.
-        unknown = [
-            f"{t.get('id')} ({t.get('side_effects')!r})" for t in self._raw_tools
-            if isinstance(t, dict) and t.get("side_effects") not in (None, *SIDE_EFFECTS)
-        ]
-        if unknown:
-            raise CatalogError(
-                f"side_effects must be one of {', '.join(SIDE_EFFECTS)}. Fix: {', '.join(unknown)}"
-            )
+        self._check_size(len(self._raw_tools))
+        self._check_catalog(self._raw_tools, self._catalog_meta)
         self._mutation_lock = threading.Lock()
-
-        validate_catalog(self._raw_tools)   # lenient: logs issues; trusted catalog is kept
         self._chat = chat if chat is not None else self._make_chat()
         self._index: _Index = self._build_index(self._raw_tools)
         self._log_summary()
+
+    def _check_size(self, count: int) -> None:
+        if count > self._settings.max_tools:
+            raise CatalogError(
+                f"{count} tools exceeds the limit of {self._settings.max_tools} "
+                "(set TOOL_ROUTER_MAX_TOOLS to change it)."
+            )
+
+    @staticmethod
+    def _check_catalog(tools: list[Any], meta: dict[str, Any]) -> None:
+        """Strict intake for a whole catalog: every tool, and the catalog metadata."""
+        if not tools:
+            raise CatalogError("Catalog contains no tools.")
+        rejected = [
+            {"index": i, "id": r.tool_id, "reason": r.primary_reason,
+             "issues": [issue.message for issue in r.issues]}
+            for i, r in enumerate(validate_catalog(tools)) if not r.accepted
+        ]
+        if rejected:
+            raise InvalidCatalogError(rejected)
+        groups = meta.get("near_duplicate_groups", [])
+        if not (isinstance(groups, list) and all(
+            isinstance(g, list) and all(isinstance(i, str) for i in g) for g in groups
+        )):
+            raise CatalogError("near_duplicate_groups must be a list of lists of tool ids.")
+        unknown = sorted({i for g in groups for i in g} - {t["id"] for t in tools})
+        if unknown:
+            raise CatalogError(f"near_duplicate_groups names unknown tool id(s): {', '.join(unknown)}")
 
     def _make_chat(self):
         """One chat client shared by planner, HyDE and enrichment (or None)."""
@@ -226,7 +242,7 @@ class RoutingEngine:
         """Apply a catalog mutation (resilience to churn): {"add": [tools], "remove": [ids]}.
 
         - Added tools pass the STRICT intake guardrail (new submissions are
-          untrusted, unlike the initial catalog) — rejected ones are reported,
+          the same rules as the initial catalog) — rejected ones are reported,
           not indexed.
         - Removing and adding the same id replaces that tool. If the new version
           is rejected, the old one is KEPT (reported in ``kept_previous``).
@@ -257,30 +273,62 @@ class RoutingEngine:
             rejected: list[dict[str, Any]] = []
             failed_ids: set[str] = set()
             previous = {t.get("id"): t for t in current if t.get("id") in removed}
+            pending: list[Any] = []
             for submitted in to_add:
                 tool = prepare_tool(submitted)
                 # A replacement that omits side_effects keeps the declared value:
                 # guessing again could quietly downgrade a destructive tool.
-                if isinstance(tool, dict) and tool.get("id") in previous \
-                        and not submitted.get("side_effects"):
+                if isinstance(tool, dict) and isinstance(tool.get("id"), str) \
+                        and tool["id"] in previous and not submitted.get("side_effects"):
                     tool["side_effects"] = previous[tool["id"]]["side_effects"]
-                verdict = validate_submission(tool, known_ids=set(known), known_tools=known)
-                if verdict.accepted:
-                    accepted.append(tool)
-                    known[tool["id"]] = tool
-                else:
-                    failed_ids.add(verdict.tool_id)
-                    rejected.append({
-                        "id": verdict.tool_id,
-                        "reason": verdict.primary_reason,
-                        "issues": [i.message for i in verdict.issues],
-                    })
+                pending.append(tool)
+
+            # Tools in one batch may point at each other in any order, so keep
+            # passing over the rest for as long as something new gets accepted.
+            failures: list[Any] = []
+            while pending:
+                failures = []
+                for tool in pending:
+                    verdict = validate_submission(tool, known_ids=set(known), known_tools=known)
+                    if verdict.accepted:
+                        accepted.append(tool)
+                        known[tool["id"]] = tool
+                    else:
+                        failures.append((tool, verdict))
+                if len(failures) == len(pending):
+                    break
+                pending = [tool for tool, _ in failures]
+            for _, verdict in failures:
+                failed_ids.add(verdict.tool_id)
+                rejected.append({
+                    "id": verdict.tool_id,
+                    "reason": verdict.primary_reason,
+                    "issues": [i.message for i in verdict.issues],
+                })
 
             # A replacement that failed must not delete the tool it was meant to replace.
-            kept = (removed & failed_ids) - {t["id"] for t in accepted}
+            added_ids = {t["id"] for t in accepted}
+            kept = (removed & failed_ids) - added_ids
             removed -= kept
 
-            raw_tools = [t for t in current if t.get("id") not in removed] + accepted
+            # A removal must not leave another tool pointing at nothing.
+            while True:
+                raw_tools = [t for t in current if t.get("id") not in removed] + accepted
+                present = {t["id"] for t in raw_tools}
+                broken = {t["replaced_by"] for t in raw_tools if t.get("replaced_by")} - present
+                blocked = broken & removed
+                if not blocked:
+                    break
+                for tool_id in sorted(blocked):
+                    rejected.append({
+                        "id": tool_id,
+                        "reason": "REFERENCED_BY_OTHER_TOOL",
+                        "issues": [f"'{tool_id}' was not removed: another tool's replaced_by points to it."],
+                    })
+                removed -= blocked
+                kept |= blocked
+
+            self._check_size(len(raw_tools))
             self._publish(raw_tools)
 
         logger.info(
@@ -312,6 +360,7 @@ class RoutingEngine:
         """Register one new tool (strict guardrail). Returns it as stored."""
         with self._mutation_lock:
             tool = prepare_tool(submitted)
+            self._check_size(len(self._raw_tools) + 1)
             known = {t.get("id"): t for t in self._raw_tools}
             verdict = validate_submission(tool, known_ids=set(known), known_tools=known)
             if not verdict.accepted:
@@ -358,6 +407,12 @@ class RoutingEngine:
                 raise ToolNotFoundError(f"No tool with id {tool_id!r}.")
             if not remaining:
                 raise CatalogError("Cannot delete the last tool; register a new catalog instead.")
+            users = sorted(t["id"] for t in remaining if t.get("replaced_by") == tool_id)
+            if users:
+                raise ToolInUseError(
+                    f"{tool_id!r} cannot be deleted: replaced_by in {', '.join(users)} points to it. "
+                    "Update or delete those first."
+                )
             self._publish(remaining)
 
     def _publish(self, raw_tools: list[dict[str, Any]]) -> None:
