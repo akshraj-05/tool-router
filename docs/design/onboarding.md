@@ -29,7 +29,8 @@ Runs on every path (bulk API + auto-import), so automation never sneaks in junk.
 ### Deterministic enrichment  ✅ NOW
 - **Embedding** (meaning vector) · **BM25 tokens**
 - **Capability signature** — keywords from params/description (`attachment`, `format:excel`, `ssn/pii`)
-- **Side-effect tag** — read / write / destructive (from field or inferred from verb)
+- **Side-effect tag** — read / write / destructive (from the field; inferred from the name's verbs
+  when omitted; any other value is refused)
 - **Cluster assignment** + **near-dup group** + **version family** derivation
 - **Normalization** (canonical schema shape). A dotted-id → MCP-safe-name sanitizer exists
   (`importers/common.py::mcp_safe_name`) but isn't invoked in the live path today — see
@@ -42,7 +43,7 @@ enrichment mis-routed with it on; see `eval_report.md`), so `TOOL_ROUTER_LLM_ENR
 `off`. Opt in for catalogs with genuinely thin/vague descriptions, where the recall gain is more
 likely to outweigh the risk.
 - **Description rewrite/expand** for thin/vague tools → better retrieval + passes the guardrail
-- **Auto-tags / synonyms / aliases** → boosts recall (an "email" tool gets `notify, message, send`)
+- **Auto-tags / synonyms** → boosts recall (an "email" tool gets `notify, message, send`)
 - **Synthetic example queries** per tool, embedded alongside → tool-side retrieval boost
 - **Infer missing side-effects / capabilities** when metadata is absent
 
@@ -62,6 +63,7 @@ likely to outweigh the risk.
 | Source | How | Status |
 |---|---|---|
 | **Bulk API / JSON file** | one `POST /registry` with the whole catalog | ✅ NOW |
+| **Single tools** | `POST` / `PUT` / `DELETE` on `/registry/tools` | ✅ NOW |
 | **MCP server, scanned at startup** | `serve` / `mcp` with `--import-mcp "<command>"`: all pages of `list_tools`, strict guardrail, loaded into memory | ✅ BUILT, tested with sample servers |
 | **MCP server, to a file** | `tool-router import-mcp` writes the accepted tools for review | ✅ BUILT, tested with sample servers |
 | **LangChain / Python** | introspect `.name` / `.description` / `.args_schema` / signatures | 🟨 LATER |

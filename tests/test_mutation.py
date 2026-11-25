@@ -11,7 +11,6 @@ NEW_TOOL = {
     "description": "Get the current weather conditions for a named city",
     "side_effects": "read",
     "parameters": [{"name": "city", "type": "string", "required": True}],
-    "returns": {"type": "object"},
 }
 
 

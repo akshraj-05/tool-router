@@ -44,13 +44,10 @@ class Tool(BaseModel):
     description: str = ""
     version: Optional[str] = None
     deprecated: bool = False
-    replaces: Optional[str] = None
     replaced_by: Optional[str] = None
-    aliases: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
     side_effects: str = "read"  # read | write | destructive
     parameters: list[ToolParam] = Field(default_factory=list)
-    returns: Optional[dict[str, Any]] = None
 
 
 class GuardrailIssue(BaseModel):
@@ -82,7 +79,7 @@ class IndexedTool(BaseModel):
     raw: dict[str, Any]                    # original registration payload (returned to clients)
     search_text: str                       # enriched text used for BM25 + embedding
     tokens: list[str]                      # tokenized search_text
-    capability_tokens: set[str]            # from params/returns/tags — capability matching
+    capability_tokens: set[str]            # from params/tags — capability matching
     embedding: Optional[Vector] = None     # filled by the embedding provider
     family_id: Optional[str] = None        # version-family key, if any
     is_current: bool = True                # False for deprecated/superseded versions

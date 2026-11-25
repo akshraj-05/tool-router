@@ -21,11 +21,13 @@ import re
 from typing import Any
 
 from tool_router.domain.models import GuardrailIssue, GuardrailResult
+from tool_router.domain.naming import SIDE_EFFECTS
 from tool_router.log import get_logger
 
 logger = get_logger("guardrail")
 
-REQUIRED_FIELDS = ("id", "name", "cluster", "description", "parameters", "returns")
+# ``id`` and ``cluster`` are optional: see domain/naming.py, which fills them in.
+REQUIRED_FIELDS = ("name", "description", "parameters")
 ID_PATTERN = re.compile(r"^[a-z_]+\.[a-z0-9_]+$")
 NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 VERSION_PATTERN = re.compile(r"^\d+\.\d+\.\d+$")
@@ -135,6 +137,14 @@ def validate_submission(
             message=f"version '{version}' is not semver x.y.z.",
         ))
 
+    # INVALID_SIDE_EFFECTS — a typo here would silently switch off safety checks.
+    side_effects = submission.get("side_effects")
+    if side_effects is not None and side_effects not in SIDE_EFFECTS:
+        issues.append(GuardrailIssue(
+            code="INVALID_SIDE_EFFECTS",
+            message=f"side_effects '{side_effects}' must be one of {', '.join(SIDE_EFFECTS)}.",
+        ))
+
     # 10. DUPLICATE_ID
     if tool_id is not None and tool_id in known_ids:
         issues.append(GuardrailIssue(
@@ -162,7 +172,7 @@ def validate_submission(
             if cursor in seen:
                 issues.append(GuardrailIssue(
                     code="CIRCULAR_VERSION_REF",
-                    message="replaces/replaced_by chain forms a cycle.",
+                    message="replaced_by chain forms a cycle.",
                 ))
                 break
             seen.add(cursor)

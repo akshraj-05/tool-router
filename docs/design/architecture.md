@@ -227,7 +227,7 @@ the extra ~7 points of accuracy, at the cost of a per-call API bill.
 |---|---|---|
 | **A · Onboard** | `POST /registry` | Registry guardrails + indexing |
 | **B · Route** | `POST /route` | Hierarchical retrieval + dynamic-K/dedup |
-| **C · Evolve** | `PATCH /registry/mutate` | Resilience / churn |
+| **C · Evolve** | `/registry/tools` (create, read, update, delete), `PATCH /registry/mutate` | Resilience / churn |
 
 - **Onboard:** validate (guardrail) → enrich → index + auto-derive clusters/dup-groups/version-families (§6).
 - **Route:** the hybrid pipeline (§7). Returns `selected_tools`, `plan`, `clarify`, `tokens_saved_pct`, `trace`.
@@ -389,7 +389,7 @@ tool-router/
 │   │                            guardrail · planner (local) · llm_planner · hyde · enrich
 │   ├── providers/               base (interface) · local_tfidf (default) · gemini
 │   ├── importers/               mcp_importer · common
-│   ├── api.py                  FastAPI: /registry /route /registry/mutate /health /setup
+│   ├── api.py                  FastAPI: /registry (+ /tools CRUD, /mutate) /route /health /setup
 │   ├── mcp_server.py            MCP tools: find_tools · registry_status (read-only)
 │   ├── cli.py                   tool-router version | validate | serve | mcp | init | config
 │   │                            | import-mcp

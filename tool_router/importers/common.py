@@ -5,7 +5,6 @@ express is derived conservatively (never fabricated):
 - id       = "<prefix>.<sanitized_name>" (matches the guardrail id pattern)
 - cluster  = caller-provided prefix / source tag (a real grouping, not a guess)
 - params   = mapped from the source's JSON-Schema-style parameters
-- returns  = generic object unless the source declares fields
 
 Imported tools still pass the strict guardrail at registration — an import is
 a *source*, not a bypass.

@@ -47,7 +47,6 @@ def test_mutation_endpoint(client):
         "id": "weather.get_current_weather", "name": "get_current_weather", "cluster": "weather",
         "description": "Get the current weather conditions for a named city",
         "side_effects": "read", "parameters": [{"name": "city", "type": "string"}],
-        "returns": {"type": "object"},
     }
     out = client.patch("/registry/mutate", json={"add": [tool], "remove": ["hr.get_employee"]}).json()
     assert out["added"] == [tool["id"]] and out["removed"] == ["hr.get_employee"]

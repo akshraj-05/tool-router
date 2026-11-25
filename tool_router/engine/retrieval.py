@@ -18,13 +18,11 @@ from dataclasses import dataclass, field
 
 from tool_router.config import RetrievalWeights
 from tool_router.domain.models import IndexedTool, Vector
+from tool_router.domain.naming import DESTRUCTIVE_VERBS
 from tool_router.engine.bm25 import BM25Index
 from tool_router.engine.text import STOPWORDS, cosine, tokenize
 
 # Language-level signal lexicons (linguistic, not catalog- or testcase-specific).
-DESTRUCTIVE_VERBS = frozenset(
-    "delete remove cancel wipe purge drop restart terminate destroy erase kill shutdown reboot".split()
-)
 LEGACY_TOKENS = frozenset("legacy deprecated v1 old previous".split())
 DEICTIC_PRONOUNS = frozenset("it this that them these those one".split())
 SWEEPING_TOKENS = frozenset("all every everything entire permanently".split())

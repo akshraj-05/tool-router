@@ -2,16 +2,16 @@
 
 Deterministic enrichment only (LLM enrichment is separate, see engine/enrich.py):
 - search_text: every routable text signal a tool carries — name (split),
-  description, tags, aliases, cluster, parameter names/descriptions, return
-  fields. This is what gets embedded and BM25-indexed. The tool NAME is
+  description, tags, cluster, parameter names/descriptions. This is what gets
+  embedded and BM25-indexed. The tool NAME is
   deliberately diluted by all other signals so naming decoys (cross-cluster
   traps like `data.email_report`) can't dominate matching.
-- capability_tokens: tokens from parameters/returns/tags only — the tool's
+- capability_tokens: tokens from parameters/tags only — the tool's
   *abilities* (attachment, format, xlsx, ssn...). Used as an explicit
   capability-match signal in fused scoring.
 
-The ORIGINAL raw dict is preserved untouched (returned to clients; enriched
-text never leaves the retrieval layer).
+The raw dict is preserved as registered (returned to clients; enriched text never
+leaves the retrieval layer).
 """
 
 from __future__ import annotations
@@ -43,34 +43,23 @@ def build_search_text(tool: Tool) -> str:
         param_bits.append(p.name)
         if p.description:
             param_bits.append(p.description)
-    returns_bits: list[str] = []
-    if tool.returns:
-        fields = tool.returns.get("fields")
-        if isinstance(fields, list):
-            returns_bits.extend(str(f) for f in fields)
     parts = [
         tool.name.replace("_", " "),
         tool.description,
         " ".join(tool.tags),
-        " ".join(tool.aliases),
         tool.cluster.replace("_", " "),
         " ".join(param_bits),
-        " ".join(returns_bits),
     ]
     return " ".join(p for p in parts if p)
 
 
 def capability_tokens(tool: Tool) -> set[str]:
-    """Tokens describing what the tool can DO (params/returns/tags)."""
+    """Tokens describing what the tool can DO (params/tags)."""
     bits: list[str] = []
     for p in tool.parameters:
         bits.append(p.name)
         if p.description:
             bits.append(p.description)
-    if tool.returns:
-        fields = tool.returns.get("fields")
-        if isinstance(fields, list):
-            bits.extend(str(f) for f in fields)
     bits.extend(tool.tags)
     tokens: set[str] = set()
     for bit in bits:

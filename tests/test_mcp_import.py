@@ -69,9 +69,10 @@ def test_read_hint_and_unlabelled_write(shop):
     assert shop["create_ticket"]["side_effects"] == "write"
 
 
-def test_original_input_schema_survives(shop):
-    schema = shop["create_ticket"]["source"]["input_schema"]
-    assert schema["$defs"]["Priority"]["enum"] == ["low", "high"]
+def test_input_schema_is_not_copied_but_parameters_are(shop):
+    tool = shop["create_ticket"]
+    assert "input_schema" not in tool["source"]
+    assert [p["name"] for p in tool["parameters"]] == ["title", "priority"]
 
 
 def test_long_description_is_shortened_but_kept_in_full(shop):

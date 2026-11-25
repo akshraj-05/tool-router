@@ -115,7 +115,8 @@ implement whichever mode the demo host supports best.
 
 - We **preserve the tool `id`** from the registry exactly (e.g. `fin.get_revenue_report`) — a
   caller matches `selected_tools`/`plan` against specific ids, so we never invent or alter them.
-- If a tool lacks an id, we derive a stable unique one (e.g. `cluster.name`).
+- If a tool lacks an id, we build it as `cluster.name` from the declared values
+  (`cluster` defaults to `general`). A repeated id in a catalog is refused.
 - **MCP/LLM function names** must match `^[a-zA-Z0-9_-]+$` and be <= ~64 chars (dots often not
   allowed). A sanitizer for this exists (`importers/common.py::mcp_safe_name`,
   `comm.send_email` -> `comm_send_email`) but is not currently invoked in the live path — our

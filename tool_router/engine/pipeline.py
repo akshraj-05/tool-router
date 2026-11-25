@@ -28,8 +28,14 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 from tool_router.config import Settings
-from tool_router.domain.errors import CatalogError
+from tool_router.domain.errors import (
+    CatalogError,
+    DuplicateToolError,
+    InvalidToolError,
+    ToolNotFoundError,
+)
 from tool_router.domain.models import DerivedMaps, IndexedTool, RouteResult
+from tool_router.domain.naming import SIDE_EFFECTS, prepare_tool
 from tool_router.engine.bm25 import BM25Index
 from tool_router.engine.confidence import decide
 from tool_router.engine.dedup import collapse
@@ -87,7 +93,21 @@ class RoutingEngine:
             raise CatalogError("Catalog must be a dict with a 'tools' list.")
         self._settings = settings or Settings.from_env()
         self._catalog_meta = {k: v for k, v in catalog.items() if k != "tools"}
-        self._raw_tools: list[dict[str, Any]] = list(catalog["tools"])
+        self._raw_tools: list[dict[str, Any]] = [prepare_tool(t) for t in catalog["tools"]]
+        ids = [t["id"] for t in self._raw_tools if isinstance(t, dict) and t.get("id")]
+        repeated = sorted({i for i in ids if ids.count(i) > 1})
+        if repeated:          # a repeated id would silently hide all but one of the tools
+            raise CatalogError(f"Duplicate tool id(s) in catalog: {', '.join(repeated)}")
+        # The rest of the first load is lenient, but not this: a misspelled value
+        # such as "Destructive" would silently switch off the safety checks.
+        unknown = [
+            f"{t.get('id')} ({t.get('side_effects')!r})" for t in self._raw_tools
+            if isinstance(t, dict) and t.get("side_effects") not in (None, *SIDE_EFFECTS)
+        ]
+        if unknown:
+            raise CatalogError(
+                f"side_effects must be one of {', '.join(SIDE_EFFECTS)}. Fix: {', '.join(unknown)}"
+            )
         self._mutation_lock = threading.Lock()
 
         validate_catalog(self._raw_tools)   # lenient: logs issues; trusted catalog is kept
@@ -208,6 +228,8 @@ class RoutingEngine:
         - Added tools pass the STRICT intake guardrail (new submissions are
           untrusted, unlike the initial catalog) — rejected ones are reported,
           not indexed.
+        - Removing and adding the same id replaces that tool. If the new version
+          is rejected, the old one is KEPT (reported in ``kept_previous``).
         - Removals of unknown ids are reported, not errors (idempotent).
         - The whole index is rebuilt from the new truth: add/remove/replace/
           upgrade all reduce to "the registry changed, re-derive everything",
@@ -224,48 +246,125 @@ class RoutingEngine:
             raise CatalogError("'add' must be a list of tools; 'remove' a list of ids.")
 
         with self._mutation_lock:
-            raw_tools = list(self._raw_tools)
-
-            removed, missing = [], []
+            current = self._raw_tools
             remove_set = set(to_remove)
-            if remove_set:
-                before = {t.get("id") for t in raw_tools}
-                raw_tools = [t for t in raw_tools if t.get("id") not in remove_set]
-                removed = sorted(remove_set & before)
-                missing = sorted(remove_set - before)
+            existing = {t.get("id") for t in current}
+            removed = remove_set & existing
+            missing = sorted(remove_set - existing)
 
-            accepted, rejected = [], []
-            known_ids = {t.get("id") for t in raw_tools}
-            known_tools = {t.get("id"): t for t in raw_tools}
-            for raw in to_add:
-                verdict = validate_submission(raw, known_ids=known_ids, known_tools=known_tools)
+            known = {t.get("id"): t for t in current if t.get("id") not in removed}
+            accepted: list[dict[str, Any]] = []
+            rejected: list[dict[str, Any]] = []
+            failed_ids: set[str] = set()
+            previous = {t.get("id"): t for t in current if t.get("id") in removed}
+            for submitted in to_add:
+                tool = prepare_tool(submitted)
+                # A replacement that omits side_effects keeps the declared value:
+                # guessing again could quietly downgrade a destructive tool.
+                if isinstance(tool, dict) and tool.get("id") in previous \
+                        and not submitted.get("side_effects"):
+                    tool["side_effects"] = previous[tool["id"]]["side_effects"]
+                verdict = validate_submission(tool, known_ids=set(known), known_tools=known)
                 if verdict.accepted:
-                    raw_tools.append(raw)
-                    known_ids.add(raw["id"])
-                    known_tools[raw["id"]] = raw
-                    accepted.append(raw["id"])
+                    accepted.append(tool)
+                    known[tool["id"]] = tool
                 else:
+                    failed_ids.add(verdict.tool_id)
                     rejected.append({
                         "id": verdict.tool_id,
                         "reason": verdict.primary_reason,
                         "issues": [i.message for i in verdict.issues],
                     })
 
-            new_index = self._build_index(raw_tools)   # may raise: nothing is published yet
-            self._raw_tools = raw_tools
-            self._index = new_index                    # the single publishing step
+            # A replacement that failed must not delete the tool it was meant to replace.
+            kept = (removed & failed_ids) - {t["id"] for t in accepted}
+            removed -= kept
+
+            raw_tools = [t for t in current if t.get("id") not in removed] + accepted
+            self._publish(raw_tools)
 
         logger.info(
-            "mutation applied: +%d accepted, %d rejected, -%d removed (%d unknown)",
-            len(accepted), len(rejected), len(removed), len(missing),
+            "mutation applied: +%d accepted, %d rejected, -%d removed (%d unknown, %d kept)",
+            len(accepted), len(rejected), len(removed), len(missing), len(kept),
         )
         return {
-            "added": accepted,
+            "added": [t["id"] for t in accepted],
             "rejected": rejected,
-            "removed": removed,
+            "removed": sorted(removed),
+            "kept_previous": sorted(kept),
             "unknown_remove_ids": missing,
             "tool_count": len(raw_tools),
         }
+
+    # ---------------------------------------------------------------- CRUD
+
+    def list_tools(self) -> list[dict[str, Any]]:
+        """Every registered tool definition."""
+        return list(self._index.raw_by_id.values())
+
+    def get_tool(self, tool_id: str) -> dict[str, Any]:
+        try:
+            return self._index.raw_by_id[tool_id]
+        except KeyError:
+            raise ToolNotFoundError(f"No tool with id {tool_id!r}.") from None
+
+    def create_tool(self, submitted: dict[str, Any]) -> dict[str, Any]:
+        """Register one new tool (strict guardrail). Returns it as stored."""
+        with self._mutation_lock:
+            tool = prepare_tool(submitted)
+            known = {t.get("id"): t for t in self._raw_tools}
+            verdict = validate_submission(tool, known_ids=set(known), known_tools=known)
+            if not verdict.accepted:
+                if verdict.primary_reason == "DUPLICATE_ID":
+                    raise DuplicateToolError(f"A tool with id {verdict.tool_id!r} already exists.")
+                raise InvalidToolError(verdict.primary_reason, [i.message for i in verdict.issues])
+            self._publish([*self._raw_tools, tool])
+        return tool
+
+    def update_tool(self, tool_id: str, submitted: dict[str, Any]) -> dict[str, Any]:
+        """Replace one tool's definition (strict guardrail). Its id cannot change.
+
+        An omitted ``cluster`` or ``side_effects`` keeps the current value. If the new
+        definition is rejected, the current one stays in place.
+        """
+        with self._mutation_lock:
+            old = next((t for t in self._raw_tools if t.get("id") == tool_id), None)
+            if old is None:
+                raise ToolNotFoundError(f"No tool with id {tool_id!r}.")
+            if not isinstance(submitted, dict):
+                raise CatalogError("A tool must be a JSON object.")
+            if submitted.get("id") not in (None, "", tool_id):
+                raise CatalogError(
+                    f"The id in the body ({submitted['id']!r}) does not match {tool_id!r}. "
+                    "To rename a tool, delete it and create a new one."
+                )
+            candidate = {**submitted, "id": tool_id}
+            for field in ("cluster", "side_effects"):      # omitted = keep the current value
+                if not candidate.get(field):
+                    candidate[field] = old.get(field)
+            tool = prepare_tool(candidate)
+            known = {t.get("id"): t for t in self._raw_tools if t.get("id") != tool_id}
+            verdict = validate_submission(tool, known_ids=set(known), known_tools=known)
+            if not verdict.accepted:
+                raise InvalidToolError(verdict.primary_reason, [i.message for i in verdict.issues])
+            self._publish([tool if t.get("id") == tool_id else t for t in self._raw_tools])
+        return tool
+
+    def delete_tool(self, tool_id: str) -> None:
+        """Remove one tool. The last tool cannot be removed (a registry is never empty)."""
+        with self._mutation_lock:
+            remaining = [t for t in self._raw_tools if t.get("id") != tool_id]
+            if len(remaining) == len(self._raw_tools):
+                raise ToolNotFoundError(f"No tool with id {tool_id!r}.")
+            if not remaining:
+                raise CatalogError("Cannot delete the last tool; register a new catalog instead.")
+            self._publish(remaining)
+
+    def _publish(self, raw_tools: list[dict[str, Any]]) -> None:
+        """Rebuild and swap in a new index. Call only while holding the mutation lock."""
+        new_index = self._build_index(raw_tools)   # may raise: nothing is published yet
+        self._raw_tools = raw_tools
+        self._index = new_index                    # the single publishing step
 
     @property
     def tool_count(self) -> int:

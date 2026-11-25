@@ -2,6 +2,11 @@
 
 JSON endpoints (no auth — a documented, deliberate omission for this scope):
 - POST  /registry          register/replace the tool catalog (onboard)
+- GET    /registry/tools         list every tool
+- GET    /registry/tools/{id}    read one tool
+- POST   /registry/tools         create one tool (201)
+- PUT    /registry/tools/{id}    replace one tool; its id cannot change
+- DELETE /registry/tools/{id}    delete one tool
 - POST  /route             route one query -> selected tools + ordered plan + trace
 - PATCH /registry/mutate   apply a PARTIAL catalog update: {"add": [...], "remove": [...]}
                            (PATCH, not PUT/POST: this is a partial update of the registry
@@ -34,7 +39,12 @@ from pydantic import BaseModel, Field
 
 from tool_router import __version__
 from tool_router.config import Settings
-from tool_router.domain.errors import CatalogError
+from tool_router.domain.errors import (
+    CatalogError,
+    DuplicateToolError,
+    InvalidToolError,
+    ToolNotFoundError,
+)
 from tool_router.engine.pipeline import RoutingEngine
 from tool_router.log import get_logger
 
@@ -123,6 +133,47 @@ def create_app(catalog: Optional[dict[str, Any]] = None):
             return engine.apply_mutation({"add": req.add, "remove": req.remove})
         except CatalogError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    def _apply(action):
+        """Run a registry operation, translating its errors into HTTP responses."""
+        try:
+            return action()
+        except ToolNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except DuplicateToolError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except InvalidToolError as exc:
+            raise HTTPException(
+                status_code=422, detail={"reason": exc.reason, "issues": exc.issues}
+            ) from exc
+        except CatalogError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/registry/tools")
+    def list_tools() -> dict[str, Any]:
+        tools = _engine_or_400().list_tools()
+        return {"tool_count": len(tools), "tools": tools}
+
+    @app.get("/registry/tools/{tool_id}")
+    def read_tool(tool_id: str) -> dict[str, Any]:
+        engine = _engine_or_400()
+        return _apply(lambda: engine.get_tool(tool_id))
+
+    @app.post("/registry/tools", status_code=201)
+    def create_tool(tool: dict[str, Any]) -> dict[str, Any]:
+        engine = _engine_or_400()
+        return _apply(lambda: engine.create_tool(tool))
+
+    @app.put("/registry/tools/{tool_id}")
+    def update_tool(tool_id: str, tool: dict[str, Any]) -> dict[str, Any]:
+        engine = _engine_or_400()
+        return _apply(lambda: engine.update_tool(tool_id, tool))
+
+    @app.delete("/registry/tools/{tool_id}")
+    def delete_tool(tool_id: str) -> dict[str, Any]:
+        engine = _engine_or_400()
+        _apply(lambda: engine.delete_tool(tool_id))
+        return {"deleted": tool_id, "tool_count": engine.tool_count}
 
     def _secret_slot(provider: str) -> Optional[str]:
         """Secret name for a provider, or None if that provider takes no key.

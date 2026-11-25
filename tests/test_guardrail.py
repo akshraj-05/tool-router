@@ -14,7 +14,6 @@ VALID = {
     "description": "Fetch a single widget record by its identifier",
     "side_effects": "read",
     "parameters": [{"name": "widget_id", "type": "string", "required": True}],
-    "returns": {"type": "object"},
 }
 
 
@@ -47,7 +46,7 @@ def test_each_rule_reports_its_reason_code(submission, code):
 
 def test_missing_required_field_is_reported():
     tool = copy.deepcopy(VALID)
-    del tool["returns"]
+    del tool["parameters"]
     result = validate_submission(tool, known_ids=set())
     assert result.primary_reason == "MISSING_REQUIRED_FIELD"
 

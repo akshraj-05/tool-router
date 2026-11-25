@@ -129,6 +129,41 @@ tool-router import-mcp --command python --args my_server.py -o tools.json
 tool-router serve --catalog tools.json
 ```
 
+### Tool format
+
+```json
+{
+  "name": "send_email",
+  "description": "Send an email message to a recipient with a subject and body",
+  "parameters": [{"name": "to", "type": "string", "required": true}],
+  "side_effects": "write",
+  "cluster": "comm",
+  "id": "comm.send_email"
+}
+```
+
+`name`, `description` and `parameters` are required. `cluster` defaults to `general`, and `id` is built as `cluster.name` if you leave it out. `side_effects` is `read`, `write` or `destructive`; any other value is refused. If you leave it out it is guessed from the name (`delete_…`, `restart_…` and similar are destructive; `get_…`, `list_…` and similar are read; everything else is write). The guess misses names such as `close_account`, so set it for any tool that changes or deletes something. An update that omits it keeps the current value. Optional: `tags`, `version`, `deprecated`, `replaced_by`.
+
+**Versions.** To update a tool, replace it with `PUT` and change `version`, which is information only. If the old and new versions must both stay callable, register both and mark the old one `"deprecated": true` with `"replaced_by": "<new id>"`. The router then returns the new one unless the request asks for the legacy or old one. Names are never used to guess versions.
+
+A catalog file is `{"tools": [ ... ]}`.
+
+### Manage tools over REST
+
+| Request | Action |
+|---|---|
+| `POST /registry` | Load or replace the whole catalog |
+| `GET /registry/tools` | List all tools |
+| `GET /registry/tools/{id}` | Read one tool |
+| `POST /registry/tools` | Create one tool |
+| `PUT /registry/tools/{id}` | Replace one tool (its id cannot change) |
+| `DELETE /registry/tools/{id}` | Delete one tool |
+| `PATCH /registry/mutate` | Add and remove several tools at once |
+
+A rejected create or update changes nothing. Changes are held in memory and are lost on restart.
+
+> **Security:** the REST API has no authentication, so anyone who can reach it can read and change your tools. Run it with `--host 127.0.0.1` unless the network is trusted.
+
 For Docker:
 
 ```bash
@@ -146,10 +181,6 @@ pytest
 The suite runs fully offline: LLM behaviour is driven by a scripted fake chat client, and each test uses its own temporary data and config directories.
 
 See `.env.example` and [onboarding documentation](docs/design/onboarding.md) for configuration and catalog details.
-
-## LangGraph example
-
-[`examples/langgraph_agent/`](examples/langgraph_agent/README.md) shows the router as a step in a LangGraph agent: it picks the tools first, and the model sees only those. The tools are simulated, and the offline comparison needs no API key. LangGraph is a dependency of the example only, not of Tool Router.
 
 ## Evaluation and limitations
 

@@ -6,9 +6,9 @@ every page of `list_tools`, and convert each tool to our registry schema.
 Requires the `mcp` extra.
 
 What the conversion guarantees
-- **The original tool name is kept** in ``source.name`` (with the untouched
-  ``source.input_schema``), so a caller can invoke the real tool on its server.
-  ``name``/``id`` are normalized to our snake_case convention.
+- **The original tool name is kept** in ``source.name``, so a caller can invoke the
+  real tool on its server. ``name``/``id`` are normalized to our snake_case
+  convention. The full input schema is not copied: the server remains its source.
 - **Side effects are labelled conservatively.** A tool is ``destructive`` when
   the server says so (``destructiveHint``) OR its name contains a destructive
   verb; hints come from a third party, so the stricter answer wins.
@@ -29,8 +29,8 @@ import re
 from typing import Any, Optional
 
 from tool_router.domain.errors import ToolRouterError
+from tool_router.domain.naming import infer_side_effects
 from tool_router.engine.guardrail import DESCRIPTION_MAX_CHARS
-from tool_router.engine.retrieval import DESTRUCTIVE_VERBS
 from tool_router.importers.common import params_from_json_schema, sanitize_name
 from tool_router.log import get_logger
 
@@ -38,9 +38,6 @@ logger = get_logger("importers.mcp")
 
 DEFAULT_TIMEOUT = 30.0
 _MAX_PAGES = 1000          # stops a server that keeps returning a "next page"
-_READ_VERBS = frozenset(
-    "get list search fetch read find check show view describe query lookup count".split()
-)
 _CAMEL_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 
 
@@ -60,15 +57,15 @@ def cluster_name(text: str) -> str:
 
 
 def _side_effects(name: str, annotations: Any) -> str:
-    words = name.split("_")
     destructive_hint = getattr(annotations, "destructiveHint", None)
     read_hint = getattr(annotations, "readOnlyHint", None)
-    if destructive_hint is True or DESTRUCTIVE_VERBS.intersection(words):
+    inferred = infer_side_effects(name)
+    if destructive_hint is True or inferred == "destructive":
         return "destructive"
     if read_hint is True:
         return "read"
-    if read_hint is None and destructive_hint is None and words[0] in _READ_VERBS:
-        return "read"
+    if read_hint is None and destructive_hint is None:
+        return inferred              # no hints at all: go by the name
     return "write"
 
 
@@ -99,12 +96,10 @@ def _convert(tool: Any, prefix: str, used_names: Optional[set[str]] = None) -> d
         "side_effects": _side_effects(name, getattr(tool, "annotations", None)),
         "tags": [prefix, "mcp-import"],
         "parameters": params_from_json_schema(input_schema),
-        "returns": {"type": "object"},
         "source": {
             "type": "mcp",
             "name": tool.name,
             "description": description,
-            "input_schema": input_schema,
         },
     }
 

@@ -12,6 +12,7 @@ import json
 import sys
 
 from tool_router import __version__
+from tool_router.domain.naming import prepare_tool
 from tool_router.engine.guardrail import validate_submission
 
 
@@ -23,7 +24,8 @@ def _cmd_validate(args: argparse.Namespace) -> int:
     known_ids: set[str] = set(args.known_ids.split(",")) if args.known_ids else set()
 
     failures = 0
-    for sub in submissions:
+    for submitted in submissions:
+        sub = prepare_tool(submitted)
         result = validate_submission(sub, known_ids=known_ids)
         tool_id = result.tool_id or "<no id>"
         if result.accepted:

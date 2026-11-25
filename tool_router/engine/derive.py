@@ -1,9 +1,10 @@
 """Auto-derivation of registry-level maps (engine-design.md §Auto-derivation).
 
 Derives, per registry:
-- clusters          — from each tool's `cluster` field
-- version families  — from replaces/replaced_by links, `deprecated`, and
-                      `_v<N>` name suffixes; marks each tool current/superseded
+- clusters          — from each tool's `cluster` field (`general` if omitted)
+- version families  — ONLY from explicit `replaced_by` links (names are never
+                      interpreted); a tool that is `deprecated` or has
+                      `replaced_by` is marked superseded
 - near-dup groups   — explicit catalog `near_duplicate_groups` (optional
                       catalog-provided metadata a router is expected to use
                       when present) UNIONED with auto-detected groups (embedding cosine +
@@ -14,31 +15,15 @@ Derives, per registry:
 
 from __future__ import annotations
 
-import re
 from collections import defaultdict
 
 from tool_router.config import ConfidenceThresholds
 from tool_router.domain.models import DerivedMaps, IndexedTool
+from tool_router.domain.naming import DEFAULT_CLUSTER
 from tool_router.engine.text import cosine, jaccard
 from tool_router.log import get_logger
 
 logger = get_logger("derive")
-
-_VSUFFIX = re.compile(r"^(?P<base>.+?)_v\d+$")
-
-
-def _centroid(vectors: list) -> dict[str, float]:
-    """Term-wise mean of sparse dict vectors (dense lists averaged likewise)."""
-    if vectors and isinstance(vectors[0], list):
-        n = len(vectors)
-        return [sum(v[i] for v in vectors) / n for i in range(len(vectors[0]))]  # type: ignore
-    acc: dict[str, float] = defaultdict(float)
-    for vec in vectors:
-        if isinstance(vec, dict):
-            for term, val in vec.items():
-                acc[term] += val
-    n = max(1, len(vectors))
-    return {term: val / n for term, val in acc.items()}
 
 
 class _UnionFind:
@@ -73,75 +58,28 @@ def derive_maps(
     by_id = {e.tool.id: e for e in entries}
 
     # --- clusters --------------------------------------------------------
-    # Tools that declare a cluster keep it. Tools WITHOUT one are assigned to
-    # the nearest existing cluster by embedding-centroid similarity (so mixed
-    # catalogs still get hierarchical structure); with no similar cluster they
-    # stay "uncategorized".
+    # Every tool declares a cluster or was given the default one at intake.
     clusters: dict[str, list[str]] = defaultdict(list)
-    unclustered: list[IndexedTool] = []
     for e in entries:
-        if e.tool.cluster:
-            clusters[e.tool.cluster].append(e.tool.id)
-        else:
-            unclustered.append(e)
-    if unclustered and clusters:
-        centroids = {
-            name: _centroid([by_id[tid].embedding for tid in ids])
-            for name, ids in clusters.items()
-        }
-        for e in unclustered:
-            sims = sorted(
-                ((cosine(e.embedding, c), name) for name, c in centroids.items()),
-                reverse=True,
-            )
-            best_sim, best = sims[0]
-            second_sim = sims[1][0] if len(sims) > 1 else 0.0
-            # Relative decision (scale-free): assign only when the best cluster
-            # CLEARLY beats the runner-up — absolute cosine magnitudes differ
-            # wildly between sparse and dense embeddings, so a fixed floor
-            # would be a tuned magic number. Tiny floor only to reject
-            # zero-signal tools.
-            confident = best_sim >= 0.05 and best_sim >= 1.3 * max(second_sim, 1e-9)
-            target = best if confident else "uncategorized"
-            clusters[target].append(e.tool.id)
-            if target != "uncategorized":
-                e.tool.cluster = target
-            logger.info(
-                "cluster-derived %s -> %s (best %.3f vs next %.3f)",
-                e.tool.id, target, best_sim, second_sim,
-            )
-    elif unclustered:
-        clusters["uncategorized"].extend(e.tool.id for e in unclustered)
+        clusters[e.tool.cluster or DEFAULT_CLUSTER].append(e.tool.id)
 
     # --- version families --------------------------------------------------
-    # Family key = the "base" name: explicit replaces/replaced_by links first,
-    # then _v<N> suffix stripping. is_current=False for deprecated/superseded.
-    family_of: dict[str, str] = {}
-
-    def family_key(entry: IndexedTool) -> str:
-        m = _VSUFFIX.match(entry.tool.name)
-        base_name = m.group("base") if m else entry.tool.name
-        return f"{entry.tool.cluster}.{base_name}"
-
+    # A family is a set of tools connected by `replaced_by` (chains included).
+    # Its key is the id of the member nothing supersedes, when there is one.
+    links = _UnionFind()
     for e in entries:
-        family_of[e.tool.id] = family_key(e)
-    # Link families across explicit replaces/replaced_by edges.
-    for e in entries:
-        for ref in (e.tool.replaces, e.tool.replaced_by):
-            if ref and ref in by_id:
-                canonical = family_of[e.tool.id]
-                family_of[ref] = canonical
+        successor = e.tool.replaced_by
+        if successor and successor in by_id:
+            links.union(successor, e.tool.id)
 
-    version_families: dict[str, list[str]] = defaultdict(list)
-    for tool_id, fam in family_of.items():
-        version_families[fam].append(tool_id)
-    version_families = {
-        fam: sorted(members) for fam, members in version_families.items() if len(members) > 1
-    }
+    version_families: dict[str, list[str]] = {}
+    for members in links.groups():
+        current = [m for m in members if by_id[m].tool.replaced_by is None]
+        version_families[current[0] if current else members[0]] = members
 
+    family_of = {m: key for key, members in version_families.items() for m in members}
     for e in entries:
-        fam = family_of[e.tool.id]
-        e.family_id = fam if fam in version_families else None
+        e.family_id = family_of.get(e.tool.id)
         e.is_current = not e.tool.deprecated and e.tool.replaced_by is None
 
     # --- near-duplicate groups ---------------------------------------------

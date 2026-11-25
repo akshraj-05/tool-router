@@ -16,6 +16,7 @@ import shlex
 from typing import Any, Optional
 
 from tool_router.domain.errors import CatalogError
+from tool_router.domain.naming import prepare_tool
 from tool_router.engine.guardrail import validate_submission
 from tool_router.importers.mcp_importer import DEFAULT_TIMEOUT, MCPImportError, import_from_mcp
 
@@ -27,7 +28,8 @@ def split_valid(
     known = set(known_ids or ())
     accepted: list[dict[str, Any]] = []
     rejected: list[str] = []
-    for tool in tools:
+    for submitted in tools:
+        tool = prepare_tool(submitted)
         verdict = validate_submission(tool, known_ids=known)
         if verdict.accepted:
             accepted.append(tool)
@@ -62,6 +64,7 @@ def build_catalog(
             catalog = json.load(fh)
         if not isinstance(catalog, dict) or not isinstance(catalog.get("tools"), list):
             raise CatalogError("Catalog must be a dict with a 'tools' list.")
+        catalog["tools"] = [prepare_tool(t) for t in catalog["tools"]]
         report.append(f"loaded {len(catalog['tools'])} tools from {catalog_path}")
 
     for line in mcp_commands or []:

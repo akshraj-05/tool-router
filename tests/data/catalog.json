@@ -19,10 +19,7 @@
           "required": true,
           "description": "Fiscal quarter"
         }
-      ],
-      "returns": {
-        "type": "object"
-      }
+      ]
     },
     {
       "id": "fin.fetch_quarterly_earnings",
@@ -37,10 +34,7 @@
           "required": true,
           "description": "Fiscal quarter"
         }
-      ],
-      "returns": {
-        "type": "object"
-      }
+      ]
     },
     {
       "id": "comm.send_email",
@@ -67,10 +61,7 @@
           "required": true,
           "description": "Message body"
         }
-      ],
-      "returns": {
-        "type": "object"
-      }
+      ]
     },
     {
       "id": "comm.send_slack_message",
@@ -91,10 +82,7 @@
           "required": true,
           "description": "Message text"
         }
-      ],
-      "returns": {
-        "type": "object"
-      }
+      ]
     },
     {
       "id": "comm.schedule_meeting",
@@ -115,10 +103,7 @@
           "required": true,
           "description": "Start time"
         }
-      ],
-      "returns": {
-        "type": "object"
-      }
+      ]
     },
     {
       "id": "ops.get_server_status",
@@ -133,10 +118,7 @@
           "required": true,
           "description": "Server name"
         }
-      ],
-      "returns": {
-        "type": "object"
-      }
+      ]
     },
     {
       "id": "ops.restart_server",
@@ -151,10 +133,7 @@
           "required": true,
           "description": "Server name"
         }
-      ],
-      "returns": {
-        "type": "object"
-      }
+      ]
     },
     {
       "id": "ops.delete_logs",
@@ -169,10 +148,7 @@
           "required": true,
           "description": "Server name"
         }
-      ],
-      "returns": {
-        "type": "object"
-      }
+      ]
     },
     {
       "id": "hr.get_employee",
@@ -187,10 +163,7 @@
           "required": true,
           "description": "Employee id"
         }
-      ],
-      "returns": {
-        "type": "object"
-      }
+      ]
     },
     {
       "id": "docs.create_invoice",
@@ -208,17 +181,13 @@
           "required": true,
           "description": "Customer name"
         }
-      ],
-      "returns": {
-        "type": "object"
-      }
+      ]
     },
     {
       "id": "docs.create_invoice_v2",
       "name": "create_invoice_v2",
       "cluster": "docs",
       "version": "2.0.0",
-      "replaces": "docs.create_invoice",
       "description": "Create an invoice for a customer using the current billing format",
       "side_effects": "write",
       "parameters": [
@@ -228,10 +197,7 @@
           "required": true,
           "description": "Customer name"
         }
-      ],
-      "returns": {
-        "type": "object"
-      }
+      ]
     },
     {
       "id": "docs.generate_chart",
@@ -252,10 +218,7 @@
           "required": false,
           "description": "Chart kind"
         }
-      ],
-      "returns": {
-        "type": "object"
-      }
+      ]
     },
     {
       "id": "docs.export_to_spreadsheet",
@@ -270,10 +233,7 @@
           "required": true,
           "description": "Rows of data"
         }
-      ],
-      "returns": {
-        "type": "object"
-      }
+      ]
     }
   ]
 }

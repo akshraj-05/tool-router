@@ -135,10 +135,11 @@ tool definition
    → Step 4: Derive maps (clusters/dupes/versions)  [deterministic] engine/derive.py
 ```
 
-- **tool definition**: a JSON object with at least `id`, `name`, `description`, `parameters`
-  (list of `{name, type, required}`), `returns`; optional `cluster`, `tags`, `side_effects`
-  (`read`|`write`|`destructive`), `version` (semver), `deprecated` (bool), `replaces`,
-  `replaced_by`, `aliases`.
+- **tool definition**: a JSON object with at least `name`, `description` and `parameters`
+  (list of `{name, type, required}`). `cluster` defaults to `general` and `id` is built as
+  `cluster.name` when omitted (`domain/naming.py`). Optional: `tags`, `side_effects`
+  (`read`|`write`|`destructive`, inferred from the name when omitted; other values are refused), `version` (semver, information only), `deprecated` (bool),
+  `replaced_by`.
 - **embedding model**: converts text to a vector for retrieval. Distinct from the **generation
   LLM** (used for enrichment, conditional HyDE, and final planning).
 
@@ -149,7 +150,7 @@ is the registry intake validator, verified against an internal set of valid/inva
 fixtures (11/11 pass with the exact expected reason codes).
 
 The **initial catalog** is validated **leniently** (issues logged, tools kept — it's the trusted
-ground truth); **new submissions** via `/registry/mutate` or `import-mcp` are
+ground truth); **new submissions** via the REST create/update/mutate endpoints or an MCP import are
 validated **strictly** (rejected with a reason).
 
 | Category | Rule |
@@ -169,7 +170,7 @@ query — when a generation LLM is configured (`engine/enrich.py`), and results 
 content hash so repeat runs cost nothing.
 
 **Deterministic enrichment (always):**
-- **capability tokens**: derived from params + description + returns (used for capability-match
+- **capability tokens**: derived from params and tags (used for capability-match
   scoring and least-privilege penalties).
 - **side-effect tag**: from the `side_effects` field.
 - **tokens**: tokenized name + description + cluster (`engine/text.py::tokenize`).
@@ -249,14 +250,12 @@ each other, in the fused formula in §2 below.
 Computed from embeddings + metadata, held in memory (not separately persisted; cheap to
 recompute at index-build time).
 
-- **Clusters** — use each tool's `cluster` field if present; else assign by nearest embedding
-  centroid, with a *relative margin* test (best cluster must clearly beat the runner-up) rather
-  than an absolute similarity threshold, so it works across embedding scales.
+- **Clusters** — each tool's `cluster` field; tools registered without one are in `general`.
 - **Near-duplicate groups** — pairwise cosine ≥ threshold + parameter-name overlap, within the
   same cluster and same side-effect class, unioned via union-find. Also honors the catalog's own
   `near_duplicate_groups` metadata when present.
-- **Version families** — grouped by base name (stripping a `_v<N>` suffix) and linked via
-  `replaces`/`replaced_by`; `deprecated` marks the non-current member. Routing rule: prefer
+- **Version families** — formed only from explicit `replaced_by` links (chains included);
+  names and the `version` field are not interpreted. `deprecated` marks the non-current member. Routing rule: prefer
   current unless the query has an explicit legacy signal.
 
 ## Determinism summary (onboarding stage)
