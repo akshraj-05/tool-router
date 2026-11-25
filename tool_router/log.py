@@ -1,6 +1,6 @@
 """Central logging setup.
 
-One place to configure logging for every entry point (harness adapter, CLI,
+One place to configure logging for every entry point (CLI,
 REST service). Uses stdlib logging so downstream consumers can reconfigure;
 never logs secrets (config code logs only presence booleans, never values).
 """

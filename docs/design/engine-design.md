@@ -1,6 +1,6 @@
 # Routing Engine — Internal Design (as implemented)
 
-The engine is the core "brain" behind all three entry points (Router class / REST / MCP).
+The engine is the core "brain" behind both entry points (REST / MCP).
 It runs in two phases: **build the index once** at onboarding, then **route per query**.
 
 ```

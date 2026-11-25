@@ -9,8 +9,8 @@ Design notes
 - Vectors are ``dict[str, float]`` sparse maps for the default local TF-IDF
   provider. The provider interface also permits dense ``list[float]``
   (Gemini embeddings); similarity helpers handle both.
-- ``RouteResult`` mirrors a benchmark harness contract exactly plus our
-  additive fields (trace, tokens_saved_pct), which such a harness ignores.
+- ``RouteResult`` is the routing decision: the core fields returned to clients
+  plus ``trace`` and ``tokens_saved_pct``.
 """
 
 from __future__ import annotations
@@ -97,18 +97,18 @@ class DerivedMaps(BaseModel):
 
 
 class RouteResult(BaseModel):
-    """Routing decision. Field names/shape match the harness contract exactly."""
+    """Routing decision."""
 
     selected_tools: list[str] = Field(default_factory=list)
     plan: list[str] = Field(default_factory=list)
     clarify: bool = False
     clarify_question: Optional[str] = None
-    # --- additive (ignored by the harness, used by REST/demo/trace) ---
+    # --- diagnostics ---
     tokens_saved_pct: Optional[float] = None
     trace: dict[str, Any] = Field(default_factory=dict)
 
-    def to_harness_dict(self) -> dict[str, Any]:
-        """Exact dict a benchmark harness (e.g. run_benchmark.py) expects."""
+    def to_response_dict(self) -> dict[str, Any]:
+        """The core decision fields of an API response."""
         return {
             "selected_tools": list(self.selected_tools),
             "plan": list(self.plan),

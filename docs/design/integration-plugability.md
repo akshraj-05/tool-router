@@ -28,10 +28,6 @@ The LLM never "sees" the router — it just gets a slim, pre-filtered tool list.
 **Build order: ENGINE → REST API (primary demo surface) → MCP (showcase). We do BOTH; REST first.**
 
 Why REST first:
-- **The transport is incidental to the engine** — a direct caller (e.g. a benchmark harness or
-  CLI script) imports the Python `Router` class and calls `route()` directly; it never touches
-  MCP or HTTP. The transport exists for real-world integration and demoing, not for the engine
-  itself. So we optimize the transport for a reliable, fast demo.
 - **REST is low-risk and fast** (FastAPI + curl/Swagger/tiny UI in ~half a day) and it *shows
   the token savings on screen* — the clearest way to demonstrate a working system. No dependency
   on a third-party MCP host behaving on camera.
@@ -40,13 +36,12 @@ Why REST first:
 
 ## Important: this is independent of the core engine
 
-We ALWAYS implement the core `route()` engine + a thin `Router` class adapter first — that's
-what any direct/programmatic caller (e.g. `tool_router.adapters.harness_router.Router`) imports
-and exercises. The transport (REST/MCP) is only the real-world / demo surface layered on top.
+We ALWAYS implement the core `route()` engine first. REST and MCP are thin layers on top of
+it, so routing behaves the same through either one.
 
 ## Build implication (in order)
 
-1. **Core engine + `Router` class adapter** — mandatory, transport-agnostic. Build first.
+1. **Core engine** — mandatory, transport-agnostic. Build first.
 2. **REST API (primary, now):** FastAPI gateway — `POST /registry` (onboard/index tools),
    `POST /route` (query → top-K tools + plan), `GET /health`. Reliable demo spine; shows token
    savings live.

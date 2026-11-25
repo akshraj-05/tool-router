@@ -6,7 +6,7 @@ Route per query: analyze → fused scoring → version/dup collapse →
                confidence gate (empty/clarify/proceed) → plan → assemble.
 
 Every route returns a full trace (why each tool was chosen) — this powers the
-demo and the REST response; the harness adapter simply drops it.
+demo and the REST response.
 
 Concurrency model
 -----------------
@@ -53,7 +53,7 @@ def project_cache_for(provider, rebuild: bool = False):
 
 
 def _approx_tokens(obj: Any) -> int:
-    """Same rough token estimate the harness uses (~4 chars/token)."""
+    """Rough token estimate (~4 chars/token)."""
     return max(1, len(json.dumps(obj)) // 4)
 
 

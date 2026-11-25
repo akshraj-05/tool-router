@@ -108,7 +108,7 @@ def create_app(catalog: Optional[dict[str, Any]] = None):
     def route(req: RouteRequest) -> dict[str, Any]:
         engine = _engine_or_400()
         result = engine.route(req.query, context=req.context)
-        payload = result.to_harness_dict()
+        payload = result.to_response_dict()
         payload["selected_tool_schemas"] = [
             engine.raw_tool(tid) for tid in result.selected_tools
         ]

@@ -10,9 +10,8 @@ A **routing-as-a-service** platform ("Kapa for tools"). A client onboards their 
 once; thereafter each query hits our engine and gets back the small, high-precision set of tools
 (+ an ordered call plan) the agent should actually see — cutting tokens and raising accuracy.
 
-**Ships two ways, same codebase:** `pip install` (as a library — `from tool_router import
-Router` — or a service via `tool-router serve`), or one `docker run` with no Python setup at
-all. Full details in §5.
+**Ships two ways, same codebase:** `pip install` (then run `tool-router serve` or
+`tool-router mcp`), or one `docker run` with no Python setup at all. Full details in §5.
 
 ## 2. System shape — the architecture
 
@@ -41,19 +40,17 @@ flowchart TB
   %% ===== deployment =====
   subgraph DEPLOY["📦 Ships two ways — same codebase"]
     direction LR
-    PIP["🐍 pip install<br/>library import OR<br/>tool-router serve"]:::client
+    PIP["🐍 pip install<br/>tool-router serve OR<br/>tool-router mcp"]:::client
     DOCK["🐳 docker run<br/>no Python setup needed"]:::client
   end
 
   %% ===== entry points =====
-  subgraph ENTRY["🔌 Three entry points — one engine"]
+  subgraph ENTRY["🔌 Two entry points — one engine"]
     direction LR
-    E1["Router class<br/>(programmatic/CLI)"]:::entry
     E2["REST API<br/>/registry · /route · /setup"]:::entry
     E3["MCP tool<br/>find_tools"]:::entry
   end
 
-  PIP --> E1
   PIP --> E2
   PIP --> E3
   DOCK --> E2
@@ -130,11 +127,9 @@ flowchart TB
   S1 --> E2
   S2 --> E2
   S3 -.-> E2
-  CL --> E1
   CL --> E2
   CL --> E3
   E2 --> G
-  E1 --> RET
   E2 --> RET
   E3 --> RET
   RET -.-> PE
@@ -207,7 +202,7 @@ misread before:**
    was active retries with a broader candidate set (bounded by `max_widen_rounds`, default 1),
    not a hardcoded retry against `PLAN` only.
 
-**One engine, three entry points, everything else local by default.** The green/teal path
+**One engine, two entry points, everything else local by default.** The green/teal path
 (fused retrieval, dedup, dynamic-K) runs unconditionally and never calls an LLM — that stays true
 in every configuration. The orange nodes (`ENL` enrichment, `HYDE`, `PLAN`) are the *only* LLM
 calls in the whole pipeline, and they are gated by configuration, not omitted from the design:
@@ -242,14 +237,11 @@ the extra ~7 points of accuracy, at the cost of a per-call API bill.
 
 ## 4. Integration & Plugability  → `integration-plugability.md`, `integrations.md`
 
-**Same engine, three plugs.** Build order: **engine → REST → MCP** (REST is the reliable demo
-spine; MCP is the plug-and-play showcase). The transport is incidental — a benchmark harness or
-grader would call the plain Python class directly — so the transport layer is optimized for a
-reliable demo, not for scoring.
+**Same engine, two plugs.** Build order: **engine → REST → MCP** (REST is the reliable demo
+spine; MCP is the plug-and-play showcase).
 
 | Plug | Consumer | Use |
 |---|---|---|
-| **Router class** (`route()`) | direct/programmatic callers, e.g. a benchmark harness | always built |
 | **REST API** (`/route`) | any app / language | primary real-world surface, max token savings |
 | **MCP tool** (`find_tools`) | any MCP agent | plug-and-play showcase (MCP-tag) |
 
@@ -268,11 +260,10 @@ reliable demo, not for scoring.
 ## 5. Packaging, Install & Config  → `storage.md`
 
 **Ship BOTH**, from one codebase:
-- **pip package** — `pip install` → `tool-router serve` (runs the REST service) **or**
-  `from tool_router import Router` (library / programmatic use).
+- **pip package** — `pip install` → `tool-router serve` (REST service) or `tool-router mcp`
+  (MCP server).
 - **Docker image** — one `docker run` (no Python needed).
-- **Language-agnostic** comes from the **REST API** (reachable via pip `serve` or Docker); only
-  `import` is Python-only.
+- **Language-agnostic:** agents and apps in any language call the **REST API** or the MCP tool.
 
 **Config (key + model) — no file editing:**
 - **pip →** `tool-router init` (terminal wizard) / `tool-router config set …`.
@@ -397,7 +388,6 @@ tool-router/
 │   │                            guardrail · planner (local) · llm_planner · hyde · enrich
 │   ├── providers/               base (interface) · local_tfidf (default) · gemini
 │   ├── importers/               mcp_importer · openapi_importer · common
-│   ├── adapters/harness_router.py   Router class → thin wrapper for run_benchmark.py
 │   ├── api.py                  FastAPI: /registry /route /registry/mutate /health /setup
 │   ├── mcp_server.py            MCP tools: find_tools · register_tools · registry_status
 │   ├── cli.py                   tool-router version | validate | serve | mcp | init | config
@@ -426,8 +416,8 @@ in `pyproject.toml` for a possible future vector-DB or cross-encoder backend. In
 - **Depth over surface area:** hybrid retrieval + conditional HyDE + LLM planning + auto-derived
   metadata, with an eval report showing the measured iteration trajectory (24% → 83% local-only
   → 90% hybrid) and numbers at every step, not just a final claim.
-- **A coherent lifecycle, not a pile of features:** unified onboard→route→evolve lifecycle; three
-  entry points (class/REST/MCP) over one engine; auto-derived clusters/dup-groups/version-families
+- **A coherent lifecycle, not a pile of features:** unified onboard→route→evolve lifecycle; two
+  entry points (REST/MCP) over one engine; auto-derived clusters/dup-groups/version-families
   that generalize to catalogs never seen at build time; confidence-gated dynamic-K; churn
   resilience.
 
@@ -460,7 +450,7 @@ levers.
 |---|---|
 | `architecture.md` | **this** — the rich master architecture |
 | `engine-design.md` | engine internals, per-step detail, local-vs-LLM cost model |
-| `integration-plugability.md` | the 3 entry points + build-order decision |
+| `integration-plugability.md` | the 2 entry points + build-order decision |
 | `integrations.md` | how LangGraph/LangChain/any integrate (REST + MCP, with code) |
 | `onboarding.md` | add/manage tools: guardrail → enrichment, auto-import (now/later) |
 | `storage.md` | embedded JSON store, OS-agnostic paths, multi-project, conflicts, config UX |

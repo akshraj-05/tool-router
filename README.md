@@ -37,7 +37,6 @@ Tool Router selects tools; it does **not** execute them.
 
 The same routing engine is available through:
 
-- Python API: use the `Router` class in application code.
 - CLI: initialize configuration, import catalogs and run the service.
 - REST API: expose routing and registry operations through FastAPI.
 - MCP server: expose the `find_tools` capability to MCP-compatible agents.
