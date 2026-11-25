@@ -7,7 +7,7 @@ JSON endpoints (no auth — a documented, deliberate omission for this scope):
                            (PATCH, not PUT/POST: this is a partial update of the registry
                            resource, not a full replace and not a bare action)
 - POST  /setup             save config (provider/model/key) — JSON, same as the others
-- GET   /health            liveness + engine facts
+- GET   /health            liveness + engine facts (always open, for probes)
 
 Non-JSON exception:
 - GET   /setup             a small server-rendered HTML form. This is a deliberate,
@@ -27,6 +27,7 @@ Requires the `api` extra: pip install .[api]
 
 from __future__ import annotations
 
+from html import escape as _escape
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
@@ -48,7 +49,10 @@ class RegistryRequest(BaseModel):
 
 class RouteRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=10_000)
-    context: Optional[dict[str, Any]] = None
+    context: Optional[dict[str, Any]] = Field(
+        default=None,
+        description="Accepted for forward compatibility; routing does not use it yet.",
+    )
 
 
 class MutateRequest(BaseModel):
@@ -124,7 +128,7 @@ def create_app(catalog: Optional[dict[str, Any]] = None):
         """Secret name for a provider, or None if that provider takes no key.
 
         Follows the same f"{provider}_key" convention store.py's secret names
-        already use (bedrock_key, gemini_key) — generic by construction, so a
+        already use (gemini_key) — generic by construction, so a
         newly added provider works without touching this file.
         """
         return f"{provider}_key" if provider and provider != "none" else None
@@ -143,19 +147,21 @@ def create_app(catalog: Optional[dict[str, Any]] = None):
         from tool_router.store import load_secret, load_stored_config
 
         stored = load_stored_config()
-        provider = stored.get("llm_provider", "none")
+        provider = str(stored.get("llm_provider", "none"))
         secret_name = _secret_slot(provider)
         key_state = "present" if secret_name and load_secret(secret_name) else "absent"
+        # Stored values are user-supplied text: escape before putting them in HTML.
+        e = lambda value: _escape(str(value), quote=True)  # noqa: E731
         html = f"""<!doctype html><title>tool-router setup</title>
 <style>body{{font-family:sans-serif;max-width:34rem;margin:3rem auto}}label{{display:block;margin:.8rem 0 .2rem}}input{{width:100%;padding:.4rem}}button{{margin-top:1rem;padding:.5rem 1.2rem}}</style>
 <h2>tool-router setup</h2>
-<p>Key for provider "{provider}": <b>{key_state}</b> (stored server-side, never displayed)</p>
+<p>Key for provider "{e(provider)}": <b>{key_state}</b> (stored server-side, never displayed)</p>
 <label>LLM provider ("none" for fully offline, or any provider name tool_router supports)</label>
-<input id=p value="{provider}">
+<input id=p value="{e(provider)}">
 <label>LLM model (any model name your provider supports)</label>
-<input id=m placeholder="e.g. gemini-flash-lite-latest" value="{stored.get("llm_model", "")}">
+<input id=m placeholder="e.g. gemini-flash-lite-latest" value="{e(stored.get("llm_model", ""))}">
 <label>Embedding provider</label>
-<input id=e value="{stored.get("embedding_provider", "local")}">
+<input id=e value="{e(stored.get("embedding_provider", "local"))}">
 <label>API key (leave blank to keep current; not used for provider "none")</label>
 <input id=k type=password autocomplete=off>
 <button onclick="save()">Save</button><span id=s></span>
@@ -169,7 +175,7 @@ def create_app(catalog: Optional[dict[str, Any]] = None):
 
     @app.post("/setup")
     def setup_save(body: dict[str, Any]) -> dict[str, Any]:
-        from tool_router.store import save_secret, save_stored_config
+        from tool_router.store import load_stored_config, save_secret, save_stored_config
 
         key = body.pop("api_key", None)
         allowed = {k: str(v) for k, v in body.items()

@@ -55,7 +55,7 @@ flowchart TB
     CAP -->|"no"| WID --> PLAN
   end
 
-  BR["☁️ Generation LLM<br/>(default: none — local only · Gemini live-verified · Bedrock untested)"]:::ext
+  BR["☁️ Generation LLM<br/>(default: none — local only · Gemini live-verified)"]:::ext
   OUT["✅ selected tools + ordered plan<br/><b>~90–98% fewer tokens</b>"]:::out
 
   Q ==> GW
@@ -78,5 +78,5 @@ separate re-rank model stage**; that was considered in design but is not impleme
 **dynamic-K**, **dedup**, a **clarify/refuse/out-of-scope** path, **conditional HyDE** for
 low-confidence queries, and an **LLM planner that also arbitrates scope** — so look-alike
 tools, ordering, versioning, and vague queries are all handled, not just nearest-neighbor
-lookup. The engine runs fully offline by default (no LLM); Gemini is the live-verified LLM
-provider, with an AWS Bedrock provider implemented but not live-tested.
+lookup. The engine runs fully offline by default (no LLM); Gemini is the supported LLM
+provider.

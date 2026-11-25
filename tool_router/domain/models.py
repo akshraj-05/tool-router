@@ -8,7 +8,7 @@ Design notes
   enrichment is internal to retrieval only (see onboarding.md).
 - Vectors are ``dict[str, float]`` sparse maps for the default local TF-IDF
   provider. The provider interface also permits dense ``list[float]``
-  (Gemini/Bedrock embeddings); similarity helpers handle both.
+  (Gemini embeddings); similarity helpers handle both.
 - ``RouteResult`` mirrors a benchmark harness contract exactly plus our
   additive fields (trace, tokens_saved_pct), which such a harness ignores.
 """

@@ -26,7 +26,7 @@ from tool_router.domain.errors import ProviderError
 from tool_router.engine.planner import LocalPlanner, PlanOutcome, SegmentScorer
 from tool_router.engine.retrieval import Candidate, QuerySignals
 from tool_router.log import get_logger
-from tool_router.providers.bedrock import BedrockChat, extract_json_object
+from tool_router.providers.base import ChatClient, extract_json_object
 
 logger = get_logger("llm_planner")
 
@@ -79,9 +79,9 @@ def _compact_tool(cand: Candidate) -> dict[str, Any]:
 
 
 class LLMPlanner:
-    """Primary planner: one Bedrock call; LocalPlanner as total fallback."""
+    """Primary planner: one chat-LLM call; LocalPlanner as total fallback."""
 
-    def __init__(self, chat: BedrockChat, fallback: LocalPlanner) -> None:
+    def __init__(self, chat: ChatClient, fallback: LocalPlanner) -> None:
         self._chat = chat
         self._fallback = fallback
 

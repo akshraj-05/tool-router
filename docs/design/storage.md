@@ -114,8 +114,7 @@ providers (e.g. Gemini) affordable across repeated runs.
 Users configure the provider, key, and model without hand-editing a file.
 
 ### What's configurable
-- **Generation LLM provider** — `none` (default, fully offline) | `gemini` (live-verified) |
-  `bedrock` (implemented, not live-tested) — via `TOOL_ROUTER_LLM_PROVIDER`.
+- **Generation LLM provider** — `none` (default, fully offline) | `gemini` (live-verified) — via `TOOL_ROUTER_LLM_PROVIDER`.
 - **Generation LLM model** (`TOOL_ROUTER_LLM_MODEL`) and **embedding provider/model**
   (`TOOL_ROUTER_EMBEDDING_PROVIDER`/`_MODEL`) — changing the embedding provider invalidates and
   rebuilds the cache via the model-stamp check above.

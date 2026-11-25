@@ -42,7 +42,7 @@ Rules:
 
 def enrich_entries(entries: list[IndexedTool], chat, cache: JsonCache) -> int:
     """Enrich search texts in place. Returns how many tools were enriched."""
-    from tool_router.providers.bedrock import extract_json_object  # lazy: optional dep chain
+    from tool_router.providers.base import extract_json_object
 
     enriched = 0
     dirty = False

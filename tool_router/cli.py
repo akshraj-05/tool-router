@@ -65,17 +65,17 @@ def _cmd_init(_: argparse.Namespace) -> int:
     from tool_router.store import save_secret, save_stored_config
 
     print("tool-router setup — press Enter to keep a [default]\n")
-    provider = input("Generation LLM provider (bedrock / none) [bedrock]: ").strip() or "bedrock"
+    provider = input("Generation LLM provider (gemini / none) [gemini]: ").strip() or "gemini"
     values = {"llm_provider": provider}
-    if provider == "bedrock":
-        model = input("Model id [anthropic.claude-3-5-haiku-20241022-v1:0]: ").strip()
+    if provider == "gemini":
+        model = input("Model id [gemini-2.5-flash]: ").strip()
         if model:
             values["llm_model"] = model
-        key = getpass.getpass("AWS Bedrock key (input hidden, Enter to skip): ").strip()
+        key = getpass.getpass("Gemini API key (input hidden, Enter to skip): ").strip()
         if key:
-            where = save_secret("bedrock_key", key)
+            where = save_secret("gemini_key", key)
             print(f"key stored via {where} — never logged, never committed")
-        emb = input("Embedding provider (local / bedrock) [local]: ").strip() or "local"
+        emb = input("Embedding provider (local / gemini) [local]: ").strip() or "local"
         values["embedding_provider"] = emb
     path = save_stored_config(values)
     print(f"config written to {path}\nRun: tool-router serve --catalog your_catalog.json")
@@ -90,7 +90,7 @@ def _cmd_config(args: argparse.Namespace) -> int:
         stored = load_stored_config()
         for key, value in sorted(stored.items()):
             print(f"{key} = {value}")
-        print(f"bedrock key = {'present (masked)' if load_secret('bedrock_key') else 'absent'}")
+        print(f"gemini key = {'present (masked)' if load_secret('gemini_key') else 'absent'}")
         print(f"(stored in {config_dir()})")
         return 0
     if args.action == "set":
@@ -110,7 +110,7 @@ def _cmd_config(args: argparse.Namespace) -> int:
     return 1
 
 
-def main(argv: list[str] | None = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="tool-router", description="Intelligent tool router")
     sub = parser.add_subparsers(dest="command")
 
@@ -155,6 +155,11 @@ def main(argv: list[str] | None = None) -> int:
     p_imp_oa.add_argument("--prefix", default=None, help="cluster/id prefix (default: spec title)")
     p_imp_oa.add_argument("-o", "--output", default=None, help="write tools JSON here (default: stdout)")
 
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
     args = parser.parse_args(argv)
     if args.command == "version":
         print(__version__)

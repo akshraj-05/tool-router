@@ -152,10 +152,13 @@ def validate_submission(
             ))
 
     # 12. CIRCULAR_VERSION_REF — follow the replaced_by chain looking for a loop.
-    if tool_id is not None and isinstance(replaced_by, str) and known_tools:
+    # The submitted tool is not in ``known_tools`` yet, so the loop must test for
+    # "back at a tool we already visited" BEFORE looking the next tool up;
+    # otherwise a cycle through the submission itself is never seen.
+    if tool_id is not None and isinstance(replaced_by, str):
         seen = {tool_id}
-        cursor = replaced_by
-        while cursor in known_tools:
+        cursor: Any = replaced_by
+        while isinstance(cursor, str):
             if cursor in seen:
                 issues.append(GuardrailIssue(
                     code="CIRCULAR_VERSION_REF",
@@ -163,10 +166,7 @@ def validate_submission(
                 ))
                 break
             seen.add(cursor)
-            nxt = known_tools[cursor].get("replaced_by")
-            if not isinstance(nxt, str):
-                break
-            cursor = nxt
+            cursor = (known_tools or {}).get(cursor, {}).get("replaced_by")
 
     return GuardrailResult(tool_id=tool_id, accepted=not issues, issues=issues)
 

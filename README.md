@@ -67,12 +67,12 @@ For the detailed design, see [architecture](docs/design/architecture.md), [engin
 - Python 3.11+
 - Pydantic
 - TF-IDF and BM25 retrieval
-- Optional Gemini / AWS Bedrock provider integrations
+- Optional Gemini provider integration
 - FastAPI and Uvicorn (optional API extra)
 - MCP SDK (optional MCP extra)
 - Docker
 
-The default local path works without an LLM API key. Gemini was used for the reported live hybrid evaluation. The Bedrock provider exists in code but is **not live-tested**. ChromaDB and sentence-transformers are listed as exploratory optional dependencies and are not used by the current routing engine.
+The default local path works without an LLM API key. Gemini was used for the reported live hybrid evaluation. ChromaDB and sentence-transformers are listed as exploratory optional dependencies and are not used by the current routing engine.
 
 ## Quick start
 
@@ -118,11 +118,22 @@ docker build -t tool-router .
 docker run -p 8080:8080 tool-router
 ```
 
+## Running the tests
+
+```bash
+pip install -e ".[api,mcp,test]"
+pytest
+```
+
+The suite runs fully offline: LLM behaviour is driven by a scripted fake chat client, and each test uses its own temporary data and config directories.
+
 See `.env.example` and [onboarding documentation](docs/design/onboarding.md) for configuration and catalog details.
 
 ## Evaluation and limitations
 
 The headline figures above come from a development evaluation suite that is not shipped in this repository. Treat them as measured project results, not a guarantee for a different catalog or workload. The report documents known failure categories and the difference between local-only and LLM-assisted routing.
+
+**Language:** English only. Other languages are not supported, including the confirmation check for destructive requests.
 
 The local planner is deterministic and works offline. LLM-assisted features depend on provider availability, model behaviour, credentials and rate limits; failures are designed to fall back to the local path.
 

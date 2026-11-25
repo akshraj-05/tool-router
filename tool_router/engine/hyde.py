@@ -11,7 +11,11 @@ as much as a "weak but present" one does. In that range it can only help:
 2. Retrieve again using that hypothetical (it "looks like" a real tool doc → tighter match).
 3. Merge with the original candidates by max score, re-collapse duplicates.
 
-Never fires when top < floor (true out-of-scope — we must not fabricate a match) or when
+It DOES fire below the out-of-scope floor, on purpose: a colloquial in-scope query and a truly
+out-of-scope query can both score ~0 lexically, so excluding below-floor scores would stop HyDE
+from rescuing exactly the queries that need it. Safety is enforced afterwards instead: the floor
+still applies to the merged (HyDE-boosted) score, and the LLM planner's explicit `out_of_scope`
+verdict vetoes a hypothetical that only matched by accident. It never fires when
 top >= hyde_max (already confident — don't disturb it). Requires a chat model; degrades to a
 no-op if unavailable or if generation fails.
 """

@@ -7,7 +7,6 @@
 #
 # The LLM key is injected at RUN time only (never baked into the image):
 #   docker run -e GEMINI_API_KEY=... -e TOOL_ROUTER_LLM_PROVIDER=gemini ...      (live-verified)
-#   docker run -e AWS_BEARER_TOKEN_BEDROCK=... -e TOOL_ROUTER_LLM_PROVIDER=bedrock ...  (untested)
 
 FROM python:3.13-slim
 
@@ -16,7 +15,7 @@ WORKDIR /app
 # Install the package first for layer caching, then the source.
 COPY pyproject.toml README.md ./
 COPY tool_router ./tool_router
-RUN pip install --no-cache-dir ".[api,bedrock]"
+RUN pip install --no-cache-dir ".[api]"
 
 # Non-root user (production hygiene).
 RUN useradd --create-home router && chown -R router /app

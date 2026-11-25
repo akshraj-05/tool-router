@@ -7,7 +7,7 @@ Why this exists (design rationale):
   signal: tool descriptions and queries share vocabulary heavily.
 - Deterministic: same corpus -> same vectors -> reproducible benchmarks.
 
-The Gemini and Bedrock embedding providers implement the same interface; the
+The Gemini embedding provider implements the same interface; the
 engine does not know which one it is using. This is the default.
 """
 

@@ -20,8 +20,8 @@ dependencies = [
 
 [project.optional-dependencies]
 api = ["fastapi>=0.110", "uvicorn>=0.29"]          # REST service — implemented, used
-mcp = ["mcp>=1.0"]                                  # MCP server + importer — implemented, used
-bedrock = ["boto3>=1.34"]                           # AWS Bedrock providers — implemented, NOT live-tested (only a Gemini key was available for live testing)
+mcp = ["mcp>=1.0,<2"]                               # MCP server + importer — implemented, used (mcp 2.x renamed FastMCP: not supported yet)
+test = ["pytest>=8", "httpx>=0.27"]                 # run the test suite: pip install -e ".[api,mcp,test]"
 keyring = ["keyring>=24"]                           # OS keyring for secrets — used opportunistically if installed; falls back to a 0600 file otherwise (this is the tested path)
 # The two extras below are NOT WIRED into the engine today (no code imports them).
 # They were explored as possible future components — see engine-design.md / storage.md
@@ -34,3 +34,6 @@ tool-router = "tool_router.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["tool_router*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

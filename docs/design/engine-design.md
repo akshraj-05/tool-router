@@ -28,8 +28,7 @@ LLM** (enrichment + conditional HyDE + final planning). Both behind provider int
 planner step is skipped entirely in favor of the deterministic `LocalPlanner`). Live-verified
 alternative *configuration*: **Google Gemini** (`providers/gemini.py`, chat + embeddings) set via
 `TOOL_ROUTER_LLM_PROVIDER=gemini` — this is a config choice, not a code path that's "not built";
-once set, the LLM planner (Step 6) and conditional HyDE both become active. An AWS Bedrock
-provider also exists in code (`providers/bedrock.py`) but has not been live-tested end-to-end.
+once set, the LLM planner (Step 6) and conditional HyDE both become active.
 Embeddings must be consistent within one index (enforced by a model-stamp check in the
 persistence layer).
 
@@ -102,7 +101,7 @@ flowchart TB
     CAP -->|"no"| WIDE --> PLAN
   end
 
-  LLMSVC["☁️ Generation LLM<br/>default: none (local) · Gemini live-verified · Bedrock in code"]:::ext
+  LLMSVC["☁️ Generation LLM<br/>default: none (local) · Gemini live-verified"]:::ext
   OUT["✅ assemble: selected_tools (original schemas)<br/>+ ordered plan + tokens_saved + trace"]:::out
 
   IDX -.->|"indexed tools"| SCORE
@@ -195,8 +194,7 @@ Convert each tool's (enriched) text into a vector.
 - **One embedding model per index** — tools and queries are embedded with the same model/space.
   Provider-agnostic (`tool_router/providers/base.py` interface); **default = local TF-IDF**
   (`providers/local_tfidf.py`, zero dependencies, corpus-fitted at index build time); swappable
-  to Gemini embeddings (`providers/gemini.py`, live-verified) or Bedrock Titan
-  (`providers/bedrock.py`, implemented, not live-tested).
+  to Gemini embeddings (`providers/gemini.py`, live-verified).
 
 ### TF-IDF in detail (`providers/local_tfidf.py`, the default embedding provider)
 
@@ -221,7 +219,7 @@ This codebase's specific implementation:
   stopwords already stripped.
 - **Sparse vectors** — `{term: weight}` dicts, not fixed-length arrays; only terms that actually
   occur get an entry. This is why `Vector` (`domain/models.py`) is `dict[str, float] | list[float]`
-  — sparse for TF-IDF, dense for Gemini/Bedrock — and `cosine()` (`engine/text.py`) handles both.
+  — sparse for TF-IDF, dense for Gemini — and `cosine()` (`engine/text.py`) handles both.
 - **Unseen query terms** get a neutral `idf = 1.0` instead of being dropped, so a query word never
   seen in any tool description still contributes (BM25 catches it too, independently).
 - **Why TF-IDF by default, not a neural embedding**: zero dependencies, zero network calls, fully
@@ -495,7 +493,7 @@ them out keeps the prompt (and cost) small.
    nothing because of an LLM outage.
 
 `selected_tools = unique(plan tool_ids)`. **Provider-agnostic** — default none (local planner),
-Gemini live-verified, Bedrock implemented but not live-tested.
+Gemini live-verified.
 
 **Arbitration** (`engine/pipeline.py`): a planner-level `clarify` is treated as a second opinion.
 When the local confidence gate already established high confidence and there is no destructive
@@ -608,8 +606,7 @@ engine works with no external dependency at all.
   with conditional HyDE and the scope arbiter it lifts the harness from 83% (local-only) to 90%.
 - **Two components, provider-agnostic:** embedding model + generation LLM, both behind
   interfaces (`tool_router/providers/`). **Default = local TF-IDF + no LLM** (fully offline);
-  live-verified alternative = **Google Gemini**; an AWS Bedrock provider exists in code but is
-  untested end-to-end. Embeddings must be consistent per index (enforced via a model stamp).
+  live-verified alternative = **Google Gemini**. Embeddings must be consistent per index (enforced via a model stamp).
 - **Weights `w_dense`, `w_bm25`, `w_cap`, and confidence thresholds** live in `config.py`,
   tunable via env vars, and were tuned against the 29-case suite plus validated on a separate
   held-out set (10/12) to check for generalization rather than overfitting.

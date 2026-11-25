@@ -60,7 +60,7 @@ denominator) — the router's value grows with catalog size.
 
 ## LLM planner — LIVE results (Gemini key; provider-agnostic design absorbed the switch)
 
-The team's key turned out to be Google **Gemini** (not Bedrock): one new provider module,
+The team's key was a Google **Gemini** key: one provider module,
 zero engine changes. Live findings — an honest small-model study:
 
 | Live run | Model | Accuracy | Note |

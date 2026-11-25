@@ -6,7 +6,7 @@ showcase for MCP agents.
 
 Mental model: our system takes the **user's natural-language query** and returns the **relevant
 tools (+ their schemas + suggested order)**. We select tools; the client's LLM executes them.
-There are two LLMs — the client's agent LLM (does the work) and our internal Bedrock planner
+There are two LLMs — the client's agent LLM (does the work) and our internal planner
 (hidden plumbing). We never receive anything "from the LLM"; we read the query text.
 
 ---
@@ -28,14 +28,14 @@ POST /route { "query": "<user request>" }
 ### LangChain
 ```python
 import requests
-from langchain_aws import ChatBedrock
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 def tools_for(query):
     res = requests.post("http://localhost:8080/route", json={"query": query}).json()
     return [to_lc_tool(t) for t in res["selected_tools"]]   # convert schema -> LC tool
 
 query = "email last quarter's revenue chart to finance"
-llm = ChatBedrock(model="anthropic.claude-3-5-sonnet-...")
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
 llm_with_tools = llm.bind_tools(tools_for(query))          # only K bound, not 64
 response = llm_with_tools.invoke(query)
 ```

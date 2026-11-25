@@ -14,7 +14,7 @@ Layout (never a hardcoded /opt-style path — see storage.md):
 - **Content-hash cache**: a vector is reused only when BOTH the tool's text
   hash AND the model stamp match. For corpus-dependent models (local TF-IDF)
   the stamp includes the corpus hash, which correctly invalidates the whole
-  cache when the catalog changes; for hosted models (Titan) the stamp is the
+  cache when the catalog changes; for hosted models (Gemini) the stamp is the
   model id, so mutations re-embed only changed tools.
 - ``rebuild=True`` (or $TOOL_ROUTER_REBUILD=1, or ``serve --rebuild``) wipes
   and re-derives — the escape hatch.
@@ -166,7 +166,7 @@ def save_secret(name: str, value: str) -> str:
 
 def load_secret(name: str) -> Optional[str]:
     """Env var wins; then keyring; then the 0600 fallback file."""
-    env_map = {"bedrock_key": "AWS_BEARER_TOKEN_BEDROCK", "gemini_key": "GEMINI_API_KEY"}
+    env_map = {"gemini_key": "GEMINI_API_KEY"}
     env_val = os.environ.get(env_map.get(name, name.upper()))
     if env_val:
         return env_val

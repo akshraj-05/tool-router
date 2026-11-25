@@ -1,6 +1,6 @@
 """Google Gemini provider (chat planner + embeddings) — swappable via config.
 
-Same interfaces as the Bedrock/local providers — the engine is provider-agnostic.
+Same interfaces as the local provider — the engine is provider-agnostic.
 stdlib-only (urllib) — no new dependencies. Key from GEMINI_API_KEY / stored
 secret; never logged. 429 rate limits are retried with bounded backoff; every
 other failure raises ProviderError so the engine degrades to local components.

@@ -121,8 +121,8 @@ flowchart TB
   %% ===== providers + config =====
   subgraph PROV["☁️ Providers — swappable · OUT-OF-THE-BOX config = local embeddings + llm_provider=none"]
     direction LR
-    PE["embedding model<br/>(local TF-IDF default · or Gemini/Bedrock)"]:::ext
-    PL["generation LLM<br/>(none = local planner only · or Gemini/Bedrock)"]:::ext
+    PE["embedding model<br/>(local TF-IDF default · or Gemini)"]:::ext
+    PL["generation LLM<br/>(none = local planner only · or Gemini)"]:::ext
   end
   CFG["🔑 Config — key + model<br/>CLI init (pip) · /setup page · env override"]:::cfg
 
@@ -303,7 +303,9 @@ Python function signatures directly) is not built.
 ## 7. The routing engine pipeline (inside `/route`)  → `engine-design.md`
 
 Ranking is **two-stage as implemented**: fused multi-signal retrieval (local) → **one** LLM call
-for final planning. No regex. In order:
+for final planning. Query analysis is deterministic (regex and word lists for signals such as
+destructive intent, IDs and enumerations), but retrieval and ranking are score-based, not
+pattern-matched. In order:
 
 1. **Understand + embed query** — embed + BM25 tokenize. *[local]*
 2. **Fused retrieval** — score every tool: `dense cosine + BM25 lexical + capability match
@@ -333,8 +335,7 @@ Two components behind interfaces: **embedding model** + **generation LLM** (enri
 rank/plan + conditional HyDE). **Out-of-the-box config = local TF-IDF embeddings +
 `llm_provider=none`** — this configuration is fully offline (planner falls back to the
 deterministic `LocalPlanner`, HyDE cannot fire); it is one supported configuration, not a
-degraded mode. Swappable, via config only (no code change), to **Gemini** (live-verified) or AWS
-Bedrock, which activates the LLM planner and conditional HyDE — see the accuracy-by-configuration
+degraded mode. Swappable, via config only (no code change), to **Gemini** (live-verified), which activates the LLM planner and conditional HyDE — see the accuracy-by-configuration
 table in §2's diagram notes above. Embeddings computed once at onboarding and cached to a
 per-project JSON file keyed by content hash (see §9).
 
@@ -394,7 +395,7 @@ tool-router/
 │   │                            text (tokenize/signals) · confidence (dynamic-K gate) ·
 │   │                            dedup · derive (clusters/versions/dup-groups) · ingest ·
 │   │                            guardrail · planner (local) · llm_planner · hyde · enrich
-│   ├── providers/               base (interface) · local_tfidf (default) · gemini · bedrock
+│   ├── providers/               base (interface) · local_tfidf (default) · gemini
 │   ├── importers/               mcp_importer · openapi_importer · common
 │   ├── adapters/harness_router.py   Router class → thin wrapper for run_benchmark.py
 │   ├── api.py                  FastAPI: /registry /route /registry/mutate /health /setup
@@ -412,8 +413,7 @@ re-ranker stage, a vector-DB storage backend (Chroma/Qdrant), a browser Settings
 ## 12. Tech stack (as implemented)
 
 Python 3.11+ (dev sandbox: 3.13 in a **venv**, managed via **pyproject.toml**) · pydantic ·
-platformdirs · FastAPI + uvicorn (`api` extra) · `mcp` SDK (`mcp` extra) · boto3 (`bedrock`
-extra, optional) · stdlib-only Gemini client (`providers/gemini.py`, no extra needed). **No
+platformdirs · FastAPI + uvicorn (`api` extra) · `mcp` SDK (`mcp` extra) · stdlib-only Gemini client (`providers/gemini.py`, no extra needed). **No
 runtime dependency on chromadb or sentence-transformers** — both remain optional/unused extras
 in `pyproject.toml` for a possible future vector-DB or cross-encoder backend. Install:
 `pip install -e .` + `tool-router serve`, or one `docker run`.
@@ -436,7 +436,7 @@ in `pyproject.toml` for a possible future vector-DB or cross-encoder backend. In
 | Phase | Scope | Result |
 |---|---|---|
 | **1** | Package scaffold · schemas/config · guardrail · ingest/enrich/auto-derive · local store · retrieval (BM25 + local embedding) · dedup · dynamic-K · harness adapter | ✅ built — 24/29 (83%) with zero LLM; guardrail 11/11 |
-| **2** | LLM planner (Gemini live-verified; Bedrock in code, untested) · local fallback · versions · capability check + widen | ✅ built — 25/29 (86%) with arbitration |
+| **2** | LLM planner (Gemini, live-verified) · local fallback · versions · capability check + widen | ✅ built — 25/29 (86%) with arbitration |
 | **3** | Churn engine · REST API · config CLI · Docker | ✅ built — churn 8/8; `docker run` verified |
 | **4** | MCP server · conditional HyDE + scope-arbiter · importers (MCP + OpenAPI) | ✅ built — 26/29 (90%); MCP session-tested; both importers verified end-to-end |
 
@@ -447,7 +447,7 @@ levers.
 
 ## 15. Guardrails on ourselves
 
-- Never commit an LLM/Bedrock key — `.env.example` / OS keyring / a `0600` file only.
+- Never commit an LLM key — `.env.example` / OS keyring / a `0600` file only.
 - Honestly label real vs mocked: router/gateway/validator/churn are real; catalog tools are
   definitions only (the engine selects tools, it never executes them) — this is stated plainly,
   not buried.
