@@ -48,6 +48,11 @@ class ConfidenceThresholds:
     shortlist_max: int = 8             # hard cap on candidates handed to the planner
     dup_similarity: float = 0.60       # cosine threshold for auto near-duplicate detection
     dup_param_overlap: float = 0.34    # param-name Jaccard threshold for auto near-dups
+    # Arbitration: when the LLM planner answers "clarify" but the local gate already
+    # scored the top tool at or above this, the LLM refusal is treated as an
+    # over-clarification and the local plan is used instead (eval_report.md: the step
+    # that lifted accuracy from 69% to 86%). Set very high (e.g. 2.0) to never override.
+    arbitration_min_fused: float = 0.45
 
 
 @dataclass(frozen=True)
@@ -56,8 +61,9 @@ class Settings:
 
     weights: RetrievalWeights = field(default_factory=RetrievalWeights)
     confidence: ConfidenceThresholds = field(default_factory=ConfidenceThresholds)
-    embedding_provider: str = "local"   # "local" | "gemini" | "bedrock"
-    llm_provider: str = "none"          # "none" (local planner) | "gemini" | "bedrock"
+    embedding_provider: str = "local"   # "local" | "gemini"
+    llm_provider: str = "none"          # "none" (local planner) | "gemini"
+    llm_model: str = ""                 # "" = the provider's own default model
     # Default OFF: live testing found LLM ingest enrichment can blur near-duplicate
     # tools (e.g. routed "total revenue" to the wrong near-identical finance tool)
     # and adds a one-time cold-start cost per tool — see eval_report.md. Opt in only
@@ -95,6 +101,10 @@ class Settings:
                 out_of_scope_floor=_env_float(
                     "TOOL_ROUTER_FLOOR", ConfidenceThresholds.out_of_scope_floor
                 ),
+                hyde_max=_env_float("TOOL_ROUTER_HYDE_MAX", ConfidenceThresholds.hyde_max),
+                arbitration_min_fused=_env_float(
+                    "TOOL_ROUTER_ARBITRATE_MIN", ConfidenceThresholds.arbitration_min_fused
+                ),
                 shortlist_ratio=_env_float(
                     "TOOL_ROUTER_SHORTLIST_RATIO", ConfidenceThresholds.shortlist_ratio
                 ),
@@ -110,6 +120,7 @@ class Settings:
             ),
             embedding_provider=pick("TOOL_ROUTER_EMBEDDING_PROVIDER", "embedding_provider", "local"),
             llm_provider=pick("TOOL_ROUTER_LLM_PROVIDER", "llm_provider", "none"),
+            llm_model=pick("TOOL_ROUTER_LLM_MODEL", "llm_model", ""),
             llm_enrich=pick("TOOL_ROUTER_LLM_ENRICH", "llm_enrich", "off") in ("on", "1", "true"),
             max_widen_rounds=int(_env_float("TOOL_ROUTER_MAX_WIDEN_ROUNDS", 1)),
             rebuild=os.environ.get("TOOL_ROUTER_REBUILD", "") in ("1", "true", "yes"),

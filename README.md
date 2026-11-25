@@ -129,6 +129,10 @@ The suite runs fully offline: LLM behaviour is driven by a scripted fake chat cl
 
 See `.env.example` and [onboarding documentation](docs/design/onboarding.md) for configuration and catalog details.
 
+## LangGraph example
+
+[`examples/langgraph_agent/`](examples/langgraph_agent/README.md) shows the router as a step in a LangGraph agent: it picks the tools first, and the model sees only those. The tools are simulated, and the offline comparison needs no API key. LangGraph is a dependency of the example only, not of Tool Router.
+
 ## Evaluation and limitations
 
 The headline figures above come from a development evaluation suite that is not shipped in this repository. Treat them as measured project results, not a guarantee for a different catalog or workload. The report documents known failure categories and the difference between local-only and LLM-assisted routing.
