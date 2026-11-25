@@ -1,27 +1,13 @@
-"""Persistence layer (storage.md): OS-agnostic dirs, project isolation, caches.
+"""Vector cache, settings and secrets.
 
-Layout (never a hardcoded /opt-style path — see storage.md):
-
-    <data_dir>/tool_router/projects/<project-id>/
-        embeddings.json    per-tool vectors keyed by content hash + model stamp
-        enrichment.json    one-time LLM enrichment results keyed by content hash
-
-- ``data_dir`` = $TOOL_ROUTER_DATA_DIR override, else the platformdirs per-OS
-  user-data location (Linux ~/.local/share, macOS ~/Library/..., Windows AppData).
-- ``project id`` = auto via a ``.tool_router`` marker file in the working
-  directory (stable across renames/moves); falls back to a hash of the cwd
-  when the directory isn't writable. Two projects can never collide.
-- **Content-hash cache**: a vector is reused only when BOTH the tool's text
-  hash AND the model stamp match. For corpus-dependent models (local TF-IDF)
-  the stamp includes the corpus hash, which correctly invalidates the whole
-  cache when the catalog changes; for hosted models (Gemini) the stamp is the
-  model id, so mutations re-embed only changed tools.
-- ``rebuild=True`` (or $TOOL_ROUTER_REBUILD=1, or ``serve --rebuild``) wipes
-  and re-derives — the escape hatch.
-
-Config + secrets live in the platformdirs *config* dir:
-    config.json   non-secret settings written by `tool-router init` / /setup
-    secrets.json  0600-permission fallback when the OS keyring is unavailable
+- **Cache** (``JsonCache``): ``{content hash: value}`` bound to a model stamp. It is
+  kept in the state folder (see ``state.py``) or, without one, only in memory. A
+  value is reused only when both the tool's text hash and the model stamp match;
+  the local TF-IDF stamp includes a corpus hash, so a catalog change invalidates
+  its vectors.
+- **Settings and secrets** live in the per-user config folder, never in a project:
+      config.json   non-secret settings written by `tool-router init` / /setup
+      secrets.json  0600-permission fallback when the OS keyring is unavailable
 """
 
 from __future__ import annotations
@@ -29,18 +15,17 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import uuid
 from pathlib import Path
 from typing import Any, Optional
 
-from platformdirs import user_config_dir, user_data_dir
+from platformdirs import user_config_dir
 
 from tool_router.log import get_logger
+from tool_router.state import write_atomic
 
 logger = get_logger("store")
 
 _APP, _AUTHOR = "tool_router", "tool_router"
-_MARKER = ".tool_router"
 _SECRET_SERVICE = "tool-router"
 
 
@@ -48,41 +33,20 @@ def content_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:24]
 
 
-def data_dir() -> Path:
-    override = os.environ.get("TOOL_ROUTER_DATA_DIR")
-    return Path(override) if override else Path(user_data_dir(_APP, _AUTHOR))
-
-
 def config_dir() -> Path:
     return Path(user_config_dir(_APP, _AUTHOR))
-
-
-def resolve_project_id(project_dir: Optional[Path] = None) -> str:
-    """Stable per-project id via a marker file (auto multi-project isolation)."""
-    root = Path(project_dir or Path.cwd())
-    marker = root / _MARKER
-    try:
-        if marker.exists():
-            pid = json.loads(marker.read_text()).get("project_id")
-            if isinstance(pid, str) and pid:
-                return pid
-        pid = uuid.uuid4().hex[:12]
-        marker.write_text(json.dumps({"project_id": pid}) + "\n")
-        logger.info("created project marker %s (add %s to .gitignore)", marker, _MARKER)
-        return pid
-    except OSError:
-        # Read-only location: fall back to a path hash (still isolated, just
-        # not rename-stable — documented in storage.md).
-        return content_hash(str(root.resolve()))[:12]
 
 
 class JsonCache:
     """A small persisted {key: value} cache bound to a model stamp."""
 
-    def __init__(self, path: Path, model_stamp: str, rebuild: bool = False) -> None:
+    def __init__(self, path: Optional[Path], model_stamp: str, rebuild: bool = False) -> None:
+        """``path=None`` keeps the cache in memory only."""
         self._path = path
         self._stamp = model_stamp
         self._data: dict[str, Any] = {}
+        if path is None:
+            return
         if rebuild:
             logger.info("cache rebuild requested — starting fresh: %s", path.name)
             return
@@ -105,24 +69,25 @@ class JsonCache:
     def put(self, key: str, value: Any) -> None:
         self._data[key] = value
 
+    def keep(self, keys: set[str]) -> bool:
+        """Drop every other entry. Returns True if anything was dropped."""
+        stale = self._data.keys() - keys
+        for key in stale:
+            del self._data[key]
+        return bool(stale)
+
     def save(self) -> None:
+        if self._path is None:
+            return
         try:
-            self._path.parent.mkdir(parents=True, exist_ok=True)
-            self._path.write_text(json.dumps(
-                {"model_stamp": self._stamp, "entries": self._data}
-            ))
+            self._path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            write_atomic(self._path, json.dumps({"model_stamp": self._stamp, "entries": self._data}))
         except OSError as exc:
             logger.warning("could not persist cache %s (%s) — continuing in-memory", self._path, exc)
 
     @property
     def size(self) -> int:
         return len(self._data)
-
-
-def project_cache(name: str, model_stamp: str, rebuild: bool = False) -> JsonCache:
-    """Open a named cache under the current project's data directory."""
-    pid = resolve_project_id()
-    return JsonCache(data_dir() / "projects" / pid / f"{name}.json", model_stamp, rebuild)
 
 
 # --------------------------- config + secrets -------------------------------

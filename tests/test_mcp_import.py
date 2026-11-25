@@ -201,10 +201,11 @@ def test_end_to_end_mcp_scan_route_then_call_the_real_tool(sandbox):
 
     async def run() -> str:
         env = {**get_default_environment(), **{
-            k: os.environ[k] for k in ("TOOL_ROUTER_DATA_DIR", "XDG_CONFIG_HOME", "HOME")}}
+            k: os.environ[k] for k in ("XDG_CONFIG_HOME", "HOME")}}
         router = StdioServerParameters(
             command=sys.executable,
-            args=["-m", "tool_router.cli", "mcp", "--import-mcp", command(SHOP)], env=env)
+            args=["-m", "tool_router.cli", "mcp", "--import-mcp", command(SHOP)], env=env,
+            cwd=str(Path.cwd()))
         async with stdio_client(router) as (read, write):
             async with ClientSession(read, write) as session:
                 await session.initialize()

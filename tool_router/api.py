@@ -33,6 +33,7 @@ Requires the `api` extra: pip install .[api]
 from __future__ import annotations
 
 import json
+import threading
 from html import escape as _escape
 from typing import Any, Optional
 
@@ -45,12 +46,15 @@ from tool_router.domain.errors import (
     DuplicateToolError,
     InvalidCatalogError,
     InvalidToolError,
+    StateError,
     ToolInUseError,
     ToolNotFoundError,
 )
+from tool_router.domain.versioning import inherit_side_effects
 from tool_router.engine.pipeline import RoutingEngine
 from tool_router.limits import max_input_bytes
 from tool_router.log import get_logger
+from tool_router.state import SavedState, StateStore
 
 logger = get_logger("api")
 
@@ -119,7 +123,11 @@ class _BodyLimit:
         await self.app(scope, replay, send)
 
 
-def create_app(catalog: Optional[dict[str, Any]] = None):
+def create_app(
+    catalog: Optional[dict[str, Any]] = None,
+    store: Optional[StateStore] = None,
+    previous: Optional[SavedState] = None,
+):
     """App factory. Import of FastAPI is deferred so the core package works
     without the `api` extra installed."""
     try:
@@ -138,7 +146,11 @@ def create_app(catalog: Optional[dict[str, Any]] = None):
     state: dict[str, Optional[RoutingEngine]] = {"engine": None}
 
     if catalog is not None:
-        state["engine"] = RoutingEngine(catalog, settings=Settings.from_env())
+        state["engine"] = RoutingEngine(
+            catalog, settings=Settings.from_env(), store=store, previous=previous)
+    # One change at a time, so replacing the registry cannot race a tool edit
+    # (both save to the same folder). Routing never takes this lock.
+    registry_lock = threading.Lock()
 
     def _engine_or_400() -> RoutingEngine:
         engine = state["engine"]
@@ -151,8 +163,19 @@ def create_app(catalog: Optional[dict[str, Any]] = None):
 
     @app.post("/registry")
     def register(req: RegistryRequest) -> dict[str, Any]:
-        engine = _apply(lambda: RoutingEngine(req.model_dump(), settings=Settings.from_env()))
-        state["engine"] = engine
+        def replace() -> RoutingEngine:
+            current = state["engine"]
+            before = current.snapshot() if current else previous
+            catalog = req.model_dump()
+            if before:
+                catalog["tools"] = inherit_side_effects(catalog["tools"], before.tools)
+            engine = RoutingEngine(
+                catalog, settings=Settings.from_env(), store=store, previous=before,
+            )
+            state["engine"] = engine
+            return engine
+
+        engine = _change(replace)
         return {
             "status": "indexed",
             "tool_count": engine.tool_count,
@@ -175,13 +198,24 @@ def create_app(catalog: Optional[dict[str, Any]] = None):
 
     @app.patch("/registry/mutate")
     def mutate(req: MutateRequest) -> dict[str, Any]:
-        engine = _engine_or_400()
-        return _apply(lambda: engine.apply_mutation({"add": req.add, "remove": req.remove}))
+        _engine_or_400()
+        return _change(lambda: state["engine"].apply_mutation({"add": req.add, "remove": req.remove}))
+
+    def _change(action):
+        """``_apply`` for operations that change the registry: one at a time."""
+        def locked():
+            with registry_lock:
+                return action()
+        return _apply(locked)
 
     def _apply(action):
         """Run a registry operation, translating its errors into HTTP responses."""
         try:
             return action()
+        except StateError as exc:
+            raise HTTPException(
+                status_code=500, detail=f"Not saved, so nothing changed: {exc}"
+            ) from exc
         except ToolNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except DuplicateToolError as exc:
@@ -211,19 +245,19 @@ def create_app(catalog: Optional[dict[str, Any]] = None):
 
     @app.post("/registry/tools", status_code=201)
     def create_tool(tool: dict[str, Any]) -> dict[str, Any]:
-        engine = _engine_or_400()
-        return _apply(lambda: engine.create_tool(tool))
+        _engine_or_400()
+        return _change(lambda: state["engine"].create_tool(tool))
 
     @app.put("/registry/tools/{tool_id}")
     def update_tool(tool_id: str, tool: dict[str, Any]) -> dict[str, Any]:
-        engine = _engine_or_400()
-        return _apply(lambda: engine.update_tool(tool_id, tool))
+        _engine_or_400()
+        return _change(lambda: state["engine"].update_tool(tool_id, tool))
 
     @app.delete("/registry/tools/{tool_id}")
     def delete_tool(tool_id: str) -> dict[str, Any]:
-        engine = _engine_or_400()
-        _apply(lambda: engine.delete_tool(tool_id))
-        return {"deleted": tool_id, "tool_count": engine.tool_count}
+        _engine_or_400()
+        _change(lambda: state["engine"].delete_tool(tool_id))
+        return {"deleted": tool_id, "tool_count": state["engine"].tool_count}
 
     def _secret_slot(provider: str) -> Optional[str]:
         """Secret name for a provider, or None if that provider takes no key.

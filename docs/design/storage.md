@@ -1,113 +1,69 @@
 # Storage — Design Decisions (as implemented)
 
-How the router persists tools + embeddings. Goals: **easy to use, pluggable, OS-agnostic,
-no external DB, safe across multiple projects.**
+Goals: **survive restarts, easy to inspect, no external database, no secrets in a project.**
 
-## What we store
+## What is stored
 
-Only two small things (whole thing is well under 1 MB at our scale):
-1. **The registry** — the tool definitions themselves, held in memory (`RoutingEngine._raw_tools`
-   / `_raw_by_id`); returned to clients unchanged (`raw_tool()`).
-2. **Embeddings** — the "meaning numbers" per tool (expensive to compute → cached to disk).
+| Data | Where | Notes |
+|---|---|---|
+| Registered tools and their history | `.tool-router/catalog.json` | `state.py` |
+| Tool vectors | `.tool-router/embeddings.json` | content hash + model stamp (`store.py::JsonCache`) |
+| LLM enrichment (off by default) | `.tool-router/enrichment.json` | same cache format |
+| Settings and API key | per-user config dir / OS keyring | never in the project |
 
-Derived maps (clusters, near-dup groups, version families, capability tokens) are recomputed in
-milliseconds from the registry at index-build time, not separately persisted.
+BM25 statistics and derived maps (clusters, near-duplicate groups, version families) are
+recalculated from the catalog when the index is built. Queries and results are not stored.
 
-## The store: an embedded JSON file (no server, no vector DB)
+## The state folder
 
-- **What we actually ship** (`tool_router/store.py`): a small persisted key→value cache
-  (`JsonCache`) — per-tool embedding vectors written to a plain JSON file
-  (`embeddings.json`), keyed by a content hash of the tool's text and stamped with the
-  embedding provider's identity (model id, or a corpus hash for the local TF-IDF provider).
-  A second cache (`enrichment.json`) holds one-time LLM-enrichment results the same way.
-  Similarity search itself runs **in-process** (plain Python cosine in `engine/text.py`,
-  BM25 in `engine/bm25.py`) over these vectors — there is no vector-database server or
-  embedded vector-DB library involved.
-- No external server, no Postgres, no vector-DB dependency, nothing to install or run — it's
-  pure Python and ships as part of the package.
-- **Why not a vector DB (e.g. Chroma):** at the catalog sizes this router targets (order of
-  10²–10³ tools; verified up to 104 in the scale-stress scenario), brute-force cosine over all
-  vectors is sub-millisecond — a vector DB's approximate-nearest-neighbor index buys nothing at
-  this scale. It would also only replace the *dense-cosine* slice of the fused score (dense +
-  BM25 + capability + penalties, see `engine-design.md`), not the whole ranking — so we'd still
-  compute the other signals in Python and recombine. It remains a reasonable option if the
-  catalog grows far larger, kept behind the same `EmbeddingProvider`/store boundary so it could
-  be added later without touching the engine.
-
-## Where the data lives (OS-agnostic)
-
-Never hardcode a path like `/opt` (Linux-only). Instead:
-
-- **pip / local:** `platformdirs.user_data_dir("tool_router", "tool_router")` → correct per-OS
-  location (Linux `~/.local/share/...`, macOS `~/Library/Application Support/...`, Windows
-  `%LOCALAPPDATA%\...`). Overridable via `TOOL_ROUTER_DATA_DIR`.
-- **Docker:** always Linux inside the container, so the same `platformdirs` call resolves
-  consistently; mount a volume at whatever `TOOL_ROUTER_DATA_DIR` you set (or the default
-  resolved path) so it survives container restarts.
-
-Config/secrets use a **separate** platformdirs location, `user_config_dir(...)` — currently
-**not** overridable by an env var (only the data dir has `TOOL_ROUTER_DATA_DIR`); persisting it
-across container restarts means mounting a volume at that resolved path.
-
-## Folder layout (as implemented)
+`serve` and `mcp` use `./.tool-router` (change with `--state-dir`, disable with `--no-persist`).
+Code that builds a `RoutingEngine` without a `StateStore` keeps everything in memory.
 
 ```
-<platformdirs data dir>/
-  projects/
-    <project-id>/
-      embeddings.json     # {"model_stamp": "...", "entries": {content_hash: vector}}
-      enrichment.json     # {"model_stamp": "llm-enrich-v1", "entries": {content_hash: {...}}}
-
-<platformdirs config dir>/
-  config.json             # non-secret settings written by `tool-router init` / `config set` / /setup
-  secrets.json            # 0600-permission fallback when the OS keyring is unavailable
+.tool-router/
+  .gitignore         "*"
+  catalog.json       {"format_version": 1, "saved_at": "...", "near_duplicate_groups": [...],
+                      "tools": [...], "history": {"<id>": [older definitions]}}
+  embeddings.json    {"model_stamp": "...", "entries": {content_hash: vector}}
 ```
 
-There is no separate `registry.json`/`meta.json` on disk — the registry lives in the running
-process's memory for the lifetime of the service; each cache file's own `model_stamp` field
-plays the role a separate `meta.json` would.
+- **Atomic writes:** each file is written to a temporary file (mode 0600), flushed to disk and
+  renamed over the old one.
+- **Disk first:** a change is saved before the new index is published. If saving fails, memory
+  and disk both keep the previous state.
+- **Damaged state:** an unreadable `catalog.json` stops startup and is left untouched. A damaged
+  cache file is discarded and recalculated.
+- **One router per folder:** there is no cross-process lock.
 
-## Multi-project isolation — automatic
+## Startup: upsert into the saved registry
 
-Each project gets its own `<project-id>` folder → indexes never mix. The id is derived
-**automatically** via a marker file in the current working directory:
+`--catalog` and `--import-mcp` are merged into the saved catalog by tool id
+(`catalog_loader.merge_with_saved`): new ids are added, existing ids take the incoming
+definition (an omitted `side_effects` keeps the saved value), and saved tools missing from the
+input are kept unless `--prune`. The merged catalog passes the same strict guardrail; if it
+fails, startup stops and the saved file is unchanged. `POST /registry` replaces the registry.
 
-```
-your-project/
-  .tool_router        # { "project_id": "..." }  auto-created on first run
-```
+## Versions and history (`domain/versioning.py`)
 
-Resolution order (`store.py::resolve_project_id`):
-```
-marker file exists?  -> read project_id            (stable even if the folder is renamed/moved)
-else writable?       -> generate id, write marker
-else                 -> hash(cwd absolute path)     (fallback; not rename-stable)
-```
+A changed definition becomes the current entry with a higher version; the previous one moves to
+`history` (10 kept per id, never routed). Major: the call name changed, or a parameter was
+removed, renamed, retyped or made required. Minor: an optional parameter added, a parameter made
+optional, or a parameter description changed. Patch: anything else. A higher caller-supplied
+version is used instead. Deleted tools move to history, and re-adding one continues its numbering.
 
-- Two projects (different working directories) → two markers → two isolated stores.
-- Same project (same working directory) → same id → reuses its cache (no re-embedding cost).
-- **Add `.tool_router` to `.gitignore`** so the id isn't committed (else clones would share it).
-- Caches are **per-project, not shared across projects** — two projects that happen to register
-  an identical tool each pay their own one-time embedding cost.
+## Vectors
 
-## Conflict handling (self-healing)
+- Cosine similarity runs in-process; there is no vector database.
+- A vector is reused only if both the tool-text hash and the model stamp match. The local TF-IDF
+  stamp includes a corpus hash, so any catalog change recalculates its vectors (cheap). Hosted
+  providers re-embed only changed tools.
+- Vectors of removed tools are dropped. `serve --rebuild` / `TOOL_ROUTER_REBUILD=1` starts fresh.
+- JSON vectors are large for dense models; this suits hundreds of tools better than thousands.
 
-1. **Cross-project clobber** → solved by per-project `<project-id>` namespacing above.
-2. **Stale index (tool changed but old embedding remains)** → each embedding is keyed by a
-   **content hash** of the tool's text. On (re)build: same hash → reuse; changed → re-embed.
-   Removed tools simply aren't looked up again — the cache file can accumulate unused entries
-   over time (harmless; no active pruning is implemented).
-3. **Embedding-model mismatch** → the cache's `model_stamp` records the provider identity; if
-   the configured provider/model differs, the whole cache is invalidated and rebuilt (vectors
-   from two different models are never mixed).
-4. **Escape hatch** → `TOOL_ROUTER_REBUILD=1` or `tool-router serve --rebuild` wipes and
-   re-embeds from scratch.
+## Docker
 
-## Cost note
-
-The content-hash cache means restarts cost nothing (vectors reload from disk) and a registry
-mutation re-embeds only the tools that actually changed — this is what keeps LLM-embedding
-providers (e.g. Gemini) affordable across repeated runs.
+Mount the state folder to keep it between containers (`/app/.tool-router`, writable by the
+container user). Saved settings need a mount of the config dir.
 
 ## Configuration & Setup (key + model) — no file editing
 
@@ -139,7 +95,7 @@ external config UI. In Docker, persisting saved config/secrets across container 
 requires mounting a volume at the resolved config directory (see the override caveat above).
 
 ### Where config is stored & key safety
-- Non-secret settings: `config.json` in the platformdirs config dir.
+- Non-secret settings: `config.json` in the per-user config dir (`platformdirs`), never in a project.
 - Secret (the API key): **OS keyring** if available (`keyring` package), else a `0600`
   permission fallback file (`secrets.json`) in the same config dir. Key input is never echoed
   or logged — logs only report `key=present`/`key=absent`.
@@ -155,13 +111,10 @@ for automation.
 ### Confirm at startup (no mystery, no leak)
 Logged once per engine build (`RoutingEngine._log_summary`), e.g.:
 ```
-tool-router ready · tools=64 · embedding=local-tfidf · planner=LocalPlanner · llm=none · key=absent · data=/home/.../tool_router
+tool-router ready · tools=64 · embedding=local-tfidf · planner=LocalPlanner · llm=none · key=absent · saved to=.tool-router
 ```
 
 ## In one line
 
-An embedded, dependency-free JSON file cache (no server, no vector DB) for embeddings +
-enrichment, located per-OS via `platformdirs`, namespaced per project via an auto marker file,
-self-healing on content hash + model stamp; config (key + model) set via `tool-router init` or
-a `/setup` form — never by hand-editing a file — with environment variables as the primary
-override for automation.
+A `.tool-router` folder holds the registry, its history and the vector cache as atomically
+written JSON; settings and keys stay in the user's config dir.

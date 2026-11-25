@@ -207,7 +207,7 @@ If a catalog has invalid tools, **nothing is loaded** and every problem is liste
 | `DELETE /registry/tools/{id}` | Delete one tool |
 | `PATCH /registry/mutate` | Add and remove several tools at once |
 
-A rejected create or update changes nothing. Changes are held in memory and are lost on restart.
+A rejected create or update changes nothing. Changes are saved to the `.tool-router` folder (see below).
 
 > **Security:** the REST API has no authentication, so anyone who can reach it can read and change your tools. Run it with `--host 127.0.0.1` unless the network is trusted.
 
@@ -217,6 +217,38 @@ For Docker:
 docker build -t tool-router .
 docker run -p 8080:8080 tool-router
 ```
+
+## Saved registry (`.tool-router/`)
+
+`serve` and `mcp` save registered tools and cached vectors in a `.tool-router` folder in the directory you start them from, and load them again on the next start.
+
+```
+.tool-router/
+├── .gitignore         ignores everything in the folder
+├── catalog.json       current tools, and the history of older definitions
+└── embeddings.json    cached vectors
+```
+
+```bash
+tool-router serve --catalog tests/data/catalog.json   # first start: loads and saves
+tool-router serve                                      # later: loads the saved tools
+```
+
+- **Upsert.** With `--catalog` or `--import-mcp`, tools are matched by `id`: new ones are added and existing ones take the incoming definition. Saved tools missing from the input are **kept**; add `--prune` to remove them. The incoming definition wins over an earlier API edit.
+- **Versions.** A changed definition becomes the current entry with a higher version, and the old one moves to `history` (the last 10 per tool). History is never routed.
+
+| Change | Version |
+|---|---|
+| New tool | `1.0.0` |
+| Description, side effects, tags and other details | third number |
+| Optional parameter added, parameter made optional, parameter description | second number |
+| Name changed; parameter removed, renamed, retyped or made required | first number |
+
+  A higher `version` that you supply is used instead.
+- **Safety.** Changes are written before they take effect; if saving fails, nothing changes. A damaged `catalog.json` stops startup and is left untouched. Settings and API keys are never written here, and the files are readable only by you.
+- **Options.** `--state-dir PATH` uses another folder (useful when an MCP host starts the router from an unexpected directory). `--no-persist` keeps everything in memory.
+- **Limit.** Run one router per folder; two would overwrite each other's changes.
+- **Docker.** Mount the folder to keep it: `-v "$PWD/.tool-router:/app/.tool-router"` (the folder must be writable by the container user).
 
 ## Running the tests
 

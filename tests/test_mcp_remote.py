@@ -128,7 +128,8 @@ def test_rest_server_loads_a_remote_catalog(token_server, monkeypatch, capsys):
     seen = {}
     real = api.create_app
     monkeypatch.setenv("SHOP_AUTH", f"Bearer {TOKEN}")
-    monkeypatch.setattr(api, "create_app", lambda catalog: seen.setdefault("catalog", catalog) and real(catalog))
+    monkeypatch.setattr(api, "create_app",
+                        lambda catalog, **kw: seen.setdefault("catalog", catalog) and real(catalog, **kw))
     monkeypatch.setattr(uvicorn, "run", lambda *a, **k: None)
     code = main(["serve", "--import-mcp", token_server, "--mcp-header-env", "Authorization=SHOP_AUTH"])
     output = capsys.readouterr()

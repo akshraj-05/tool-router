@@ -6,3 +6,4 @@ docs
 demo
 tests
 .env
+.tool-router/

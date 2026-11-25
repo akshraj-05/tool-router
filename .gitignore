@@ -11,7 +11,7 @@ build/
 dist/
 
 # Local data / index artifacts (project marker file + any local data)
-.tool_router
+.tool-router/
 /data/
 
 # Editors / OS

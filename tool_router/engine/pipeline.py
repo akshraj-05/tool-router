@@ -39,6 +39,7 @@ from tool_router.domain.errors import (
 )
 from tool_router.domain.models import DerivedMaps, IndexedTool, RouteResult
 from tool_router.domain.naming import prepare_tool
+from tool_router.domain.versioning import apply_versions
 from tool_router.engine.bm25 import BM25Index
 from tool_router.engine.confidence import decide
 from tool_router.engine.dedup import collapse
@@ -52,14 +53,10 @@ from tool_router.log import get_logger
 from tool_router.providers import make_embedding_provider
 from tool_router.providers.base import ChatClient
 from tool_router.providers.local_tfidf import LocalTfidfEmbedding
-from tool_router.store import content_hash, project_cache
+from tool_router.state import SavedState, StateStore
+from tool_router.store import JsonCache, content_hash
 
 logger = get_logger("pipeline")
-
-
-def project_cache_for(provider, rebuild: bool = False):
-    """Embedding cache bound to the provider's model stamp (storage.md)."""
-    return project_cache("embeddings", getattr(provider, "stamp", "unknown"), rebuild=rebuild)
 
 
 def _approx_tokens(obj: Any) -> int:
@@ -101,9 +98,15 @@ class RoutingEngine:
         catalog: dict[str, Any],
         settings: Optional[Settings] = None,
         chat: Optional[ChatClient] = None,
+        store: Optional[StateStore] = None,
+        previous: Optional[SavedState] = None,
     ) -> None:
         """``chat`` injects a generation-LLM client (tests, custom providers).
-        When omitted, one is built from ``settings.llm_provider`` or left unset."""
+        When omitted, one is built from ``settings.llm_provider`` or left unset.
+
+        With a ``store``, the registry is saved to it now and after every change,
+        and tools are versioned against ``previous`` (see domain/versioning.py).
+        Without one, everything stays in memory and versions are left as given."""
         if not isinstance(catalog, dict) or not isinstance(catalog.get("tools"), list):
             raise CatalogError("Catalog must be a dict with a 'tools' list.")
         self._settings = settings or Settings.from_env()
@@ -112,9 +115,39 @@ class RoutingEngine:
         self._check_size(len(self._raw_tools))
         self._check_catalog(self._raw_tools, self._catalog_meta)
         self._mutation_lock = threading.Lock()
+        self._store = store
+        self._history: dict[str, list[dict[str, Any]]] = {}
+        if store is not None:
+            store.prepare()
+            self._raw_tools, self._history = apply_versions(
+                previous.tools if previous else [], self._raw_tools,
+                previous.history if previous else {},
+            )
         self._chat = chat if chat is not None else self._make_chat()
         self._index: _Index = self._build_index(self._raw_tools)
+        self._save(self._raw_tools, self._history)
         self._log_summary()
+
+    def _cache(self, name: str, stamp: str) -> JsonCache:
+        path = self._store.cache_path(name) if self._store else None
+        return JsonCache(path, stamp, rebuild=self._settings.rebuild)
+
+    def _state(self, tools: list[dict[str, Any]], history: dict[str, Any]) -> SavedState:
+        present = {t["id"] for t in tools}
+        groups = [
+            [i for i in group if i in present]
+            for group in self._catalog_meta.get("near_duplicate_groups", [])
+        ]
+        return SavedState(tools, history, [g for g in groups if len(g) > 1])
+
+    def _save(self, tools: list[dict[str, Any]], history: dict[str, Any]) -> None:
+        if self._store is not None:
+            self._store.save(self._state(tools, history))
+
+    def snapshot(self) -> SavedState:
+        """The current tools and history (what a replacement is versioned against)."""
+        with self._mutation_lock:
+            return self._state(self._raw_tools, self._history)
 
     def _check_size(self, count: int) -> None:
         if count > self._settings.max_tools:
@@ -162,17 +195,17 @@ class RoutingEngine:
 
     def _log_summary(self) -> None:
         """Startup one-liner (storage.md): what's active — never the key value."""
-        from tool_router.store import data_dir, load_secret
+        from tool_router.store import load_secret
         idx = self._index
         logger.info(
             "tool-router ready · tools=%d · embedding=%s · planner=%s · "
-            "llm=%s · key=%s · data=%s",
+            "llm=%s · key=%s · saved to=%s",
             len(idx.entries),
             getattr(idx.provider, "stamp", "?").split(":")[0],
             type(idx.planner).__name__,
             self._settings.llm_provider,
             "present" if (load_secret("gemini_key")) else "absent",
-            data_dir(),
+            self._store.directory if self._store else "memory only",
         )
 
     def _build_index(self, raw_tools: list[dict[str, Any]]) -> _Index:
@@ -189,10 +222,7 @@ class RoutingEngine:
         # --- one-time LLM enrichment (internal-only, cached, optional) ------
         if self._chat is not None and self._settings.llm_enrich:
             from tool_router.engine.enrich import enrich_entries
-            enrich_entries(
-                entries, self._chat,
-                project_cache("enrichment", "llm-enrich-v1", rebuild=self._settings.rebuild),
-            )
+            enrich_entries(entries, self._chat, self._cache("enrichment", "llm-enrich-v1"))
 
         # --- embed (content-hash cached) + lexical index ---------------------
         provider = make_embedding_provider(self._settings.embedding_provider)
@@ -255,13 +285,14 @@ class RoutingEngine:
         """Set every entry's vector, reusing the content-hash cache where possible."""
         texts = [e.search_text for e in entries]
         provider.fit_documents(texts)
-        cache = project_cache_for(provider, rebuild=self._settings.rebuild)
+        cache = self._cache("embeddings", getattr(provider, "stamp", "unknown"))
         hashes = [content_hash(t) for t in texts]
         missing = [i for i, h in enumerate(hashes) if cache.get(h) is None]
         if missing:
             vectors = provider.embed_documents([texts[i] for i in missing])
             for i, vec in zip(missing, vectors):
                 cache.put(hashes[i], vec)
+        if cache.keep(set(hashes)) or missing:      # vectors of removed tools are dropped
             cache.save()
         if len(missing) < len(texts):
             logger.info(
@@ -402,7 +433,7 @@ class RoutingEngine:
                     raise DuplicateToolError(f"A tool with id {verdict.tool_id!r} already exists.")
                 raise InvalidToolError(verdict.primary_reason, [i.message for i in verdict.issues])
             self._publish([*self._raw_tools, tool])
-        return tool
+            return self._index.raw_by_id[tool["id"]]
 
     def update_tool(self, tool_id: str, submitted: dict[str, Any]) -> dict[str, Any]:
         """Replace one tool's definition (strict guardrail). Its id cannot change.
@@ -431,7 +462,7 @@ class RoutingEngine:
             if not verdict.accepted:
                 raise InvalidToolError(verdict.primary_reason, [i.message for i in verdict.issues])
             self._publish([tool if t.get("id") == tool_id else t for t in self._raw_tools])
-        return tool
+            return self._index.raw_by_id[tool_id]
 
     def delete_tool(self, tool_id: str) -> None:
         """Remove one tool. The last tool cannot be removed (a registry is never empty)."""
@@ -451,8 +482,12 @@ class RoutingEngine:
 
     def _publish(self, raw_tools: list[dict[str, Any]]) -> None:
         """Rebuild and swap in a new index. Call only while holding the mutation lock."""
+        history = self._history
+        if self._store is not None:
+            raw_tools, history = apply_versions(self._raw_tools, raw_tools, history)
         new_index = self._build_index(raw_tools)   # may raise: nothing is published yet
-        self._raw_tools = raw_tools
+        self._save(raw_tools, history)             # on disk first; a failed save changes nothing
+        self._raw_tools, self._history = raw_tools, history
         self._index = new_index                    # the single publishing step
 
     @property

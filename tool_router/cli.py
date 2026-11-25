@@ -37,23 +37,33 @@ def _cmd_validate(args: argparse.Namespace) -> int:
 
 
 def _load_startup_catalog(args: argparse.Namespace):
-    """Combine --catalog and --import-mcp. Returns (ok, catalog or None).
+    """Combine the saved registry with --catalog / --import-mcp.
 
-    The report goes to stderr: in `mcp` mode stdout carries the protocol itself.
+    Returns ``(ok, catalog or None, store or None, saved state or None)``. The
+    report goes to stderr: in `mcp` mode stdout carries the protocol itself.
     """
-    from tool_router.catalog_loader import build_catalog
+    from tool_router.catalog_loader import build_catalog, merge_with_saved
+    from tool_router.state import StateStore
 
     try:
-        catalog, report = build_catalog(
+        if args.prune and not (args.catalog or args.import_mcp):
+            raise ValueError("--prune needs --catalog or --import-mcp to compare against")
+        store = None if args.no_persist else StateStore(args.state_dir)
+        saved = None
+        if store is not None:
+            store.prepare()
+            saved = store.load()
+        incoming, report = build_catalog(
             args.catalog, args.import_mcp, env_names=args.mcp_env, timeout=args.mcp_timeout,
             header_envs=args.mcp_header_env,
         )
+        catalog, merged_report = merge_with_saved(saved, incoming, prune=args.prune)
     except (ToolRouterError, OSError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
-        return False, None
-    for line in report:
+        return False, None, None, None
+    for line in [*report, *merged_report]:
         print(line, file=sys.stderr)
-    return True, catalog
+    return True, catalog, store, saved
 
 
 def _cmd_serve(args: argparse.Namespace) -> int:
@@ -68,11 +78,11 @@ def _cmd_serve(args: argparse.Namespace) -> int:
     if args.rebuild:
         import os
         os.environ["TOOL_ROUTER_REBUILD"] = "1"
-    ok, catalog = _load_startup_catalog(args)
+    ok, catalog, store, saved = _load_startup_catalog(args)
     if not ok:
         return 1
     try:
-        app = create_app(catalog)
+        app = create_app(catalog, store=store, previous=saved)
     except ToolRouterError as exc:           # e.g. invalid tools in the catalog
         print(f"error: {exc}", file=sys.stderr)
         return 1
@@ -135,6 +145,14 @@ def _cmd_config(args: argparse.Namespace) -> int:
 def _add_source_options(parser: argparse.ArgumentParser) -> None:
     """Where `serve` and `mcp` get their tools from."""
     parser.add_argument("--catalog", default=None, help="catalog JSON file to load")
+    parser.add_argument(
+        "--state-dir", default=".tool-router", metavar="PATH",
+        help="folder where registered tools and vectors are saved (default: ./.tool-router)",
+    )
+    parser.add_argument("--no-persist", action="store_true",
+                        help="keep everything in memory; read and write nothing in the state folder")
+    parser.add_argument("--prune", action="store_true",
+                        help="remove saved tools that are not in --catalog / --import-mcp")
     parser.add_argument(
         "--import-mcp", action="append", default=None, metavar="COMMAND_OR_URL",
         help='scan an MCP server and load its tools: a command that starts a local server '
@@ -217,14 +235,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "config":
         return _cmd_config(args)
     if args.command == "mcp":
-        if not args.catalog and not args.import_mcp:
-            parser.error("mcp needs tools: give --catalog and/or --import-mcp")
         from tool_router.mcp_server import run_mcp
-        ok, catalog = _load_startup_catalog(args)
+        ok, catalog, store, saved = _load_startup_catalog(args)
         if not ok:
             return 1
+        if catalog is None:
+            parser.error("mcp needs tools: give --catalog and/or --import-mcp "
+                         "(or start where a saved .tool-router folder exists)")
         try:
-            run_mcp(catalog)
+            run_mcp(catalog, store=store, previous=saved)
         except ToolRouterError as exc:
             print(f"error: {exc}", file=sys.stderr)
             return 1

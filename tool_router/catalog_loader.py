@@ -17,6 +17,7 @@ from typing import Any, Optional
 
 from tool_router.domain.errors import CatalogError
 from tool_router.domain.naming import prepare_tool
+from tool_router.domain.versioning import NONE, change_level
 from tool_router.engine.guardrail import validate_submission
 from tool_router.importers.mcp_importer import (
     DEFAULT_TIMEOUT,
@@ -31,6 +32,7 @@ from tool_router.importers.mcp_remote import (
     redact_url,
 )
 from tool_router.limits import read_catalog_file
+from tool_router.state import SavedState
 
 
 def split_valid(
@@ -101,7 +103,6 @@ def build_catalog(
     report: list[str] = []
     if catalog_path:
         catalog = read_catalog_file(catalog_path)
-        catalog["tools"] = [prepare_tool(t) for t in catalog["tools"]]
         report.append(f"loaded {len(catalog['tools'])} tools from {catalog_path}")
 
     for source in mcp_sources or []:
@@ -114,7 +115,8 @@ def build_catalog(
             if not parts:
                 raise MCPImportError("--import-mcp needs a command or a URL")
             found = import_from_mcp(parts[0], parts[1:], env_names=env_names, timeout=timeout)
-        known = {t["id"] for t in catalog["tools"]
+        prepared = (prepare_tool(t) for t in catalog["tools"])
+        known = {t["id"] for t in prepared
                  if isinstance(t, dict) and isinstance(t.get("id"), str)}
         accepted, rejected = split_valid(found, known_ids=known)
         catalog["tools"] = [*catalog["tools"], *accepted]
@@ -124,3 +126,63 @@ def build_catalog(
     if not catalog["tools"]:
         raise CatalogError("No usable tools: " + "; ".join(report))
     return catalog, report
+
+
+def merge_with_saved(
+    saved: Optional[SavedState], incoming: Optional[dict[str, Any]], prune: bool = False
+) -> tuple[Optional[dict[str, Any]], list[str]]:
+    """Upsert the startup sources into the saved registry, matching tools by id.
+
+    New ids are added; an existing id takes the incoming definition (a changed one
+    gets a new version when the engine saves it); saved tools absent from the
+    input are kept unless ``prune``. An incoming tool that omits ``side_effects``
+    keeps the saved value. Validation happens afterwards, in the engine, so an
+    invalid input stops startup and leaves the saved file untouched.
+    """
+    if saved is None:
+        return incoming, []
+    if incoming is None:
+        catalog = {"tools": saved.tools, "near_duplicate_groups": saved.near_duplicate_groups}
+        return catalog, [f"loaded {len(saved.tools)} saved tools"]
+
+    old = {t["id"]: t for t in saved.tools}
+    merged: dict[str, Any] = dict(old)
+    problems: list[Any] = []                 # kept so the guardrail reports them
+    seen: set[str] = set()
+    added = updated = unchanged = 0
+    for submitted in incoming["tools"]:
+        tool = prepare_tool(submitted)
+        tool_id = tool.get("id") if isinstance(tool, dict) else None
+        if not isinstance(tool_id, str) or tool_id in seen:
+            problems.append(tool)
+            continue
+        seen.add(tool_id)
+        before = old.get(tool_id)
+        if before is None:
+            added += 1
+        else:
+            if not submitted.get("side_effects"):
+                tool["side_effects"] = before.get("side_effects")
+            try:
+                same = change_level(before, tool) == NONE
+            except (KeyError, TypeError, AttributeError):   # malformed: the guardrail will say how
+                same = False
+            unchanged, updated = unchanged + same, updated + (not same)
+        merged[tool_id] = tool
+
+    missing = [i for i in old if i not in seen]
+    if prune:
+        for tool_id in missing:
+            del merged[tool_id]
+    tools = [*merged.values(), *problems]
+
+    groups = incoming.get("near_duplicate_groups", [])
+    if isinstance(groups, list):
+        kept = [[i for i in g if i in merged] for g in saved.near_duplicate_groups]
+        groups = [g for g in kept if len(g) > 1 and g not in groups] + groups
+    catalog = {**incoming, "tools": tools, "near_duplicate_groups": groups}
+    fate = "removed" if prune else "kept"
+    report = [f"saved catalog: {added} new, {updated} changed, {unchanged} unchanged, "
+              f"{len(missing)} not in the input ({fate})"]
+    return catalog, report
+

@@ -344,15 +344,11 @@ semantic expansion hurts look-alike precision (dense embeddings 79% < TF-IDF 83%
 
 ## 9. Storage  → `storage.md`
 
-**Embedded JSON file store** (`tool_router/store.py`, in-process, **no server / no container**,
-no external vector DB) holds per-tool embedding vectors + registry metadata as a content-hash
-+ model-stamp keyed JSON file (`embeddings.json`); similarity is computed in-process (cosine).
-**No Postgres, no vector DB dependency.** OS-agnostic location: `platformdirs` (pip) / `/data`
-volume (Docker). **Per-project isolation** via an auto `.tool_router` marker id. **Conflicts
-self-heal:** content-hash per tool (stale entries), embedding-model stamp (mismatch → cache
-invalidated), `--rebuild` escape hatch. A vector-DB backend (e.g. Chroma) is a documented future
-option behind the same interface, useful only at catalog sizes far beyond ~100 tools — see
-§7 note and `storage.md`.
+**JSON files in a `.tool-router` folder** (`state.py`, `store.py`; no server, no vector DB).
+`catalog.json` holds the current tools and the history of older definitions; `embeddings.json`
+caches vectors by content hash and model stamp. Writes are atomic and happen before a change is
+published; startup upserts any `--catalog` / `--import-mcp` input into the saved catalog.
+Settings and keys stay in the per-user config dir. One router per folder. See `storage.md`.
 
 ## 10. How each test category is won  → `engine-design.md`
 
@@ -394,7 +390,8 @@ tool-router/
 │   ├── cli.py                   tool-router version | validate | serve | mcp | init | config
 │   │                            | import-mcp
 │   ├── catalog_loader.py        startup catalog: file and/or live MCP scans (local or remote)
-│   ├── store.py                 persistence: JSON embedding/enrichment cache, config, secrets
+│   ├── state.py                 the .tool-router folder: saved catalog and history
+│   ├── store.py                 vector/enrichment cache, config, secrets
 │   ├── config.py · log.py       settings + logging
 ```
 
@@ -455,5 +452,5 @@ levers.
 | `integration-plugability.md` | the 2 entry points + build-order decision |
 | `integrations.md` | how LangGraph/LangChain/any integrate (REST + MCP, with code) |
 | `onboarding.md` | add/manage tools: guardrail → enrichment, auto-import (now/later) |
-| `storage.md` | embedded JSON store, OS-agnostic paths, multi-project, conflicts, config UX |
+| `storage.md` | the .tool-router folder, upsert, versions, vector cache, config UX |
 | `diagrams.md` | detailed system/engine diagram (companion to §2) |

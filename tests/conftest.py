@@ -1,7 +1,7 @@
 """Shared fixtures.
 
-Every test runs in an isolated sandbox: its own working directory (the store
-writes a project marker into the cwd), its own data and config directories, and
+Every test runs in an isolated sandbox: its own working directory (the CLI saves
+a .tool-router folder into it), its own config directory, and
 no TOOL_ROUTER_* / provider key variables leaking in from the developer's shell.
 """
 
@@ -30,7 +30,6 @@ def sandbox(tmp_path, monkeypatch):
     work = tmp_path / "work"
     work.mkdir()
     monkeypatch.chdir(work)
-    monkeypatch.setenv("TOOL_ROUTER_DATA_DIR", str(tmp_path / "data"))
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     return tmp_path

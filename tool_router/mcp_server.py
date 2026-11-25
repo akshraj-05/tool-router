@@ -21,16 +21,21 @@ Requires the `mcp` extra: pip install .[mcp]
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Optional
 
 from tool_router.config import Settings
 from tool_router.engine.pipeline import RoutingEngine
 from tool_router.log import get_logger
+from tool_router.state import SavedState, StateStore
 
 logger = get_logger("mcp")
 
 
-def create_mcp_server(catalog: dict[str, Any]):
+def create_mcp_server(
+    catalog: dict[str, Any],
+    store: Optional[StateStore] = None,
+    previous: Optional[SavedState] = None,
+):
     """Build the FastMCP server over one RoutingEngine instance for ``catalog``."""
     try:
         from mcp.server.fastmcp import FastMCP
@@ -48,7 +53,7 @@ def create_mcp_server(catalog: dict[str, Any]):
             "instead of loading an entire tool catalog."
         ),
     )
-    engine = RoutingEngine(catalog, settings=Settings.from_env())
+    engine = RoutingEngine(catalog, settings=Settings.from_env(), store=store, previous=previous)
 
     @server.tool()
     def find_tools(query: str, k: int = 8) -> str:
@@ -81,6 +86,10 @@ def create_mcp_server(catalog: dict[str, Any]):
     return server
 
 
-def run_mcp(catalog: dict[str, Any]) -> None:
+def run_mcp(
+    catalog: dict[str, Any],
+    store: Optional[StateStore] = None,
+    previous: Optional[SavedState] = None,
+) -> None:
     """Entry point used by `tool-router mcp` (stdio transport)."""
-    create_mcp_server(catalog).run()  # stdio transport (MCP default)
+    create_mcp_server(catalog, store=store, previous=previous).run()  # stdio transport (MCP default)

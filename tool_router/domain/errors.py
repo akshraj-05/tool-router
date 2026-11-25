@@ -52,3 +52,7 @@ class InvalidCatalogError(CatalogError):
 
 class ToolInUseError(ToolRouterError):
     """Another tool points at this one with ``replaced_by``."""
+
+
+class StateError(ToolRouterError):
+    """The saved registry could not be read or written."""
