@@ -33,7 +33,7 @@ flowchart TB
     direction LR
     S1["bulk JSON / API"]:::client
     S2["MCP server (pull)"]:::client
-    S3["OpenAPI spec (built) /<br/>code introspection (later)"]:::client
+    S3["code introspection (later)"]:::client
   end
   CL["🧑‍💻 Agentic systems — LangGraph · LangChain · any"]:::client
 
@@ -287,8 +287,8 @@ spine; MCP is the plug-and-play showcase).
 - **Auto-derive** clusters / near-dup groups / version families so it generalizes to unseen
   catalogs (validated against the catalog's provided maps).
 
-**Import paths:** bulk API / JSON, **MCP-server auto-import**, and **OpenAPI-spec auto-import**
-are all built (`tool-router import-mcp` / `import-openapi`); code-introspection import (reading
+**Import paths:** bulk API / JSON and **MCP-server auto-import** (`tool-router import-mcp`)
+are built; code-introspection import (reading
 Python function signatures directly) is not built.
 
 ## 7. The routing engine pipeline (inside `/route`)  → `engine-design.md`
@@ -387,11 +387,11 @@ tool-router/
 │   │                            dedup · derive (clusters/versions/dup-groups) · ingest ·
 │   │                            guardrail · planner (local) · llm_planner · hyde · enrich
 │   ├── providers/               base (interface) · local_tfidf (default) · gemini
-│   ├── importers/               mcp_importer · openapi_importer · common
+│   ├── importers/               mcp_importer · common
 │   ├── api.py                  FastAPI: /registry /route /registry/mutate /health /setup
 │   ├── mcp_server.py            MCP tools: find_tools · registry_status (read-only)
 │   ├── cli.py                   tool-router version | validate | serve | mcp | init | config
-│   │                            | import-mcp | import-openapi
+│   │                            | import-mcp
 │   ├── store.py                 persistence: JSON embedding/enrichment cache, config, secrets
 │   ├── config.py · log.py       settings + logging
 ```
@@ -428,7 +428,7 @@ in `pyproject.toml` for a possible future vector-DB or cross-encoder backend. In
 | **1** | Package scaffold · schemas/config · guardrail · ingest/enrich/auto-derive · local store · retrieval (BM25 + local embedding) · dedup · dynamic-K · harness adapter | ✅ built — 24/29 (83%) with zero LLM; guardrail 11/11 |
 | **2** | LLM planner (Gemini, live-verified) · local fallback · versions · capability check + widen | ✅ built — 25/29 (86%) with arbitration |
 | **3** | Churn engine · REST API · config CLI · Docker | ✅ built — churn 8/8; `docker run` verified |
-| **4** | MCP server · conditional HyDE + scope-arbiter · importers (MCP + OpenAPI) | ✅ built — 26/29 (90%); MCP session-tested; both importers verified end-to-end |
+| **4** | MCP server · conditional HyDE + scope-arbiter · MCP importer | ✅ built — 26/29 (90%); MCP session-tested; importer verified end-to-end |
 
 **Not built** (documented, not shipped — see the "Not implemented" notes in `engine-design.md`
 and `storage.md`): a local cross-encoder re-ranker stage, a vector-DB storage backend. Neither is

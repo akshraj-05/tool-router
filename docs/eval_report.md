@@ -126,16 +126,12 @@ was measured with it off. It remains available as an opt-in for catalogs with ge
 vague descriptions, where the recall gain is more likely to outweigh the dedup-blurring risk —
 but it is not a free win, so it is not the default.
 
-## Auto-ingestion (importers) — verified end-to-end
+## Auto-ingestion (MCP importer) — verified end-to-end
 
 - **MCP importer** (`tool-router import-mcp`): connected to a sample third-party MCP server,
   pulled 3 self-described tools, converted to registry schema — 3/3 passed the guardrail,
-  registered live (64→70 with the OpenAPI batch), and "What's the weather in Berlin right
+  registered live, and "What's the weather in Berlin right
   now?" routed to the imported `weather.get_current_weather`.
-- **OpenAPI importer** (`tool-router import-openapi`): parsed a sample Payments spec (3
-  operations incl. path/body params; HTTP verbs mapped to side-effects, DELETE→destructive) —
-  3/3 passed the guardrail; "Issue a refund of $40 for charge CH-2291." routed to the imported
-  `payments.createrefund`. Existing-catalog routing unchanged at 70 tools.
 
 ## Held-out generalization set (fresh queries, written after tuning)
 

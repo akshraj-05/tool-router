@@ -2,7 +2,7 @@
 
 Subcommands: `version`, `validate` (guardrail over a submissions file), `serve`
 (REST API), `mcp` (MCP server), `init`/`config` (configuration), and
-`import-mcp`/`import-openapi` (auto-import tool definitions).
+`import-mcp` (auto-import tool definitions).
 """
 
 from __future__ import annotations
@@ -148,13 +148,6 @@ def build_parser() -> argparse.ArgumentParser:
     p_imp_mcp.add_argument("--prefix", default=None, help="cluster/id prefix (default: command name)")
     p_imp_mcp.add_argument("-o", "--output", default=None, help="write tools JSON here (default: stdout)")
 
-    p_imp_oa = sub.add_parser(
-        "import-openapi", help="auto-import tools from an OpenAPI/Swagger spec file"
-    )
-    p_imp_oa.add_argument("spec", help="OpenAPI JSON file")
-    p_imp_oa.add_argument("--prefix", default=None, help="cluster/id prefix (default: spec title)")
-    p_imp_oa.add_argument("-o", "--output", default=None, help="write tools JSON here (default: stdout)")
-
     return parser
 
 
@@ -179,12 +172,6 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "import-mcp":
         from tool_router.importers import import_from_mcp
         tools = import_from_mcp(args.server_command, args.args, args.prefix)
-        return _emit_imported(tools, args.output)
-    if args.command == "import-openapi":
-        from tool_router.importers import import_from_openapi
-        with open(args.spec, encoding="utf-8") as fh:
-            spec = json.load(fh)
-        tools = import_from_openapi(spec, args.prefix)
         return _emit_imported(tools, args.output)
     parser.print_help()
     return 1

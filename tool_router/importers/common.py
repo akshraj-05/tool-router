@@ -1,6 +1,6 @@
 """Shared conversion helpers for importers.
 
-Both importers emit tools in OUR registry schema; anything the source can't
+Importers emit tools in OUR registry schema; anything the source can't
 express is derived conservatively (never fabricated):
 - id       = "<prefix>.<sanitized_name>" (matches the guardrail id pattern)
 - cluster  = caller-provided prefix / source tag (a real grouping, not a guess)

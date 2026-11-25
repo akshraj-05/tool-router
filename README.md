@@ -24,7 +24,7 @@ See [the evaluation report](docs/eval_report.md) for methodology, category break
 
 ## What it does
 
-1. **Register tools** from JSON, an MCP server or an OpenAPI specification.
+1. **Register tools** from JSON or an MCP server.
 2. **Validate and normalize** tool definitions before they enter the catalog.
 3. **Retrieve candidates** using lexical, dense and capability signals.
 4. **Apply safeguards** for confidence, duplicates, versions, side effects and out-of-scope requests.
@@ -46,7 +46,7 @@ The same routing engine is available through:
 
 ```mermaid
 flowchart LR
-  A[JSON / MCP / OpenAPI] --> B[Import and validation]
+  A[JSON / MCP] --> B[Import and validation]
   B --> C[Tool catalog and local index]
   Q[Agent request] --> D[Hybrid retrieval]
   C --> D
@@ -107,7 +107,6 @@ To import existing tool definitions:
 
 ```bash
 tool-router import-mcp --command <mcp-server-command> -o tools.json
-tool-router import-openapi openapi.json -o tools.json
 ```
 
 For Docker:
@@ -145,7 +144,7 @@ The local planner is deterministic and works offline. LLM-assisted features depe
 | Path | Purpose |
 |---|---|
 | `tool_router/engine/` | Retrieval, confidence, planning and routing pipeline |
-| `tool_router/importers/` | MCP and OpenAPI catalog importers |
+| `tool_router/importers/` | MCP catalog importer |
 | `tool_router/providers/` | Local and hosted model providers |
 | `tool_router/api.py` | REST API |
 | `tool_router/mcp_server.py` | MCP server |

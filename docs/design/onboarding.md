@@ -63,7 +63,6 @@ likely to outweigh the risk.
 |---|---|---|
 | **Bulk API / JSON file** | one `POST /registry` with the whole catalog | ✅ NOW |
 | **MCP server** | connect + `list_tools` (self-describing tools) (`tool-router import-mcp`) | ✅ **BUILT + verified** |
-| **OpenAPI / Swagger** | parse spec → endpoint becomes a tool (`tool-router import-openapi`) | ✅ **BUILT + verified** |
 | **LangChain / Python** | introspect `.name` / `.description` / `.args_schema` / signatures | 🟨 LATER |
 | **Other registries / gateways** | dedicated connectors | 🔮 FUTURE |
 
@@ -77,8 +76,8 @@ likely to outweigh the risk.
 3. ✅ **LLM enrichment** built (description cleanup, auto-tags/synonyms, example queries) —
    one-time at ingest, internal-only, grounded, original description preserved for what we
    return — but **defaults OFF** (measured to blur near-duplicates; see `eval_report.md`).
-4. ✅ **Import paths:** bulk API / JSON file, MCP-server auto-import, and OpenAPI-spec
-   auto-import are all built and verified end-to-end.
+4. ✅ **Import paths:** bulk API / JSON file and MCP-server auto-import are built and
+   verified end-to-end.
 
 ## What we add later
 
@@ -88,5 +87,5 @@ likely to outweigh the risk.
 ---
 
 **In one line:** every tool is validated (guardrail) then enriched — deterministically always,
-and with one-time internal LLM enrichment available but off by default — arriving via bulk API,
-MCP auto-import, or OpenAPI auto-import (all built), with code-introspection import later.
+and with one-time internal LLM enrichment available but off by default — arriving via bulk API
+or MCP auto-import (both built), with code-introspection import later.

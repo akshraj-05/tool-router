@@ -149,7 +149,7 @@ is the registry intake validator, verified against an internal set of valid/inva
 fixtures (11/11 pass with the exact expected reason codes).
 
 The **initial catalog** is validated **leniently** (issues logged, tools kept — it's the trusted
-ground truth); **new submissions** via `/registry/mutate`, `import-mcp`, or `import-openapi` are
+ground truth); **new submissions** via `/registry/mutate` or `import-mcp` are
 validated **strictly** (rejected with a reason).
 
 | Category | Rule |
