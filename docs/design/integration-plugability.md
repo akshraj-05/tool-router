@@ -45,7 +45,7 @@ it, so routing behaves the same through either one.
 2. **REST API (primary, now):** FastAPI gateway — `POST /registry` (onboard/index tools),
    `POST /route` (query → top-K tools + plan), `GET /health`. Reliable demo spine; shows token
    savings live.
-3. **MCP adapter (showcase):** thin MCP server exposing `find_tools(query, k)` (and optionally
-   `register_tools`) over the same engine — for the plug-and-play story.
+3. **MCP adapter (showcase):** thin MCP server exposing `find_tools(query, k)` and `registry_status`
+   (both read-only) over the same engine — for the plug-and-play story.
 - **Demo:** lead with the REST call (query in → slim correct tool set + tokens saved); then
   show the same engine plugged into an MCP agent as the "it just drops in anywhere" moment.

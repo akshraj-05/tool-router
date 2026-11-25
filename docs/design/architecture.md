@@ -253,7 +253,7 @@ spine; MCP is the plug-and-play showcase).
   via MCP adapters, or any MCP host).
 - **Tool ids:** preserved exactly, never rewritten. A helper for sanitizing dotted ids into
   MCP/LLM-function-safe names exists (`importers/common.py::mcp_safe_name`) but is not currently
-  invoked — our own MCP server only exposes meta-tools (`find_tools`, `register_tools`,
+  invoked — our own MCP server only exposes meta-tools (`find_tools`,
   `registry_status`), which have no dots, so no active sanitization is needed today. It becomes
   relevant only if catalog tools were ever exposed directly over MCP by name.
 
@@ -389,7 +389,7 @@ tool-router/
 │   ├── providers/               base (interface) · local_tfidf (default) · gemini
 │   ├── importers/               mcp_importer · openapi_importer · common
 │   ├── api.py                  FastAPI: /registry /route /registry/mutate /health /setup
-│   ├── mcp_server.py            MCP tools: find_tools · register_tools · registry_status
+│   ├── mcp_server.py            MCP tools: find_tools · registry_status (read-only)
 │   ├── cli.py                   tool-router version | validate | serve | mcp | init | config
 │   │                            | import-mcp | import-openapi
 │   ├── store.py                 persistence: JSON embedding/enrichment cache, config, secrets

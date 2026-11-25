@@ -136,8 +136,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_config.add_argument("value", nargs="?", default=None)
 
     p_mcp = sub.add_parser("mcp", help="run the MCP server (stdio) exposing find_tools")
-    p_mcp.add_argument("--catalog", default=None,
-                       help="optional catalog JSON to pre-load the registry")
+    p_mcp.add_argument("--catalog", required=True,
+                       help="catalog JSON to load (required: MCP clients cannot add tools)")
 
     p_imp_mcp = sub.add_parser(
         "import-mcp", help="auto-import tools from an MCP server into registry schema"

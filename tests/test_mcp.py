@@ -18,11 +18,15 @@ def call(server, name: str, arguments: dict) -> dict:
     return json.loads(content[0].text)
 
 
-def test_status_before_and_after_registering(catalog):
-    server = create_mcp_server(None)
-    assert call(server, "registry_status", {})["registry_loaded"] is False
-    out = call(server, "register_tools", {"tools": catalog["tools"]})
-    assert out["status"] == "registered"
+def test_only_read_only_tools_are_exposed(catalog):
+    """An agent must not be able to change the tool registry over MCP."""
+    server = create_mcp_server(catalog)
+    names = sorted(t.name for t in asyncio.run(server.list_tools()))
+    assert names == ["find_tools", "registry_status"]
+
+
+def test_registry_status_reports_the_loaded_catalog(catalog):
+    server = create_mcp_server(catalog)
     assert call(server, "registry_status", {})["tool_count"] == len(catalog["tools"])
 
 
@@ -37,13 +41,3 @@ def test_find_tools_respects_k(catalog):
     server = create_mcp_server(catalog)
     out = call(server, "find_tools", {"query": "Send an email to Dana, Omar, and Lin", "k": 1})
     assert len(out["selected_tools"]) == 1
-
-
-def test_register_tools_extends_an_existing_registry(catalog):
-    server = create_mcp_server(catalog)
-    new = {"id": "weather.get_current_weather", "name": "get_current_weather",
-           "cluster": "weather", "side_effects": "read",
-           "description": "Get the current weather conditions for a named city",
-           "parameters": [{"name": "city", "type": "string"}], "returns": {"type": "object"}}
-    out = call(server, "register_tools", {"tools": [new]})
-    assert out["added"] == [new["id"]]

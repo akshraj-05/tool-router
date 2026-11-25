@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from tool_router import __version__
 from tool_router.cli import main
 
@@ -14,6 +16,13 @@ DATA = Path(__file__).parent / "data"
 def test_version(capsys):
     assert main(["version"]) == 0
     assert capsys.readouterr().out.strip() == __version__
+
+
+def test_mcp_requires_a_catalog(capsys):
+    with pytest.raises(SystemExit) as exit_info:
+        main(["mcp"])
+    assert exit_info.value.code == 2
+    assert "--catalog" in capsys.readouterr().err
 
 
 def test_validate_reports_accept_and_reject(tmp_path, capsys):

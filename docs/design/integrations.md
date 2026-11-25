@@ -69,13 +69,15 @@ binds that one tool; the LLM calls it mid-reasoning and gets the relevant tools 
 ### The MCP server (us)
 ```
 tool: find_tools(query: str, k?: int) -> [ {name, description, inputSchema}, ... ]
-tool: register_tools(catalog)         -> onboard/update  (optional)
+tool: registry_status()               -> tool count and registry stats
 ```
+Both are read-only. The catalog is loaded at startup with `--catalog`; an agent cannot
+change it over MCP.
 
 ### Any MCP host (e.g. Claude Desktop / mcp.json)
 ```json
 { "mcpServers": {
-    "tool-router": { "command": "tool-router", "args": ["mcp"] }
+    "tool-router": { "command": "tool-router", "args": ["mcp", "--catalog", "/path/catalog.json"] }
 } }
 ```
 The agent now has `find_tools`; it calls it whenever it needs a capability.
@@ -86,7 +88,7 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 from langgraph.prebuilt import create_react_agent
 
 client = MultiServerMCPClient({
-    "tool-router": {"command": "tool-router", "args": ["mcp"], "transport": "stdio"}
+    "tool-router": {"command": "tool-router", "args": ["mcp", "--catalog", "/path/catalog.json"], "transport": "stdio"}
 })
 tools = await client.get_tools()          # includes find_tools
 agent = create_react_agent(llm, tools)    # LLM can now call find_tools during its loop
@@ -115,7 +117,7 @@ implement whichever mode the demo host supports best.
 - **MCP/LLM function names** must match `^[a-zA-Z0-9_-]+$` and be <= ~64 chars (dots often not
   allowed). A sanitizer for this exists (`importers/common.py::mcp_safe_name`,
   `comm.send_email` -> `comm_send_email`) but is not currently invoked in the live path — our
-  MCP server exposes only meta-tools (`find_tools`, `register_tools`, `registry_status`), which
+  MCP server exposes only meta-tools (`find_tools`, `registry_status`), which
   have no dots. It would be needed if catalog tools were ever exposed directly over MCP by name.
 
 ---
