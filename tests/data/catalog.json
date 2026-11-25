@@ -1,0 +1,279 @@
+{
+  "near_duplicate_groups": [
+    [
+      "fin.get_revenue_report",
+      "fin.fetch_quarterly_earnings"
+    ]
+  ],
+  "tools": [
+    {
+      "id": "fin.get_revenue_report",
+      "name": "get_revenue_report",
+      "cluster": "fin",
+      "description": "Get the total revenue report for a given fiscal quarter",
+      "side_effects": "read",
+      "parameters": [
+        {
+          "name": "quarter",
+          "type": "string",
+          "required": true,
+          "description": "Fiscal quarter"
+        }
+      ],
+      "returns": {
+        "type": "object"
+      }
+    },
+    {
+      "id": "fin.fetch_quarterly_earnings",
+      "name": "fetch_quarterly_earnings",
+      "cluster": "fin",
+      "description": "Fetch the quarterly earnings summary prepared for investor reporting",
+      "side_effects": "read",
+      "parameters": [
+        {
+          "name": "quarter",
+          "type": "string",
+          "required": true,
+          "description": "Fiscal quarter"
+        }
+      ],
+      "returns": {
+        "type": "object"
+      }
+    },
+    {
+      "id": "comm.send_email",
+      "name": "send_email",
+      "cluster": "comm",
+      "description": "Send an email message to a recipient with a subject and body",
+      "side_effects": "write",
+      "parameters": [
+        {
+          "name": "to",
+          "type": "string",
+          "required": true,
+          "description": "Recipient address"
+        },
+        {
+          "name": "subject",
+          "type": "string",
+          "required": true,
+          "description": "Subject line"
+        },
+        {
+          "name": "body",
+          "type": "string",
+          "required": true,
+          "description": "Message body"
+        }
+      ],
+      "returns": {
+        "type": "object"
+      }
+    },
+    {
+      "id": "comm.send_slack_message",
+      "name": "send_slack_message",
+      "cluster": "comm",
+      "description": "Post a chat message to a Slack channel or a teammate",
+      "side_effects": "write",
+      "parameters": [
+        {
+          "name": "channel",
+          "type": "string",
+          "required": true,
+          "description": "Channel name"
+        },
+        {
+          "name": "text",
+          "type": "string",
+          "required": true,
+          "description": "Message text"
+        }
+      ],
+      "returns": {
+        "type": "object"
+      }
+    },
+    {
+      "id": "comm.schedule_meeting",
+      "name": "schedule_meeting",
+      "cluster": "comm",
+      "description": "Schedule a calendar meeting with attendees at a given time",
+      "side_effects": "write",
+      "parameters": [
+        {
+          "name": "attendees",
+          "type": "array",
+          "required": true,
+          "description": "Attendee emails"
+        },
+        {
+          "name": "time",
+          "type": "string",
+          "required": true,
+          "description": "Start time"
+        }
+      ],
+      "returns": {
+        "type": "object"
+      }
+    },
+    {
+      "id": "ops.get_server_status",
+      "name": "get_server_status",
+      "cluster": "ops",
+      "description": "Check the health and uptime status of a production server",
+      "side_effects": "read",
+      "parameters": [
+        {
+          "name": "server",
+          "type": "string",
+          "required": true,
+          "description": "Server name"
+        }
+      ],
+      "returns": {
+        "type": "object"
+      }
+    },
+    {
+      "id": "ops.restart_server",
+      "name": "restart_server",
+      "cluster": "ops",
+      "description": "Restart a production server immediately which causes downtime",
+      "side_effects": "destructive",
+      "parameters": [
+        {
+          "name": "server",
+          "type": "string",
+          "required": true,
+          "description": "Server name"
+        }
+      ],
+      "returns": {
+        "type": "object"
+      }
+    },
+    {
+      "id": "ops.delete_logs",
+      "name": "delete_logs",
+      "cluster": "ops",
+      "description": "Delete stored log files from a server permanently",
+      "side_effects": "destructive",
+      "parameters": [
+        {
+          "name": "server",
+          "type": "string",
+          "required": true,
+          "description": "Server name"
+        }
+      ],
+      "returns": {
+        "type": "object"
+      }
+    },
+    {
+      "id": "hr.get_employee",
+      "name": "get_employee",
+      "cluster": "hr",
+      "description": "Look up an employee record by employee id",
+      "side_effects": "read",
+      "parameters": [
+        {
+          "name": "employee_id",
+          "type": "string",
+          "required": true,
+          "description": "Employee id"
+        }
+      ],
+      "returns": {
+        "type": "object"
+      }
+    },
+    {
+      "id": "docs.create_invoice",
+      "name": "create_invoice",
+      "cluster": "docs",
+      "version": "1.0.0",
+      "deprecated": true,
+      "replaced_by": "docs.create_invoice_v2",
+      "description": "Create an invoice for a customer using the legacy billing format",
+      "side_effects": "write",
+      "parameters": [
+        {
+          "name": "customer",
+          "type": "string",
+          "required": true,
+          "description": "Customer name"
+        }
+      ],
+      "returns": {
+        "type": "object"
+      }
+    },
+    {
+      "id": "docs.create_invoice_v2",
+      "name": "create_invoice_v2",
+      "cluster": "docs",
+      "version": "2.0.0",
+      "replaces": "docs.create_invoice",
+      "description": "Create an invoice for a customer using the current billing format",
+      "side_effects": "write",
+      "parameters": [
+        {
+          "name": "customer",
+          "type": "string",
+          "required": true,
+          "description": "Customer name"
+        }
+      ],
+      "returns": {
+        "type": "object"
+      }
+    },
+    {
+      "id": "docs.generate_chart",
+      "name": "generate_chart",
+      "cluster": "docs",
+      "description": "Generate a chart image from a table of data",
+      "side_effects": "write",
+      "parameters": [
+        {
+          "name": "data",
+          "type": "array",
+          "required": true,
+          "description": "Rows of data"
+        },
+        {
+          "name": "chart_type",
+          "type": "string",
+          "required": false,
+          "description": "Chart kind"
+        }
+      ],
+      "returns": {
+        "type": "object"
+      }
+    },
+    {
+      "id": "docs.export_to_spreadsheet",
+      "name": "export_to_spreadsheet",
+      "cluster": "docs",
+      "description": "Export tabular data to a spreadsheet file for download",
+      "side_effects": "write",
+      "parameters": [
+        {
+          "name": "data",
+          "type": "array",
+          "required": true,
+          "description": "Rows of data"
+        }
+      ],
+      "returns": {
+        "type": "object"
+      }
+    }
+  ]
+}
