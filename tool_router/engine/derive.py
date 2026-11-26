@@ -20,7 +20,7 @@ from collections import defaultdict
 from tool_router.config import ConfidenceThresholds
 from tool_router.domain.models import DerivedMaps, IndexedTool
 from tool_router.domain.naming import DEFAULT_CLUSTER
-from tool_router.engine.text import cosine, jaccard
+from tool_router.engine.text import cosine, jaccard, norm
 from tool_router.log import get_logger
 
 logger = get_logger("derive")
@@ -92,19 +92,23 @@ def derive_maps(
             uf.union(a, b)
     # (b) auto-detection for catalogs without the metadata (generalization).
     ordered = sorted(entries, key=lambda e: e.tool.id)
+    # Computed once per tool: this loop visits every pair, so it dominates the
+    # cost of a rebuild on large catalogs.
+    param_names = [{p.name for p in e.tool.parameters} for e in ordered]
+    lengths = [norm(e.embedding) for e in ordered]
     for i, a in enumerate(ordered):
-        for b in ordered[i + 1:]:
+        for j in range(i + 1, len(ordered)):
+            b = ordered[j]
             if a.tool.cluster != b.tool.cluster:
                 continue  # near-dups live in the same capability cluster
             if a.tool.side_effects != b.tool.side_effects:
                 continue  # a read tool and a write tool are never near-duplicates
                           # (similar params ≠ same action: get_object vs upload_to_s3)
-            sim = cosine(a.embedding, b.embedding)
-            if sim < thresholds.dup_similarity:
+            # Parameter names first: far cheaper than comparing vectors.
+            if jaccard(param_names[i], param_names[j]) < thresholds.dup_param_overlap:
                 continue
-            params_a = {p.name for p in a.tool.parameters}
-            params_b = {p.name for p in b.tool.parameters}
-            if jaccard(params_a, params_b) >= thresholds.dup_param_overlap:
+            similarity = cosine(a.embedding, b.embedding, lengths[i], lengths[j])
+            if similarity >= thresholds.dup_similarity:
                 uf.union(a.tool.id, b.tool.id)
     dup_groups = uf.groups()
 

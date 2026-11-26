@@ -215,7 +215,8 @@ class RoutingEngine:
         to ``self`` here, so a failure part-way leaves the live index untouched.
         Called at construction AND for every mutation — churn resilience is
         literally "rebuild the index from the new truth" (catalog_mutations
-        invariants). At catalog scale this is milliseconds.
+        invariants). This is fast for a few hundred tools; duplicate detection
+        compares tools in pairs, so the time grows steeply beyond that.
         """
         entries: list[IndexedTool] = ingest_tools(raw_tools)
 

@@ -90,22 +90,37 @@ def content_tokens(text: str) -> list[str]:
     return [t for t in tokenize(text) if t not in STOPWORDS]
 
 
-def cosine(a: Vector | None, b: Vector | None) -> float:
-    """Cosine similarity for sparse dict vectors or dense list vectors."""
+def norm(v: Vector | None) -> float:
+    """Length of a vector (0.0 for a missing or empty one)."""
+    if v is None:
+        return 0.0
+    values = v.values() if isinstance(v, dict) else v
+    return math.sqrt(sum(x * x for x in values))
+
+
+def cosine(
+    a: Vector | None,
+    b: Vector | None,
+    norm_a: float | None = None,
+    norm_b: float | None = None,
+) -> float:
+    """Cosine similarity for sparse dict vectors or dense list vectors.
+
+    Pass ``norm_a`` / ``norm_b`` (from :func:`norm`) when comparing the same
+    vector many times, so its length is not computed again for every pair.
+    """
     if a is None or b is None:
         return 0.0
     if isinstance(a, dict) and isinstance(b, dict):
         if len(b) < len(a):  # iterate over the smaller map
-            a, b = b, a
+            a, b, norm_a, norm_b = b, a, norm_b, norm_a
         dot = sum(v * b.get(k, 0.0) for k, v in a.items())
-        na = math.sqrt(sum(v * v for v in a.values()))
-        nb = math.sqrt(sum(v * v for v in b.values()))
     elif isinstance(a, list) and isinstance(b, list) and len(a) == len(b):
         dot = sum(x * y for x, y in zip(a, b))
-        na = math.sqrt(sum(x * x for x in a))
-        nb = math.sqrt(sum(y * y for y in b))
     else:
         return 0.0
+    na = norm(a) if norm_a is None else norm_a
+    nb = norm(b) if norm_b is None else norm_b
     if na == 0.0 or nb == 0.0:
         return 0.0
     return dot / (na * nb)
