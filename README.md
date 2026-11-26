@@ -4,23 +4,43 @@
 
 Tool Router is a Python routing service for large tool catalogs. Register tools once, then submit a natural-language request to receive a small, ordered tool plan. It combines local retrieval and deterministic safeguards with an optional LLM planner.
 
-## Evaluation snapshot
+## Evaluation
 
-Measured during development on an internal **29-query evaluation suite** and a **64-tool catalog**. The evaluation harness and catalog are not included in this repository, so these are reported development results rather than independently reproducible results from a fresh checkout.
+The test data and the scoring command are in [`eval/`](eval/), so you can reproduce these results from a fresh checkout:
 
-| Configuration | Accuracy | Prompt-token savings |
+```bash
+pip install -e .
+python eval/run.py                  # tuning half, with every failure listed
+python eval/run.py --split final    # final half, totals only
+```
+
+Local mode (no LLM, no API key), 63 tools, 120 requests:
+
+| Request type | Tuning half | Final half |
 |---|---:|---:|
-| Keyword/cluster baseline | 7/29 (24%) | 94% |
-| Local-only router | 24/29 (83%) | 98% |
-| Hybrid router (LLM + HyDE + scope arbitration) | **26/29 (90%)** | **98%** |
+| One tool | 15/18 | 12/18 |
+| Choosing between similar tools | 7/12 | 7/12 |
+| Several tools in order | 5/12 | 8/12 |
+| Current or old tool version | 4/6 | 3/6 |
+| Unclear request: should ask a question | 6/6 | 5/6 |
+| No suitable tool: should return nothing | 5/6 | 4/6 |
+| **Total** | **42/60 (70%)** | **39/60 (65%)** |
 
-Additional development checks:
-- Registry validation fixtures: **11/11** passed.
-- Catalog mutation scenarios: **8/8** passed.
-- Held-out query set: **10/12 (83%)**.
-- At 104 tools, the measured token-savings ratio was **97%**.
+**How to read this**
 
-See [the evaluation report](docs/eval_report.md) for methodology, category breakdowns, trade-offs and limitations.
+- A request passes only if the answer is exactly right: the expected tools in the expected order, a clarifying question, or nothing.
+- Fixes are guided by the tuning half only. Failures in the final half are not listed by the command.
+- With 60 requests per half, the 95% interval is wide: about 52% to 76% for the final half.
+- The requests were written by the project author, so they are not an independent benchmark.
+- Gemini embeddings and the LLM planner have not been scored on this set. `--from-env` runs it with your own settings.
+
+**Known causes of failures** (seen in the tuning half)
+
+- Local retrieval matches words, not meaning: "is web-01 up" finds no tool.
+- The local planner splits a request into steps only before a verb that starts a tool name, so "...and email it" loses the second step when the tool is `send_email`.
+- Similar tools are confused, for example reading an invoice instead of creating one.
+
+Earlier development results (up to 90% with an LLM) came from a different 29-query suite on older code that is not in this repository, and are not comparable. See [the earlier evaluation report](docs/eval_report.md).
 
 ## What it does
 
@@ -278,9 +298,9 @@ The suite runs fully offline: LLM behaviour is driven by a scripted fake chat cl
 
 See `.env.example` and [onboarding documentation](docs/design/onboarding.md) for configuration and catalog details.
 
-## Evaluation and limitations
+## Limitations
 
-The headline figures above come from a development evaluation suite that is not shipped in this repository. Treat them as measured project results, not a guarantee for a different catalog or workload. The report documents known failure categories and the difference between local-only and LLM-assisted routing.
+[Evaluation](#evaluation) results apply to the test set in this repository. They are not a guarantee for a different catalog or workload.
 
 **Language:** English only. Other languages are not supported, including the confirmation check for destructive requests.
 
@@ -298,7 +318,8 @@ The local planner is deterministic and works offline. LLM-assisted features depe
 | `tool_router/api.py` | REST API |
 | `tool_router/mcp_server.py` | MCP server |
 | `tool_router/cli.py` | Command-line interface |
-| `docs/eval_report.md` | Evaluation results and methodology |
+| `eval/` | Test catalog, requests and scoring command |
+| `docs/eval_report.md` | Earlier development results |
 | `docs/design/` | Architecture and design decisions |
 
 ## License
