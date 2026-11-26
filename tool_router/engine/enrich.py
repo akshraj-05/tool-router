@@ -19,6 +19,7 @@ matches more phrasings. Safety properties:
 from __future__ import annotations
 
 import json
+from typing import Any
 
 from tool_router.domain.errors import ProviderError
 from tool_router.domain.models import IndexedTool
@@ -38,6 +39,18 @@ Rules:
 - tags: up to 6 short synonyms/related terms for what the tool does.
 - example_queries: 2 short user requests this tool would correctly serve.
 """
+
+
+def is_enrichment(value: Any) -> bool:
+    """True if ``value`` has the shape asked for above (every field is optional)."""
+    if not isinstance(value, dict):
+        return False
+    if not isinstance(value.get("description") or "", str):
+        return False
+    return all(
+        isinstance(items, list) and all(isinstance(item, str) for item in items)
+        for items in (value.get("tags") or [], value.get("example_queries") or [])
+    )
 
 
 def enrich_entries(entries: list[IndexedTool], chat, cache: JsonCache) -> int:
@@ -61,6 +74,9 @@ def enrich_entries(entries: list[IndexedTool], chat, cache: JsonCache) -> int:
             except ProviderError as exc:
                 logger.warning("LLM enrichment stopped (%s) — continuing without it", exc)
                 break  # one hard failure ends the pass; engine works without enrichment
+            if not is_enrichment(result):
+                logger.warning("unusable LLM enrichment for %r — skipping that tool", tool.id)
+                continue
             cache.put(key, result)
             dirty = True
 

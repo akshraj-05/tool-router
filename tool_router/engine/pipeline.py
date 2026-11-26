@@ -25,7 +25,7 @@ import functools
 import json
 import threading
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from tool_router.config import Settings
 from tool_router.domain.errors import (
@@ -81,6 +81,19 @@ class _Index:
     fallback: Optional[tuple[Any, list[IndexedTool]]] = None
 
 
+def _is_number(value: Any) -> bool:
+    """A usable vector component (rejects booleans, NaN and infinity)."""
+    return type(value) in (int, float) and -1e308 < value < 1e308
+
+
+def _is_sparse_vector(value: Any) -> bool:
+    return isinstance(value, dict) and all(_is_number(v) for v in value.values())
+
+
+def _is_dense_vector(value: Any) -> bool:
+    return isinstance(value, list) and bool(value) and all(_is_number(v) for v in value)
+
+
 def _local_vectors(entries: list[IndexedTool]) -> tuple[Any, list[Any]]:
     """A fitted local TF-IDF provider and one vector per entry (no network, no cache)."""
     provider = LocalTfidfEmbedding()
@@ -128,9 +141,11 @@ class RoutingEngine:
         self._save(self._raw_tools, self._history)
         self._log_summary()
 
-    def _cache(self, name: str, stamp: str) -> JsonCache:
+    def _cache(
+        self, name: str, stamp: str, valid: Callable[[Any], bool]
+    ) -> JsonCache:
         path = self._store.cache_path(name) if self._store else None
-        return JsonCache(path, stamp, rebuild=self._settings.rebuild)
+        return JsonCache(path, stamp, rebuild=self._settings.rebuild, valid=valid)
 
     def _state(self, tools: list[dict[str, Any]], history: dict[str, Any]) -> SavedState:
         present = {t["id"] for t in tools}
@@ -222,8 +237,9 @@ class RoutingEngine:
 
         # --- one-time LLM enrichment (internal-only, cached, optional) ------
         if self._chat is not None and self._settings.llm_enrich:
-            from tool_router.engine.enrich import enrich_entries
-            enrich_entries(entries, self._chat, self._cache("enrichment", "llm-enrich-v1"))
+            from tool_router.engine.enrich import enrich_entries, is_enrichment
+            cache = self._cache("enrichment", "llm-enrich-v1", is_enrichment)
+            enrich_entries(entries, self._chat, cache)
 
         # --- embed (content-hash cached) + lexical index ---------------------
         provider = make_embedding_provider(self._settings.embedding_provider)
@@ -286,7 +302,10 @@ class RoutingEngine:
         """Set every entry's vector, reusing the content-hash cache where possible."""
         texts = [e.search_text for e in entries]
         provider.fit_documents(texts)
-        cache = self._cache("embeddings", getattr(provider, "stamp", "unknown"))
+        usable = (
+            _is_sparse_vector if isinstance(provider, LocalTfidfEmbedding) else _is_dense_vector
+        )
+        cache = self._cache("embeddings", getattr(provider, "stamp", "unknown"), usable)
         hashes = [content_hash(t) for t in texts]
         missing = [i for i, h in enumerate(hashes) if cache.get(h) is None]
         if missing:

@@ -4,7 +4,8 @@
   kept in the state folder (see ``state.py``) or, without one, only in memory. A
   value is reused only when both the tool's text hash and the model stamp match;
   the local TF-IDF stamp includes a corpus hash, so a catalog change invalidates
-  its vectors.
+  its vectors. A cache can always be rebuilt, so anything in it that cannot be
+  used is dropped with a warning and computed again.
 - **Settings and secrets** live in the per-user config folder, never in a project:
       config.json   non-secret settings written by `tool-router init` / /setup
       secrets.json  0600-permission fallback when the OS keyring is unavailable
@@ -16,7 +17,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from platformdirs import user_config_dir
 
@@ -40,8 +41,15 @@ def config_dir() -> Path:
 class JsonCache:
     """A small persisted {key: value} cache bound to a model stamp."""
 
-    def __init__(self, path: Optional[Path], model_stamp: str, rebuild: bool = False) -> None:
-        """``path=None`` keeps the cache in memory only."""
+    def __init__(
+        self,
+        path: Optional[Path],
+        model_stamp: str,
+        rebuild: bool = False,
+        valid: Optional[Callable[[Any], bool]] = None,
+    ) -> None:
+        """``path=None`` keeps the cache in memory only. Saved entries that fail
+        ``valid`` are dropped on loading."""
         self._path = path
         self._stamp = model_stamp
         self._data: dict[str, Any] = {}
@@ -51,17 +59,28 @@ class JsonCache:
             logger.info("cache rebuild requested — starting fresh: %s", path.name)
             return
         try:
-            if path.exists():
-                payload = json.loads(path.read_text())
-                if payload.get("model_stamp") == model_stamp:
-                    self._data = payload.get("entries", {})
-                else:  # model changed -> stored vectors are incompatible
-                    logger.info(
-                        "model stamp changed (%s -> %s) — invalidating %s",
-                        payload.get("model_stamp"), model_stamp, path.name,
-                    )
-        except (OSError, json.JSONDecodeError) as exc:
+            if not path.exists():
+                return
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
             logger.warning("could not read cache %s (%s) — starting fresh", path, exc)
+            return
+        if not (isinstance(payload, dict) and isinstance(payload.get("entries"), dict)):
+            logger.warning("cache %s has an unexpected format — starting fresh", path)
+            return
+        if payload.get("model_stamp") != model_stamp:  # stored values are incompatible
+            logger.info(
+                "model stamp changed (%s -> %s) — invalidating %s",
+                payload.get("model_stamp"), model_stamp, path.name,
+            )
+            return
+        entries = payload["entries"]
+        self._data = {k: v for k, v in entries.items() if valid is None or valid(v)}
+        if len(self._data) < len(entries):
+            logger.warning(
+                "dropped %d unusable entries from %s — they will be computed again",
+                len(entries) - len(self._data), path.name,
+            )
 
     def get(self, key: str) -> Any:
         return self._data.get(key)
