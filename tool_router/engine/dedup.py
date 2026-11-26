@@ -7,7 +7,7 @@ Two collapses run after scoring, both pure local logic on pre-derived maps:
    query carries an explicit legacy signal. Selecting both versions at once is
    always wrong — only one should ever be returned.
 2. **Near-duplicate groups** — within a group (get_user/fetch_profile/...),
-   keep only the highest-scoring member. Because capability overlap is part of
+   keep only the highest-scoring member. Because the parameter match is part of
    the fused score, the member matching the query's specifics wins the group
    (e.g. "by email" -> get_user_by_email).
 """

@@ -2,7 +2,7 @@
 
 fused(t) = w_dense * cosine(query_vec, tool_vec)      # semantic
          + w_bm25  * bm25(query, tool)                # lexical (exact terms)
-         + w_cap   * capability_overlap(query, tool)  # can it DO what's asked?
+         + w_param * param_match(query, tool)         # does it take what's mentioned?
          - side-effect penalty  (destructive tool, non-destructive query)
          - deprecated penalty   (old version, no legacy signal)
 
@@ -97,7 +97,7 @@ class Candidate:
     fused: float
     dense: float
     bm25: float
-    capability: float
+    param_match: float
 
     @property
     def tool_id(self) -> str:
@@ -122,10 +122,10 @@ def score_tools(
     for i, entry in enumerate(entries):
         dense = cosine(query_vector, entry.embedding)
         lexical = bm25_scores[i]
-        overlap = len(signals.content & entry.capability_tokens)
-        capability = min(1.0, overlap / 3.0)  # saturate: 3+ shared ability terms is a strong match
+        overlap = len(signals.content & entry.param_tag_words)
+        param_match = min(1.0, overlap / 3.0)  # saturate: 3+ shared words is a strong match
 
-        fused = weights.dense * dense + weights.bm25 * lexical + weights.capability * capability
+        fused = weights.dense * dense + weights.bm25 * lexical + weights.param_match * param_match
         if entry.tool.side_effects == "destructive" and not signals.destructive_intent:
             fused -= weights.side_effect_penalty
         if not entry.is_current and not signals.legacy_signal:
@@ -133,11 +133,11 @@ def score_tools(
         # Least privilege: a tool exposing PII-class fields is over-privileged
         # for a query that never asks for such data (e.g. an SSN-scoped
         # employee record fetch when only an id lookup is needed).
-        if not signals.sensitive_request and (entry.capability_tokens & SENSITIVE_TOKENS):
+        if not signals.sensitive_request and (entry.param_tag_words & SENSITIVE_TOKENS):
             fused -= 0.10
 
         candidates.append(
-            Candidate(entry=entry, fused=fused, dense=dense, bm25=lexical, capability=capability)
+            Candidate(entry=entry, fused=fused, dense=dense, bm25=lexical, param_match=param_match)
         )
     # Deterministic ordering: score desc, then id asc for stable ties.
     candidates.sort(key=lambda c: (-c.fused, c.tool_id))

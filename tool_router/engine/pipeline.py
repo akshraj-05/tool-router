@@ -567,7 +567,7 @@ class RoutingEngine:
             "hyde": hyde_info,
             "top_candidates": [
                 {"tool": c.tool_id, "fused": round(c.fused, 4), "dense": round(c.dense, 4),
-                 "bm25": round(c.bm25, 4), "capability": round(c.capability, 4)}
+                 "bm25": round(c.bm25, 4), "param_match": round(c.param_match, 4)}
                 for c in candidates[:8]
             ],
             "dropped": dropped,
@@ -663,7 +663,7 @@ class RoutingEngine:
     ) -> list[Candidate]:
         """Broaden the shortlist for a re-plan (fallback/widening resilience).
 
-        Adds (a) tools whose name/capability tokens match the planner's stated
+        Adds (a) tools whose name or parameter/tag words match the planner's stated
         missing capability, then (b) the next best-scored candidates — capped,
         order-preserving, no duplicates.
         """
@@ -676,7 +676,7 @@ class RoutingEngine:
             matches = [
                 c for c in all_candidates
                 if c.tool_id not in have
-                and need_tokens & (c.entry.capability_tokens | set(tokenize(c.entry.tool.name)))
+                and need_tokens & (c.entry.param_tag_words | set(tokenize(c.entry.tool.name)))
             ]
             matches.sort(key=lambda c: -c.fused)
             for c in matches[:3]:

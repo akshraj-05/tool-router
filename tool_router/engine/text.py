@@ -1,6 +1,6 @@
 """Shared text utilities: tokenizer + stopwords + similarity helpers.
 
-One tokenizer for everything (BM25, TF-IDF, capability matching) so all
+One tokenizer for everything (BM25, TF-IDF, parameter matching) so all
 signals live in the same token space. Deterministic, dependency-free.
 """
 

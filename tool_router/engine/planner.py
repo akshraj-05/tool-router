@@ -162,11 +162,11 @@ class LocalPlanner:
         anchor = shortlist[0]
 
         def cover_tokens(cand: Candidate) -> set[str]:
-            """Tokens a tool 'owns': its name + declared capabilities/tags."""
-            return set(tokenize(cand.entry.tool.name)) | cand.entry.capability_tokens
+            """Words a tool 'owns': its name, parameters and tags."""
+            return set(tokenize(cand.entry.tool.name)) | cand.entry.param_tag_words
 
         def matched(cand: Candidate) -> set[str]:
-            return signals.content & (set(cand.entry.tokens) | cand.entry.capability_tokens)
+            return signals.content & (set(cand.entry.tokens) | cand.entry.param_tag_words)
 
         picked = [anchor]
         covered = matched(anchor)

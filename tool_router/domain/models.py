@@ -78,7 +78,7 @@ class IndexedTool(BaseModel):
     raw: dict[str, Any]                    # original registration payload (returned to clients)
     search_text: str                       # flattened text used for BM25 + embedding
     tokens: list[str]                      # tokenized search_text
-    capability_tokens: set[str]            # from params/tags — capability matching
+    param_tag_words: set[str]              # words from parameters and tags
     embedding: Optional[Vector] = None     # filled by the embedding provider
     family_id: Optional[str] = None        # version-family key, if any
     is_current: bool = True                # False for deprecated/superseded versions

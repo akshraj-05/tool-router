@@ -6,9 +6,9 @@ Deterministic, built from the tool's own fields:
   embedded and BM25-indexed. The tool NAME is
   deliberately diluted by all other signals so naming decoys (cross-cluster
   traps like `data.email_report`) can't dominate matching.
-- capability_tokens: tokens from parameters/tags only — the tool's
-  *abilities* (attachment, format, xlsx, ssn...). Used as an explicit
-  capability-match signal in fused scoring.
+- param_tag_words: words from parameter names, parameter descriptions and tags
+  only — the inputs a tool takes (attachment, format, xlsx, ssn...). Used for
+  the parameter-match score.
 
 The raw dict is preserved as registered (returned to clients; search text never
 leaves the retrieval layer).
@@ -53,8 +53,8 @@ def build_search_text(tool: Tool) -> str:
     return " ".join(p for p in parts if p)
 
 
-def capability_tokens(tool: Tool) -> set[str]:
-    """Tokens describing what the tool can DO (params/tags)."""
+def param_tag_words(tool: Tool) -> set[str]:
+    """Words from a tool's parameter names, parameter descriptions and tags."""
     bits: list[str] = []
     for p in tool.parameters:
         bits.append(p.name)
@@ -81,7 +81,7 @@ def ingest_tools(raw_tools: list[dict[str, Any]]) -> list[IndexedTool]:
                 raw=raw,
                 search_text=text,
                 tokens=tokenize(text),
-                capability_tokens=capability_tokens(tool),
+                param_tag_words=param_tag_words(tool),
             )
         )
     logger.info("ingested %d tools", len(entries))

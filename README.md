@@ -26,7 +26,7 @@ See [the evaluation report](docs/eval_report.md) for methodology, category break
 
 1. **Register tools** from JSON or an MCP server.
 2. **Validate and normalize** tool definitions before they enter the catalog.
-3. **Retrieve candidates** using lexical, dense and capability signals.
+3. **Retrieve candidates** using lexical, dense and parameter-match signals.
 4. **Apply safeguards** for confidence, duplicates, versions, side effects and out-of-scope requests.
 5. **Build a compact plan** locally or with an optional LLM.
 6. **Return ordered tool selections** to the calling agent.
