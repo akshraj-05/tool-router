@@ -209,13 +209,30 @@ If a catalog has invalid tools, **nothing is loaded** and every problem is liste
 
 A rejected create or update changes nothing. Changes are saved to the `.tool-router` folder (see below).
 
-> **Security:** the REST API has no authentication, so anyone who can reach it can read and change your tools. Run it with `--host 127.0.0.1` unless the network is trusted.
+### Network access
+
+**The REST API has no authentication**, so it is local by default.
+
+| Setting | Who can use the API |
+|---|---|
+| default (`--host 127.0.0.1`) | Programs on this machine only |
+| `--host 0.0.0.0` | Anyone who can connect: they can read, change and delete tools and use `/setup`. The CLI prints a warning. |
+
+- A local server answers only requests whose `Host` header is `localhost` or a loopback address, which blocks web pages that point their own domain at your machine. Behind a proxy or a custom host name, add `--allow-host NAME`.
+- "This machine" includes every program and user account on it. Under WSL, Windows programs can usually reach it too.
+- Before exposing it to a network you do not trust, put authentication and TLS in front of it.
 
 For Docker:
 
 ```bash
 docker build -t tool-router .
-docker run -p 8080:8080 tool-router
+docker run -p 127.0.0.1:8080:8080 tool-router
+```
+
+Inside the container the service must listen on `0.0.0.0` (the image does this), so publish the port on `127.0.0.1` as above to keep it local. To also check the `Host` header there:
+
+```bash
+docker run -p 127.0.0.1:8080:8080 tool-router serve --host 0.0.0.0 --port 8080 --allow-host localhost
 ```
 
 ## Saved registry (`.tool-router/`)

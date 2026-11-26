@@ -54,6 +54,7 @@ from tool_router.domain.versioning import inherit_side_effects
 from tool_router.engine.pipeline import RoutingEngine
 from tool_router.limits import max_input_bytes
 from tool_router.log import get_logger
+from tool_router.netutil import host_name, is_loopback
 from tool_router.state import SavedState, StateStore
 
 logger = get_logger("api")
@@ -123,10 +124,42 @@ class _BodyLimit:
         await self.app(scope, replay, send)
 
 
+class _HostCheck:
+    """ASGI middleware: answer only requests addressed to this machine.
+
+    A web page can point its own domain name at 127.0.0.1 ("DNS rebinding") and
+    then reach a local server from the visitor's browser. Such requests carry the
+    page's domain in ``Host``, so they are refused here. Loopback names are always
+    accepted, plus any names the operator allowed.
+    """
+
+    def __init__(self, app, allowed: frozenset[str]) -> None:
+        self.app, self.allowed = app, allowed
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        values = [v for k, v in scope["headers"] if k == b"host"]
+        name = host_name(values[0].decode("latin-1")) if len(values) == 1 else ""
+        if name and (is_loopback(name) or name in self.allowed):
+            await self.app(scope, receive, send)
+            return
+        body = json.dumps({"detail": (
+            "Host header not allowed. This server answers requests for localhost; "
+            "start it with --allow-host NAME to accept another name."
+        )}).encode()
+        await send({"type": "http.response.start", "status": 400, "headers": [
+            (b"content-type", b"application/json"),
+            (b"content-length", str(len(body)).encode())]})
+        await send({"type": "http.response.body", "body": body})
+
+
 def create_app(
     catalog: Optional[dict[str, Any]] = None,
     store: Optional[StateStore] = None,
     previous: Optional[SavedState] = None,
+    allowed_hosts: Optional[list[str]] = None,
 ):
     """App factory. Import of FastAPI is deferred so the core package works
     without the `api` extra installed."""
@@ -143,6 +176,9 @@ def create_app(
         description="Intelligent tool routing: large catalog in, minimal ordered tool plan out.",
     )
     app.add_middleware(_BodyLimit, limit=max_input_bytes())
+    if allowed_hosts is not None:           # None = no Host check (see the CLI)
+        names = frozenset(host_name(h) for h in allowed_hosts) - {""}
+        app.add_middleware(_HostCheck, allowed=names)      # added last = runs first
     state: dict[str, Optional[RoutingEngine]] = {"engine": None}
 
     if catalog is not None:

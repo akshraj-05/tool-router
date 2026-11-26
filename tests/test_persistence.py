@@ -322,7 +322,7 @@ def test_start_then_restart_without_a_source(serve):
     code, app, err = serve()
     assert code == 0 and "loaded 1 saved tools" in err
     from starlette.testclient import TestClient
-    assert TestClient(app).get("/registry/tools").json()["tool_count"] == 1
+    assert TestClient(app, base_url="http://localhost").get("/registry/tools").json()["tool_count"] == 1
 
 
 def test_changed_input_makes_a_new_version_and_keeps_history(serve):
@@ -396,7 +396,7 @@ def test_api_upload_is_versioned_and_save_errors_are_reported(serve, monkeypatch
     from starlette.testclient import TestClient
 
     _, app, _ = serve("--catalog", write("c.json", tool("a_tool")))
-    client = TestClient(app)
+    client = TestClient(app, base_url="http://localhost")
     changed = tool("a_tool", description="Send the monthly report to a chosen recipient")
     assert client.post("/registry", json={"tools": [changed]}).status_code == 200
     assert by_id(saved())["general.a_tool"]["version"] == "1.0.1"
@@ -413,7 +413,7 @@ def test_re_upload_without_side_effects_keeps_the_saved_value(serve):
     _, app, _ = serve("--catalog", write("c.json", tool("close_account", side_effects="destructive")))
     again = tool("close_account")
     del again["side_effects"]
-    assert TestClient(app).post("/registry", json={"tools": [again]}).status_code == 200
+    assert TestClient(app, base_url="http://localhost").post("/registry", json={"tools": [again]}).status_code == 200
     stored = by_id(saved())["general.close_account"]
     assert stored["side_effects"] == "destructive" and stored["version"] == "1.0.0"
 
@@ -428,7 +428,7 @@ def test_api_starting_empty_saves_the_first_upload(serve):
     from starlette.testclient import TestClient
 
     _, app, _ = serve()
-    client = TestClient(app)
+    client = TestClient(app, base_url="http://localhost")
     assert client.get("/registry/tools").status_code == 409
     client.post("/registry", json={"tools": [tool()]})
     assert list(by_id(saved())) == ["general.send_report"]

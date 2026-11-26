@@ -15,6 +15,7 @@ from tool_router import __version__
 from tool_router.domain.errors import ToolRouterError
 from tool_router.domain.naming import prepare_tool
 from tool_router.engine.guardrail import validate_catalog
+from tool_router.netutil import is_loopback
 
 
 def _cmd_validate(args: argparse.Namespace) -> int:
@@ -81,8 +82,18 @@ def _cmd_serve(args: argparse.Namespace) -> int:
     ok, catalog, store, saved = _load_startup_catalog(args)
     if not ok:
         return 1
+    local_only = is_loopback(args.host)
+    if not local_only:
+        print(
+            f"WARNING: listening on {args.host}, reachable from other machines, with NO "
+            "authentication. Anyone who can connect can use, change and delete your tools "
+            "and change the /setup settings. Use --host 127.0.0.1 unless the network is trusted.",
+            file=sys.stderr,
+        )
+    # Check the Host header on a local server, or whenever names were listed.
+    allowed_hosts = (args.allow_host or []) if local_only or args.allow_host else None
     try:
-        app = create_app(catalog, store=store, previous=saved)
+        app = create_app(catalog, store=store, previous=saved, allowed_hosts=allowed_hosts)
     except ToolRouterError as exc:           # e.g. invalid tools in the catalog
         print(f"error: {exc}", file=sys.stderr)
         return 1
@@ -185,7 +196,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_validate.add_argument("--known-ids", default="", help="comma-separated already-registered ids")
 
     p_serve = sub.add_parser("serve", help="run the REST routing service")
-    p_serve.add_argument("--host", default="0.0.0.0")
+    p_serve.add_argument("--host", default="127.0.0.1",
+                         help="interface to listen on (default: 127.0.0.1, this machine only; "
+                              "0.0.0.0 accepts other machines, with no authentication)")
+    p_serve.add_argument("--allow-host", action="append", default=None, metavar="NAME",
+                         help="also accept requests whose Host header is NAME (for a proxy or a "
+                              "custom host name); repeatable")
     p_serve.add_argument("--port", type=int, default=8080)
     _add_source_options(p_serve)
     p_serve.add_argument("--rebuild", action="store_true",

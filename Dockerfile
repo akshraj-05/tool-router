@@ -1,8 +1,8 @@
 # tool-router — self-contained routing service.
 #
 #   docker build -t tool-router .
-#   docker run -p 8080:8080 tool-router                          # empty registry
-#   docker run -p 8080:8080 -v ./catalog.json:/app/catalog.json \
+#   docker run -p 127.0.0.1:8080:8080 tool-router                # empty registry
+#   docker run -p 127.0.0.1:8080:8080 -v ./catalog.json:/app/catalog.json \
 #              tool-router serve --catalog /app/catalog.json      # pre-loaded
 #
 # The LLM key is injected at RUN time only (never baked into the image):
@@ -23,4 +23,6 @@ USER router
 
 EXPOSE 8080
 ENTRYPOINT ["tool-router"]
+# 0.0.0.0 is required inside a container. The API has no authentication, so publish
+# the port on loopback only (-p 127.0.0.1:8080:8080) unless the network is trusted.
 CMD ["serve", "--host", "0.0.0.0", "--port", "8080"]
