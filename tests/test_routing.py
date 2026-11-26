@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
+
+from tool_router.config import Settings
+from tool_router.engine.pipeline import RoutingEngine
+
 
 def test_single_tool_is_selected(engine):
     result = engine.route("Check the health status of the production server")
@@ -106,3 +111,41 @@ def test_catalog_without_tools_list_is_rejected():
 
     with pytest.raises(CatalogError):
         RoutingEngine({"tools": "nope"})
+
+
+def _tool(cluster, name, description, parameter, description_of_parameter, effect="write"):
+    return {
+        "id": f"{cluster}.{name}", "name": name, "cluster": cluster, "description": description,
+        "side_effects": effect,
+        "parameters": [{"name": parameter, "type": "string", "required": True,
+                        "description": description_of_parameter}],
+    }
+
+
+def test_voiding_without_saying_which_item_asks_first():
+    engine = RoutingEngine({"tools": [_tool(
+        "billing", "void_invoice", "Void an issued invoice so it can no longer be paid",
+        "invoice_id", "Invoice number", "destructive",
+    )]}, settings=Settings())
+
+    assert engine.route("void the invoice").clarify
+    assert engine.route("void invoice INV-120").plan == ["billing.void_invoice"]
+
+
+@pytest.mark.parametrize("description_of_parameter, penalised", [
+    ("Recipient address", False),
+    ("Server address", False),
+    ("Employee salary", True),
+])
+def test_only_sensitive_data_is_penalised(description_of_parameter, penalised):
+    def score(text):
+        engine = RoutingEngine({"tools": [_tool(
+            "comm", "send_note", "Send a short note to the chosen person today", "to", text,
+        )]}, settings=Settings())
+        candidate = engine.route("send a short note").trace["top_candidates"][0]
+        weights = engine._settings.weights
+        expected = (weights.dense * candidate["dense"] + weights.bm25 * candidate["bm25"]
+                    + weights.param_match * candidate["param_match"])
+        return expected - candidate["fused"]
+
+    assert score(description_of_parameter) == pytest.approx(0.10 if penalised else 0.0, abs=1e-3)

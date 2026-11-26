@@ -21,7 +21,7 @@ DEFAULT_CLUSTER = "general"
 SIDE_EFFECTS = ("read", "write", "destructive")
 # A destructive verb anywhere in a name wins; a read verb counts only as the first word.
 DESTRUCTIVE_VERBS = frozenset(
-    "delete remove cancel wipe purge drop restart terminate destroy erase kill shutdown reboot".split()
+    "delete remove cancel void wipe purge drop restart terminate destroy erase kill shutdown reboot".split()
 )
 READ_VERBS = frozenset(
     "get list search fetch read find check show view describe query lookup count".split()

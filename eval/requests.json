@@ -1,0 +1,1299 @@
+[
+    {
+        "id": "single-01",
+        "type": "single",
+        "split": "dev",
+        "query": "pull up the profile for customer CUST-204",
+        "expect": {
+            "tools": [
+                "crm.get_customer"
+            ]
+        }
+    },
+    {
+        "id": "single-02",
+        "type": "single",
+        "split": "final",
+        "query": "add Priya Raman as a new customer, priya@example.com",
+        "expect": {
+            "tools": [
+                "crm.create_customer"
+            ]
+        }
+    },
+    {
+        "id": "single-03",
+        "type": "single",
+        "split": "dev",
+        "query": "change the phone number on customer CUST-88",
+        "expect": {
+            "tools": [
+                "crm.update_customer"
+            ]
+        }
+    },
+    {
+        "id": "single-04",
+        "type": "single",
+        "split": "final",
+        "query": "what deals are still open for Marco",
+        "expect": {
+            "tools": [
+                "crm.list_deals"
+            ]
+        }
+    },
+    {
+        "id": "single-05",
+        "type": "single",
+        "split": "dev",
+        "query": "move deal D-551 to negotiation",
+        "expect": {
+            "tools": [
+                "crm.update_deal_stage"
+            ]
+        }
+    },
+    {
+        "id": "single-06",
+        "type": "single",
+        "split": "final",
+        "query": "jot down on account CUST-19 that they want a demo",
+        "expect": {
+            "tools": [
+                "crm.add_customer_note"
+            ]
+        }
+    },
+    {
+        "id": "single-07",
+        "type": "single",
+        "split": "dev",
+        "query": "which bills are past due",
+        "expect": {
+            "tools": [
+                "billing.list_unpaid_invoices"
+            ]
+        }
+    },
+    {
+        "id": "single-08",
+        "type": "single",
+        "split": "final",
+        "query": "give the money back for payment PAY-7781",
+        "expect": {
+            "tools": [
+                "billing.refund_payment"
+            ]
+        }
+    },
+    {
+        "id": "single-09",
+        "type": "single",
+        "split": "dev",
+        "query": "nudge the client about invoice INV-3002",
+        "expect": {
+            "tools": [
+                "billing.send_payment_reminder"
+            ]
+        }
+    },
+    {
+        "id": "single-10",
+        "type": "single",
+        "split": "final",
+        "query": "upgrade subscription SUB-12 to the enterprise plan",
+        "expect": {
+            "tools": [
+                "billing.change_subscription_plan"
+            ]
+        }
+    },
+    {
+        "id": "single-11",
+        "type": "single",
+        "split": "dev",
+        "query": "how much money is in our bank accounts right now",
+        "expect": {
+            "tools": [
+                "finance.get_cash_balance"
+            ]
+        }
+    },
+    {
+        "id": "single-12",
+        "type": "single",
+        "split": "final",
+        "query": "I need to get reimbursed for a 40 dollar taxi receipt",
+        "expect": {
+            "tools": [
+                "finance.submit_expense_claim"
+            ]
+        }
+    },
+    {
+        "id": "single-13",
+        "type": "single",
+        "split": "dev",
+        "query": "sign off on expense claim EC-90",
+        "expect": {
+            "tools": [
+                "finance.approve_expense_claim"
+            ]
+        }
+    },
+    {
+        "id": "single-14",
+        "type": "single",
+        "split": "final",
+        "query": "show me ticket T-4410",
+        "expect": {
+            "tools": [
+                "support.get_ticket"
+            ]
+        }
+    },
+    {
+        "id": "single-15",
+        "type": "single",
+        "split": "dev",
+        "query": "answer the customer on ticket T-4410 saying the fix is live",
+        "expect": {
+            "tools": [
+                "support.reply_to_ticket"
+            ]
+        }
+    },
+    {
+        "id": "single-16",
+        "type": "single",
+        "split": "final",
+        "query": "T-2001 is solved, mark it done",
+        "expect": {
+            "tools": [
+                "support.close_ticket"
+            ]
+        }
+    },
+    {
+        "id": "single-17",
+        "type": "single",
+        "split": "dev",
+        "query": "how many vacation days does employee E-77 have left",
+        "expect": {
+            "tools": [
+                "hr.get_leave_balance"
+            ]
+        }
+    },
+    {
+        "id": "single-18",
+        "type": "single",
+        "split": "final",
+        "query": "I want to take 12 to 16 March off",
+        "expect": {
+            "tools": [
+                "hr.request_leave"
+            ]
+        }
+    },
+    {
+        "id": "single-19",
+        "type": "single",
+        "split": "dev",
+        "query": "set up everything for our new hire Dana starting Monday",
+        "expect": {
+            "tools": [
+                "hr.onboard_employee"
+            ]
+        }
+    },
+    {
+        "id": "single-20",
+        "type": "single",
+        "split": "final",
+        "query": "text +1 555 0100 that the delivery is delayed",
+        "expect": {
+            "tools": [
+                "comm.send_sms"
+            ]
+        }
+    },
+    {
+        "id": "single-21",
+        "type": "single",
+        "split": "dev",
+        "query": "what is on my calendar this Friday",
+        "expect": {
+            "tools": [
+                "calendar.list_events"
+            ]
+        }
+    },
+    {
+        "id": "single-22",
+        "type": "single",
+        "split": "final",
+        "query": "when are Omar and Lin both free for 30 minutes",
+        "expect": {
+            "tools": [
+                "calendar.find_free_slot"
+            ]
+        }
+    },
+    {
+        "id": "single-23",
+        "type": "single",
+        "split": "dev",
+        "query": "push meeting MTG-8 to 4pm tomorrow",
+        "expect": {
+            "tools": [
+                "calendar.reschedule_meeting"
+            ]
+        }
+    },
+    {
+        "id": "single-24",
+        "type": "single",
+        "split": "final",
+        "query": "reserve the Everest room at 2pm",
+        "expect": {
+            "tools": [
+                "calendar.book_room"
+            ]
+        }
+    },
+    {
+        "id": "single-25",
+        "type": "single",
+        "split": "dev",
+        "query": "is web-01 up",
+        "expect": {
+            "tools": [
+                "ops.get_server_status"
+            ]
+        }
+    },
+    {
+        "id": "single-26",
+        "type": "single",
+        "split": "final",
+        "query": "reboot db-02",
+        "expect": {
+            "tools": [
+                "ops.restart_server"
+            ]
+        }
+    },
+    {
+        "id": "single-27",
+        "type": "single",
+        "split": "dev",
+        "query": "show the latest log lines from api-03",
+        "expect": {
+            "tools": [
+                "ops.get_logs"
+            ]
+        }
+    },
+    {
+        "id": "single-28",
+        "type": "single",
+        "split": "final",
+        "query": "production checkout is down, raise a sev1",
+        "expect": {
+            "tools": [
+                "ops.create_incident"
+            ]
+        }
+    },
+    {
+        "id": "single-29",
+        "type": "single",
+        "split": "dev",
+        "query": "ship release 2.4.1 of the billing service to staging",
+        "expect": {
+            "tools": [
+                "ops.deploy_service"
+            ]
+        }
+    },
+    {
+        "id": "single-30",
+        "type": "single",
+        "split": "final",
+        "query": "what is the memory usage of the search service",
+        "expect": {
+            "tools": [
+                "ops.get_metrics"
+            ]
+        }
+    },
+    {
+        "id": "single-31",
+        "type": "single",
+        "split": "dev",
+        "query": "put budget.xlsx into the Finance folder",
+        "expect": {
+            "tools": [
+                "docs.upload_file"
+            ]
+        }
+    },
+    {
+        "id": "single-32",
+        "type": "single",
+        "split": "final",
+        "query": "let sam@example.com edit document DOC-31",
+        "expect": {
+            "tools": [
+                "docs.share_document"
+            ]
+        }
+    },
+    {
+        "id": "single-33",
+        "type": "single",
+        "split": "dev",
+        "query": "make a pie chart of these regional numbers",
+        "expect": {
+            "tools": [
+                "docs.generate_chart"
+            ]
+        }
+    },
+    {
+        "id": "single-34",
+        "type": "single",
+        "split": "final",
+        "query": "produce a PDF report from the monthly template",
+        "expect": {
+            "tools": [
+                "docs.generate_pdf_report"
+            ]
+        }
+    },
+    {
+        "id": "single-35",
+        "type": "single",
+        "split": "dev",
+        "query": "find the onboarding guide on the shared drive",
+        "expect": {
+            "tools": [
+                "docs.search_documents"
+            ]
+        }
+    },
+    {
+        "id": "single-36",
+        "type": "single",
+        "split": "final",
+        "query": "remove all access for E-31, today is their last day",
+        "expect": {
+            "tools": [
+                "hr.offboard_employee"
+            ]
+        }
+    },
+    {
+        "id": "look_alike-01",
+        "type": "look_alike",
+        "split": "dev",
+        "query": "what was total revenue in Q2",
+        "expect": {
+            "tools": [
+                "finance.get_revenue_report"
+            ]
+        }
+    },
+    {
+        "id": "look_alike-02",
+        "type": "look_alike",
+        "split": "final",
+        "query": "break down what we spent in Q2",
+        "expect": {
+            "tools": [
+                "finance.get_expense_report"
+            ]
+        }
+    },
+    {
+        "id": "look_alike-03",
+        "type": "look_alike",
+        "split": "dev",
+        "query": "find customers from the company Globex",
+        "expect": {
+            "tools": [
+                "crm.search_customers"
+            ]
+        }
+    },
+    {
+        "id": "look_alike-04",
+        "type": "look_alike",
+        "split": "final",
+        "query": "open customer record CUST-501",
+        "expect": {
+            "tools": [
+                "crm.get_customer"
+            ]
+        }
+    },
+    {
+        "id": "look_alike-05",
+        "type": "look_alike",
+        "split": "dev",
+        "query": "look up employee E-1002",
+        "expect": {
+            "tools": [
+                "hr.get_employee"
+            ]
+        }
+    },
+    {
+        "id": "look_alike-06",
+        "type": "look_alike",
+        "split": "final",
+        "query": "who on the design team is called Maria",
+        "expect": {
+            "tools": [
+                "hr.search_employees"
+            ]
+        }
+    },
+    {
+        "id": "look_alike-07",
+        "type": "look_alike",
+        "split": "dev",
+        "query": "what does employee E-1002 earn",
+        "expect": {
+            "tools": [
+                "hr.get_salary"
+            ]
+        }
+    },
+    {
+        "id": "look_alike-08",
+        "type": "look_alike",
+        "split": "final",
+        "query": "check the status of invoice INV-889",
+        "expect": {
+            "tools": [
+                "billing.get_invoice"
+            ]
+        }
+    },
+    {
+        "id": "look_alike-09",
+        "type": "look_alike",
+        "split": "dev",
+        "query": "did anyone email us about the contract renewal",
+        "expect": {
+            "tools": [
+                "comm.search_emails"
+            ]
+        }
+    },
+    {
+        "id": "look_alike-10",
+        "type": "look_alike",
+        "split": "final",
+        "query": "what did people say in slack about the outage",
+        "expect": {
+            "tools": [
+                "comm.search_slack_messages"
+            ]
+        }
+    },
+    {
+        "id": "look_alike-11",
+        "type": "look_alike",
+        "split": "dev",
+        "query": "post in #general that lunch is here",
+        "expect": {
+            "tools": [
+                "comm.send_slack_message"
+            ]
+        }
+    },
+    {
+        "id": "look_alike-12",
+        "type": "look_alike",
+        "split": "final",
+        "query": "email lee@example.com the meeting summary",
+        "expect": {
+            "tools": [
+                "comm.send_email"
+            ]
+        }
+    },
+    {
+        "id": "look_alike-13",
+        "type": "look_alike",
+        "split": "dev",
+        "query": "find tickets mentioning login failures",
+        "expect": {
+            "tools": [
+                "support.search_tickets"
+            ]
+        }
+    },
+    {
+        "id": "look_alike-14",
+        "type": "look_alike",
+        "split": "final",
+        "query": "log a new support case for CUST-7 whose export is broken",
+        "expect": {
+            "tools": [
+                "support.create_ticket"
+            ]
+        }
+    },
+    {
+        "id": "look_alike-15",
+        "type": "look_alike",
+        "split": "dev",
+        "query": "ticket T-90 needs the engineers urgently",
+        "expect": {
+            "tools": [
+                "support.escalate_ticket"
+            ]
+        }
+    },
+    {
+        "id": "look_alike-16",
+        "type": "look_alike",
+        "split": "final",
+        "query": "put a 45 minute sync with Ana on the calendar for 10am",
+        "expect": {
+            "tools": [
+                "calendar.schedule_meeting"
+            ]
+        }
+    },
+    {
+        "id": "look_alike-17",
+        "type": "look_alike",
+        "split": "dev",
+        "query": "approve Ravi's time off request LR-5",
+        "expect": {
+            "tools": [
+                "hr.approve_leave"
+            ]
+        }
+    },
+    {
+        "id": "look_alike-18",
+        "type": "look_alike",
+        "split": "final",
+        "query": "save these rows as a CSV file",
+        "expect": {
+            "tools": [
+                "docs.export_to_spreadsheet"
+            ]
+        }
+    },
+    {
+        "id": "look_alike-19",
+        "type": "look_alike",
+        "split": "dev",
+        "query": "revert the payments service in production to the last release",
+        "expect": {
+            "tools": [
+                "ops.rollback_deployment"
+            ]
+        }
+    },
+    {
+        "id": "look_alike-20",
+        "type": "look_alike",
+        "split": "final",
+        "query": "clear out log files older than 90 days on web-01",
+        "expect": {
+            "tools": [
+                "ops.delete_logs"
+            ]
+        }
+    },
+    {
+        "id": "look_alike-21",
+        "type": "look_alike",
+        "split": "dev",
+        "query": "cancel subscription SUB-440",
+        "expect": {
+            "tools": [
+                "billing.cancel_subscription"
+            ]
+        }
+    },
+    {
+        "id": "look_alike-22",
+        "type": "look_alike",
+        "split": "final",
+        "query": "void invoice INV-120, it was issued by mistake",
+        "expect": {
+            "tools": [
+                "billing.void_invoice"
+            ]
+        }
+    },
+    {
+        "id": "look_alike-23",
+        "type": "look_alike",
+        "split": "dev",
+        "query": "delete customer CUST-3 for good",
+        "expect": {
+            "tools": [
+                "crm.delete_customer"
+            ]
+        }
+    },
+    {
+        "id": "look_alike-24",
+        "type": "look_alike",
+        "split": "final",
+        "query": "call off meeting MTG-55",
+        "expect": {
+            "tools": [
+                "calendar.cancel_meeting"
+            ]
+        }
+    },
+    {
+        "id": "multi-01",
+        "type": "multi",
+        "split": "dev",
+        "query": "get the Q3 revenue report and email it to cfo@example.com",
+        "expect": {
+            "tools": [
+                "finance.get_revenue_report",
+                "comm.send_email"
+            ]
+        }
+    },
+    {
+        "id": "multi-02",
+        "type": "multi",
+        "split": "final",
+        "query": "export the revenue report to a spreadsheet",
+        "expect": {
+            "tools": [
+                "finance.get_revenue_report",
+                "docs.export_to_spreadsheet"
+            ]
+        }
+    },
+    {
+        "id": "multi-03",
+        "type": "multi",
+        "split": "dev",
+        "query": "check server web-02 and restart it",
+        "expect": {
+            "tools": [
+                "ops.get_server_status",
+                "ops.restart_server"
+            ]
+        }
+    },
+    {
+        "id": "multi-04",
+        "type": "multi",
+        "split": "final",
+        "query": "fetch ticket T-12 then reply that we are looking into it",
+        "expect": {
+            "tools": [
+                "support.get_ticket",
+                "support.reply_to_ticket"
+            ]
+        }
+    },
+    {
+        "id": "multi-05",
+        "type": "multi",
+        "split": "dev",
+        "query": "look up invoice INV-45 and send a payment reminder",
+        "expect": {
+            "tools": [
+                "billing.get_invoice",
+                "billing.send_payment_reminder"
+            ]
+        }
+    },
+    {
+        "id": "multi-06",
+        "type": "multi",
+        "split": "final",
+        "query": "find a free slot for Jo and Kim, then schedule the meeting",
+        "expect": {
+            "tools": [
+                "calendar.find_free_slot",
+                "calendar.schedule_meeting"
+            ]
+        }
+    },
+    {
+        "id": "multi-07",
+        "type": "multi",
+        "split": "dev",
+        "query": "escalate ticket T-300 and post about it in the #support slack channel",
+        "expect": {
+            "tools": [
+                "support.escalate_ticket",
+                "comm.send_slack_message"
+            ]
+        }
+    },
+    {
+        "id": "multi-08",
+        "type": "multi",
+        "split": "final",
+        "query": "create a customer record for Initech and add a note that they came from the expo",
+        "expect": {
+            "tools": [
+                "crm.create_customer",
+                "crm.add_customer_note"
+            ]
+        }
+    },
+    {
+        "id": "multi-09",
+        "type": "multi",
+        "split": "dev",
+        "query": "upload plan.docx to the Strategy folder and share it with kay@example.com",
+        "expect": {
+            "tools": [
+                "docs.upload_file",
+                "docs.share_document"
+            ]
+        }
+    },
+    {
+        "id": "multi-10",
+        "type": "multi",
+        "split": "final",
+        "query": "make a line chart of CPU metrics for the api service",
+        "expect": {
+            "tools": [
+                "ops.get_metrics",
+                "docs.generate_chart"
+            ]
+        }
+    },
+    {
+        "id": "multi-11",
+        "type": "multi",
+        "split": "dev",
+        "query": "list overdue invoices and export them to a spreadsheet",
+        "expect": {
+            "tools": [
+                "billing.list_unpaid_invoices",
+                "docs.export_to_spreadsheet"
+            ]
+        }
+    },
+    {
+        "id": "multi-12",
+        "type": "multi",
+        "split": "final",
+        "query": "read the logs on api-01, then declare an incident",
+        "expect": {
+            "tools": [
+                "ops.get_logs",
+                "ops.create_incident"
+            ]
+        }
+    },
+    {
+        "id": "multi-13",
+        "type": "multi",
+        "split": "dev",
+        "query": "email Dana, Omar, and Lin the agenda",
+        "expect": {
+            "tools": [
+                "comm.send_email",
+                "comm.send_email",
+                "comm.send_email"
+            ]
+        }
+    },
+    {
+        "id": "multi-14",
+        "type": "multi",
+        "split": "final",
+        "query": "send a text to +1 555 0101 and an email to ops@example.com about the downtime",
+        "expect": {
+            "tools": [
+                "comm.send_sms",
+                "comm.send_email"
+            ]
+        }
+    },
+    {
+        "id": "multi-15",
+        "type": "multi",
+        "split": "dev",
+        "query": "book the Atlas room and invite the team to a meeting at 11",
+        "expect": {
+            "tools": [
+                "calendar.book_room",
+                "calendar.schedule_meeting"
+            ]
+        }
+    },
+    {
+        "id": "multi-16",
+        "type": "multi",
+        "split": "final",
+        "query": "close ticket T-71 and add a note on customer CUST-71",
+        "expect": {
+            "tools": [
+                "support.close_ticket",
+                "crm.add_customer_note"
+            ]
+        }
+    },
+    {
+        "id": "multi-17",
+        "type": "multi",
+        "split": "dev",
+        "query": "get the expense report for May and turn it into a PDF report",
+        "expect": {
+            "tools": [
+                "finance.get_expense_report",
+                "docs.generate_pdf_report"
+            ]
+        }
+    },
+    {
+        "id": "multi-18",
+        "type": "multi",
+        "split": "final",
+        "query": "deploy release 5.0 of auth to production and then check its error rate",
+        "expect": {
+            "tools": [
+                "ops.deploy_service",
+                "ops.get_metrics"
+            ]
+        }
+    },
+    {
+        "id": "multi-19",
+        "type": "multi",
+        "split": "dev",
+        "query": "look up employee E-9 and check their remaining leave",
+        "expect": {
+            "tools": [
+                "hr.get_employee",
+                "hr.get_leave_balance"
+            ]
+        }
+    },
+    {
+        "id": "multi-20",
+        "type": "multi",
+        "split": "final",
+        "query": "refund payment PAY-3 then email the customer a confirmation",
+        "expect": {
+            "tools": [
+                "billing.refund_payment",
+                "comm.send_email"
+            ]
+        }
+    },
+    {
+        "id": "multi-21",
+        "type": "multi",
+        "split": "dev",
+        "query": "search for the Acme customer and list their open deals",
+        "expect": {
+            "tools": [
+                "crm.search_customers",
+                "crm.list_deals"
+            ]
+        }
+    },
+    {
+        "id": "multi-22",
+        "type": "multi",
+        "split": "final",
+        "query": "pull the Q1 revenue numbers and draw a bar chart",
+        "expect": {
+            "tools": [
+                "finance.get_revenue_report",
+                "docs.generate_chart"
+            ]
+        }
+    },
+    {
+        "id": "multi-23",
+        "type": "multi",
+        "split": "dev",
+        "query": "find the security policy document and share it with new@example.com",
+        "expect": {
+            "tools": [
+                "docs.search_documents",
+                "docs.share_document"
+            ]
+        }
+    },
+    {
+        "id": "multi-24",
+        "type": "multi",
+        "split": "final",
+        "query": "roll back the cart service in staging and tell #eng on slack",
+        "expect": {
+            "tools": [
+                "ops.rollback_deployment",
+                "comm.send_slack_message"
+            ]
+        }
+    },
+    {
+        "id": "versions-01",
+        "type": "versions",
+        "split": "dev",
+        "query": "create an invoice for CUST-5",
+        "expect": {
+            "tools": [
+                "billing.create_invoice_v2"
+            ]
+        }
+    },
+    {
+        "id": "versions-02",
+        "type": "versions",
+        "split": "final",
+        "query": "bill Globex for three consulting items with tax",
+        "expect": {
+            "tools": [
+                "billing.create_invoice_v2"
+            ]
+        }
+    },
+    {
+        "id": "versions-03",
+        "type": "versions",
+        "split": "dev",
+        "query": "raise a new invoice for 900 dollars",
+        "expect": {
+            "tools": [
+                "billing.create_invoice_v2"
+            ]
+        }
+    },
+    {
+        "id": "versions-04",
+        "type": "versions",
+        "split": "final",
+        "query": "use the legacy invoice tool to bill CUST-5",
+        "expect": {
+            "tools": [
+                "billing.create_invoice"
+            ]
+        }
+    },
+    {
+        "id": "versions-05",
+        "type": "versions",
+        "split": "dev",
+        "query": "create the invoice with the old v1 method",
+        "expect": {
+            "tools": [
+                "billing.create_invoice"
+            ]
+        }
+    },
+    {
+        "id": "versions-06",
+        "type": "versions",
+        "split": "final",
+        "query": "I need the deprecated invoice creation for a single amount",
+        "expect": {
+            "tools": [
+                "billing.create_invoice"
+            ]
+        }
+    },
+    {
+        "id": "versions-07",
+        "type": "versions",
+        "split": "dev",
+        "query": "search the drive for the roadmap",
+        "expect": {
+            "tools": [
+                "docs.search_documents"
+            ]
+        }
+    },
+    {
+        "id": "versions-08",
+        "type": "versions",
+        "split": "final",
+        "query": "find the file called notes.txt",
+        "expect": {
+            "tools": [
+                "docs.search_documents"
+            ]
+        }
+    },
+    {
+        "id": "versions-09",
+        "type": "versions",
+        "split": "dev",
+        "query": "search the legacy file server archive for report.doc",
+        "expect": {
+            "tools": [
+                "docs.search_files_legacy"
+            ]
+        }
+    },
+    {
+        "id": "versions-10",
+        "type": "versions",
+        "split": "final",
+        "query": "look in the old archive by file name for contract.pdf",
+        "expect": {
+            "tools": [
+                "docs.search_files_legacy"
+            ]
+        }
+    },
+    {
+        "id": "versions-11",
+        "type": "versions",
+        "split": "dev",
+        "query": "invoice customer CUST-61 with line items",
+        "expect": {
+            "tools": [
+                "billing.create_invoice_v2"
+            ]
+        }
+    },
+    {
+        "id": "versions-12",
+        "type": "versions",
+        "split": "final",
+        "query": "make an invoice the previous legacy way for CUST-61",
+        "expect": {
+            "tools": [
+                "billing.create_invoice"
+            ]
+        }
+    },
+    {
+        "id": "unclear-01",
+        "type": "unclear",
+        "split": "dev",
+        "query": "cancel the meeting",
+        "expect": {
+            "outcome": "clarify"
+        }
+    },
+    {
+        "id": "unclear-02",
+        "type": "unclear",
+        "split": "final",
+        "query": "delete the customer",
+        "expect": {
+            "outcome": "clarify"
+        }
+    },
+    {
+        "id": "unclear-03",
+        "type": "unclear",
+        "split": "dev",
+        "query": "restart it",
+        "expect": {
+            "outcome": "clarify"
+        }
+    },
+    {
+        "id": "unclear-04",
+        "type": "unclear",
+        "split": "final",
+        "query": "send it to them",
+        "expect": {
+            "outcome": "clarify"
+        }
+    },
+    {
+        "id": "unclear-05",
+        "type": "unclear",
+        "split": "dev",
+        "query": "delete all the logs permanently",
+        "expect": {
+            "outcome": "clarify"
+        }
+    },
+    {
+        "id": "unclear-06",
+        "type": "unclear",
+        "split": "final",
+        "query": "remove every customer record",
+        "expect": {
+            "outcome": "clarify"
+        }
+    },
+    {
+        "id": "unclear-07",
+        "type": "unclear",
+        "split": "dev",
+        "query": "void the invoice",
+        "expect": {
+            "outcome": "clarify"
+        }
+    },
+    {
+        "id": "unclear-08",
+        "type": "unclear",
+        "split": "final",
+        "query": "cancel the subscription",
+        "expect": {
+            "outcome": "clarify"
+        }
+    },
+    {
+        "id": "unclear-09",
+        "type": "unclear",
+        "split": "dev",
+        "query": "share that",
+        "expect": {
+            "outcome": "clarify"
+        }
+    },
+    {
+        "id": "unclear-10",
+        "type": "unclear",
+        "split": "final",
+        "query": "delete the document",
+        "expect": {
+            "outcome": "clarify"
+        }
+    },
+    {
+        "id": "unclear-11",
+        "type": "unclear",
+        "split": "dev",
+        "query": "forward this to the team",
+        "expect": {
+            "outcome": "clarify"
+        }
+    },
+    {
+        "id": "unclear-12",
+        "type": "unclear",
+        "split": "final",
+        "query": "wipe everything",
+        "expect": {
+            "outcome": "clarify"
+        }
+    },
+    {
+        "id": "no_tool-01",
+        "type": "no_tool",
+        "split": "dev",
+        "query": "what is the capital of France",
+        "expect": {
+            "outcome": "none"
+        }
+    },
+    {
+        "id": "no_tool-02",
+        "type": "no_tool",
+        "split": "final",
+        "query": "write me a poem about the sea",
+        "expect": {
+            "outcome": "none"
+        }
+    },
+    {
+        "id": "no_tool-03",
+        "type": "no_tool",
+        "split": "dev",
+        "query": "how do I make pancakes",
+        "expect": {
+            "outcome": "none"
+        }
+    },
+    {
+        "id": "no_tool-04",
+        "type": "no_tool",
+        "split": "final",
+        "query": "who won the world cup in 2018",
+        "expect": {
+            "outcome": "none"
+        }
+    },
+    {
+        "id": "no_tool-05",
+        "type": "no_tool",
+        "split": "dev",
+        "query": "translate good morning into Japanese",
+        "expect": {
+            "outcome": "none"
+        }
+    },
+    {
+        "id": "no_tool-06",
+        "type": "no_tool",
+        "split": "final",
+        "query": "what is 17 times 24",
+        "expect": {
+            "outcome": "none"
+        }
+    },
+    {
+        "id": "no_tool-07",
+        "type": "no_tool",
+        "split": "dev",
+        "query": "recommend a movie for tonight",
+        "expect": {
+            "outcome": "none"
+        }
+    },
+    {
+        "id": "no_tool-08",
+        "type": "no_tool",
+        "split": "final",
+        "query": "how tall is Mount Everest",
+        "expect": {
+            "outcome": "none"
+        }
+    },
+    {
+        "id": "no_tool-09",
+        "type": "no_tool",
+        "split": "dev",
+        "query": "tell me a joke",
+        "expect": {
+            "outcome": "none"
+        }
+    },
+    {
+        "id": "no_tool-10",
+        "type": "no_tool",
+        "split": "final",
+        "query": "what's the weather like in Paris",
+        "expect": {
+            "outcome": "none"
+        }
+    },
+    {
+        "id": "no_tool-11",
+        "type": "no_tool",
+        "split": "dev",
+        "query": "play some relaxing music",
+        "expect": {
+            "outcome": "none"
+        }
+    },
+    {
+        "id": "no_tool-12",
+        "type": "no_tool",
+        "split": "final",
+        "query": "order a large pepperoni pizza",
+        "expect": {
+            "outcome": "none"
+        }
+    }
+]

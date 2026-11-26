@@ -1,0 +1,1235 @@
+{
+    "tools": [
+        {
+            "id": "crm.get_customer",
+            "name": "get_customer",
+            "cluster": "crm",
+            "description": "Fetch a customer profile by its customer id",
+            "side_effects": "read",
+            "parameters": [
+                {
+                    "name": "customer_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Customer identifier"
+                }
+            ]
+        },
+        {
+            "id": "crm.search_customers",
+            "name": "search_customers",
+            "cluster": "crm",
+            "description": "Search customers by name, company or email address",
+            "side_effects": "read",
+            "parameters": [
+                {
+                    "name": "query",
+                    "type": "string",
+                    "required": true,
+                    "description": "Text to search for"
+                },
+                {
+                    "name": "limit",
+                    "type": "integer",
+                    "required": false,
+                    "description": "Maximum results"
+                }
+            ]
+        },
+        {
+            "id": "crm.create_customer",
+            "name": "create_customer",
+            "cluster": "crm",
+            "description": "Create a new customer record with contact details",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "name",
+                    "type": "string",
+                    "required": true,
+                    "description": "Customer name"
+                },
+                {
+                    "name": "email",
+                    "type": "string",
+                    "required": true,
+                    "description": "Contact email"
+                }
+            ]
+        },
+        {
+            "id": "crm.update_customer",
+            "name": "update_customer",
+            "cluster": "crm",
+            "description": "Update contact details on an existing customer record",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "customer_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Customer identifier"
+                },
+                {
+                    "name": "email",
+                    "type": "string",
+                    "required": false,
+                    "description": "New email"
+                },
+                {
+                    "name": "phone",
+                    "type": "string",
+                    "required": false,
+                    "description": "New phone number"
+                }
+            ]
+        },
+        {
+            "id": "crm.delete_customer",
+            "name": "delete_customer",
+            "cluster": "crm",
+            "description": "Permanently delete a customer record and its history",
+            "side_effects": "destructive",
+            "parameters": [
+                {
+                    "name": "customer_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Customer identifier"
+                }
+            ]
+        },
+        {
+            "id": "crm.list_deals",
+            "name": "list_deals",
+            "cluster": "crm",
+            "description": "List open sales deals in the pipeline with their stage",
+            "side_effects": "read",
+            "parameters": [
+                {
+                    "name": "owner",
+                    "type": "string",
+                    "required": false,
+                    "description": "Sales owner"
+                },
+                {
+                    "name": "stage",
+                    "type": "string",
+                    "required": false,
+                    "description": "Pipeline stage"
+                }
+            ]
+        },
+        {
+            "id": "crm.update_deal_stage",
+            "name": "update_deal_stage",
+            "cluster": "crm",
+            "description": "Move a sales deal to a different pipeline stage",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "deal_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Deal identifier"
+                },
+                {
+                    "name": "stage",
+                    "type": "string",
+                    "required": true,
+                    "description": "New stage"
+                }
+            ]
+        },
+        {
+            "id": "crm.add_customer_note",
+            "name": "add_customer_note",
+            "cluster": "crm",
+            "description": "Attach a note to a customer record for the sales team",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "customer_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Customer identifier"
+                },
+                {
+                    "name": "note",
+                    "type": "string",
+                    "required": true,
+                    "description": "Note text"
+                }
+            ]
+        },
+        {
+            "id": "billing.create_invoice",
+            "name": "create_invoice",
+            "cluster": "billing",
+            "description": "Create an invoice for a customer from a single amount",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "customer_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Customer identifier"
+                },
+                {
+                    "name": "amount",
+                    "type": "number",
+                    "required": true,
+                    "description": "Invoice total"
+                }
+            ],
+            "deprecated": true,
+            "replaced_by": "billing.create_invoice_v2"
+        },
+        {
+            "id": "billing.create_invoice_v2",
+            "name": "create_invoice_v2",
+            "cluster": "billing",
+            "description": "Create an invoice for a customer with itemized line items and tax",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "customer_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Customer identifier"
+                },
+                {
+                    "name": "line_items",
+                    "type": "string",
+                    "required": true,
+                    "description": "Items being billed"
+                },
+                {
+                    "name": "tax_rate",
+                    "type": "number",
+                    "required": false,
+                    "description": "Tax percentage"
+                }
+            ]
+        },
+        {
+            "id": "billing.get_invoice",
+            "name": "get_invoice",
+            "cluster": "billing",
+            "description": "Fetch one invoice and its payment status by invoice number",
+            "side_effects": "read",
+            "parameters": [
+                {
+                    "name": "invoice_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Invoice number"
+                }
+            ]
+        },
+        {
+            "id": "billing.list_unpaid_invoices",
+            "name": "list_unpaid_invoices",
+            "cluster": "billing",
+            "description": "List invoices that are unpaid or overdue for collection",
+            "side_effects": "read",
+            "parameters": [
+                {
+                    "name": "days_overdue",
+                    "type": "integer",
+                    "required": false,
+                    "description": "Minimum days overdue"
+                }
+            ]
+        },
+        {
+            "id": "billing.void_invoice",
+            "name": "void_invoice",
+            "cluster": "billing",
+            "description": "Void an issued invoice so it can no longer be paid",
+            "side_effects": "destructive",
+            "parameters": [
+                {
+                    "name": "invoice_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Invoice number"
+                }
+            ]
+        },
+        {
+            "id": "billing.refund_payment",
+            "name": "refund_payment",
+            "cluster": "billing",
+            "description": "Refund a card payment back to the customer",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "payment_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Payment identifier"
+                },
+                {
+                    "name": "amount",
+                    "type": "number",
+                    "required": false,
+                    "description": "Partial refund amount"
+                }
+            ]
+        },
+        {
+            "id": "billing.send_payment_reminder",
+            "name": "send_payment_reminder",
+            "cluster": "billing",
+            "description": "Send a reminder about an outstanding invoice to the customer",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "invoice_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Invoice number"
+                }
+            ]
+        },
+        {
+            "id": "billing.cancel_subscription",
+            "name": "cancel_subscription",
+            "cluster": "billing",
+            "description": "Cancel a customer subscription and stop future charges",
+            "side_effects": "destructive",
+            "parameters": [
+                {
+                    "name": "subscription_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Subscription identifier"
+                }
+            ]
+        },
+        {
+            "id": "billing.change_subscription_plan",
+            "name": "change_subscription_plan",
+            "cluster": "billing",
+            "description": "Switch a customer subscription to a different pricing plan",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "subscription_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Subscription identifier"
+                },
+                {
+                    "name": "plan",
+                    "type": "string",
+                    "required": true,
+                    "description": "Target plan name"
+                }
+            ]
+        },
+        {
+            "id": "finance.get_revenue_report",
+            "name": "get_revenue_report",
+            "cluster": "finance",
+            "description": "Get the total revenue report for a given fiscal quarter",
+            "side_effects": "read",
+            "parameters": [
+                {
+                    "name": "quarter",
+                    "type": "string",
+                    "required": true,
+                    "description": "Fiscal quarter"
+                }
+            ]
+        },
+        {
+            "id": "finance.get_expense_report",
+            "name": "get_expense_report",
+            "cluster": "finance",
+            "description": "Get the company spending and expense breakdown for a period",
+            "side_effects": "read",
+            "parameters": [
+                {
+                    "name": "period",
+                    "type": "string",
+                    "required": true,
+                    "description": "Month or quarter"
+                }
+            ]
+        },
+        {
+            "id": "finance.get_cash_balance",
+            "name": "get_cash_balance",
+            "cluster": "finance",
+            "description": "Show the current cash balance across company bank accounts",
+            "side_effects": "read",
+            "parameters": [
+                {
+                    "name": "currency",
+                    "type": "string",
+                    "required": false,
+                    "description": "Currency code"
+                }
+            ]
+        },
+        {
+            "id": "finance.submit_expense_claim",
+            "name": "submit_expense_claim",
+            "cluster": "finance",
+            "description": "Submit an employee expense claim with a receipt for reimbursement",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "amount",
+                    "type": "number",
+                    "required": true,
+                    "description": "Claim amount"
+                },
+                {
+                    "name": "receipt_url",
+                    "type": "string",
+                    "required": true,
+                    "description": "Receipt file link"
+                }
+            ]
+        },
+        {
+            "id": "finance.approve_expense_claim",
+            "name": "approve_expense_claim",
+            "cluster": "finance",
+            "description": "Approve a pending expense claim so it gets reimbursed",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "claim_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Claim identifier"
+                }
+            ]
+        },
+        {
+            "id": "support.create_ticket",
+            "name": "create_ticket",
+            "cluster": "support",
+            "description": "Open a new customer support ticket describing a problem",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "customer_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Customer identifier"
+                },
+                {
+                    "name": "summary",
+                    "type": "string",
+                    "required": true,
+                    "description": "Problem summary"
+                },
+                {
+                    "name": "priority",
+                    "type": "string",
+                    "required": false,
+                    "description": "Ticket priority"
+                }
+            ]
+        },
+        {
+            "id": "support.get_ticket",
+            "name": "get_ticket",
+            "cluster": "support",
+            "description": "Fetch a support ticket and its conversation history by id",
+            "side_effects": "read",
+            "parameters": [
+                {
+                    "name": "ticket_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Ticket identifier"
+                }
+            ]
+        },
+        {
+            "id": "support.search_tickets",
+            "name": "search_tickets",
+            "cluster": "support",
+            "description": "Search support tickets by keyword, status or customer",
+            "side_effects": "read",
+            "parameters": [
+                {
+                    "name": "query",
+                    "type": "string",
+                    "required": true,
+                    "description": "Keyword"
+                },
+                {
+                    "name": "status",
+                    "type": "string",
+                    "required": false,
+                    "description": "Open or closed"
+                }
+            ]
+        },
+        {
+            "id": "support.reply_to_ticket",
+            "name": "reply_to_ticket",
+            "cluster": "support",
+            "description": "Post a reply to the customer on a support ticket",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "ticket_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Ticket identifier"
+                },
+                {
+                    "name": "message",
+                    "type": "string",
+                    "required": true,
+                    "description": "Reply text"
+                }
+            ]
+        },
+        {
+            "id": "support.close_ticket",
+            "name": "close_ticket",
+            "cluster": "support",
+            "description": "Mark a support ticket as resolved and close it",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "ticket_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Ticket identifier"
+                }
+            ]
+        },
+        {
+            "id": "support.escalate_ticket",
+            "name": "escalate_ticket",
+            "cluster": "support",
+            "description": "Escalate a support ticket to the engineering on-call team",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "ticket_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Ticket identifier"
+                },
+                {
+                    "name": "reason",
+                    "type": "string",
+                    "required": true,
+                    "description": "Why it is urgent"
+                }
+            ]
+        },
+        {
+            "id": "hr.get_employee",
+            "name": "get_employee",
+            "cluster": "hr",
+            "description": "Look up an employee record by employee id",
+            "side_effects": "read",
+            "parameters": [
+                {
+                    "name": "employee_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Employee id"
+                }
+            ]
+        },
+        {
+            "id": "hr.search_employees",
+            "name": "search_employees",
+            "cluster": "hr",
+            "description": "Search the employee directory by name, team or job title",
+            "side_effects": "read",
+            "parameters": [
+                {
+                    "name": "query",
+                    "type": "string",
+                    "required": true,
+                    "description": "Name, team or title"
+                }
+            ]
+        },
+        {
+            "id": "hr.get_salary",
+            "name": "get_salary",
+            "cluster": "hr",
+            "description": "Retrieve the salary and compensation details of an employee",
+            "side_effects": "read",
+            "parameters": [
+                {
+                    "name": "employee_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Employee id"
+                },
+                {
+                    "name": "salary_year",
+                    "type": "integer",
+                    "required": false,
+                    "description": "Salary year"
+                }
+            ]
+        },
+        {
+            "id": "hr.get_leave_balance",
+            "name": "get_leave_balance",
+            "cluster": "hr",
+            "description": "Check how many vacation and sick days an employee has left",
+            "side_effects": "read",
+            "parameters": [
+                {
+                    "name": "employee_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Employee id"
+                }
+            ]
+        },
+        {
+            "id": "hr.request_leave",
+            "name": "request_leave",
+            "cluster": "hr",
+            "description": "Submit a vacation or sick leave request for approval",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "start_date",
+                    "type": "string",
+                    "required": true,
+                    "description": "First day off"
+                },
+                {
+                    "name": "end_date",
+                    "type": "string",
+                    "required": true,
+                    "description": "Last day off"
+                },
+                {
+                    "name": "leave_type",
+                    "type": "string",
+                    "required": false,
+                    "description": "Vacation or sick"
+                }
+            ]
+        },
+        {
+            "id": "hr.approve_leave",
+            "name": "approve_leave",
+            "cluster": "hr",
+            "description": "Approve a pending leave request from a team member",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "request_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Leave request id"
+                }
+            ]
+        },
+        {
+            "id": "hr.onboard_employee",
+            "name": "onboard_employee",
+            "cluster": "hr",
+            "description": "Create accounts and a checklist for a newly hired employee",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "name",
+                    "type": "string",
+                    "required": true,
+                    "description": "New hire name"
+                },
+                {
+                    "name": "start_date",
+                    "type": "string",
+                    "required": true,
+                    "description": "Start date"
+                }
+            ]
+        },
+        {
+            "id": "hr.offboard_employee",
+            "name": "offboard_employee",
+            "cluster": "hr",
+            "description": "Remove all system access for an employee who is leaving",
+            "side_effects": "destructive",
+            "parameters": [
+                {
+                    "name": "employee_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Employee id"
+                }
+            ]
+        },
+        {
+            "id": "comm.send_email",
+            "name": "send_email",
+            "cluster": "comm",
+            "description": "Send an email message to a recipient with a subject and body",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "to",
+                    "type": "string",
+                    "required": true,
+                    "description": "Recipient address"
+                },
+                {
+                    "name": "subject",
+                    "type": "string",
+                    "required": true,
+                    "description": "Subject line"
+                },
+                {
+                    "name": "body",
+                    "type": "string",
+                    "required": true,
+                    "description": "Message body"
+                },
+                {
+                    "name": "attachment",
+                    "type": "string",
+                    "required": false,
+                    "description": "File to attach"
+                }
+            ]
+        },
+        {
+            "id": "comm.search_emails",
+            "name": "search_emails",
+            "cluster": "comm",
+            "description": "Search the mailbox for past emails matching a query",
+            "side_effects": "read",
+            "parameters": [
+                {
+                    "name": "query",
+                    "type": "string",
+                    "required": true,
+                    "description": "Search text"
+                },
+                {
+                    "name": "sender",
+                    "type": "string",
+                    "required": false,
+                    "description": "Sender address"
+                }
+            ]
+        },
+        {
+            "id": "comm.send_slack_message",
+            "name": "send_slack_message",
+            "cluster": "comm",
+            "description": "Post a message to a Slack channel or direct message",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "channel",
+                    "type": "string",
+                    "required": true,
+                    "description": "Channel or user"
+                },
+                {
+                    "name": "text",
+                    "type": "string",
+                    "required": true,
+                    "description": "Message text"
+                }
+            ]
+        },
+        {
+            "id": "comm.search_slack_messages",
+            "name": "search_slack_messages",
+            "cluster": "comm",
+            "description": "Search earlier Slack conversations for a word or phrase",
+            "side_effects": "read",
+            "parameters": [
+                {
+                    "name": "query",
+                    "type": "string",
+                    "required": true,
+                    "description": "Search text"
+                },
+                {
+                    "name": "channel",
+                    "type": "string",
+                    "required": false,
+                    "description": "Channel name"
+                }
+            ]
+        },
+        {
+            "id": "comm.send_sms",
+            "name": "send_sms",
+            "cluster": "comm",
+            "description": "Send a short text message to a mobile phone number",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "phone_number",
+                    "type": "string",
+                    "required": true,
+                    "description": "Mobile number"
+                },
+                {
+                    "name": "message",
+                    "type": "string",
+                    "required": true,
+                    "description": "Text content"
+                }
+            ]
+        },
+        {
+            "id": "calendar.schedule_meeting",
+            "name": "schedule_meeting",
+            "cluster": "calendar",
+            "description": "Schedule a meeting on the calendar and invite the attendees",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "attendees",
+                    "type": "string",
+                    "required": true,
+                    "description": "People to invite"
+                },
+                {
+                    "name": "start_time",
+                    "type": "string",
+                    "required": true,
+                    "description": "Start time"
+                },
+                {
+                    "name": "duration",
+                    "type": "integer",
+                    "required": false,
+                    "description": "Length in minutes"
+                }
+            ]
+        },
+        {
+            "id": "calendar.list_events",
+            "name": "list_events",
+            "cluster": "calendar",
+            "description": "List upcoming calendar events and meetings for a day",
+            "side_effects": "read",
+            "parameters": [
+                {
+                    "name": "date",
+                    "type": "string",
+                    "required": true,
+                    "description": "Day to show"
+                }
+            ]
+        },
+        {
+            "id": "calendar.find_free_slot",
+            "name": "find_free_slot",
+            "cluster": "calendar",
+            "description": "Find a time when all listed people are available to meet",
+            "side_effects": "read",
+            "parameters": [
+                {
+                    "name": "attendees",
+                    "type": "string",
+                    "required": true,
+                    "description": "People to check"
+                },
+                {
+                    "name": "duration",
+                    "type": "integer",
+                    "required": true,
+                    "description": "Length in minutes"
+                }
+            ]
+        },
+        {
+            "id": "calendar.reschedule_meeting",
+            "name": "reschedule_meeting",
+            "cluster": "calendar",
+            "description": "Move an existing meeting to a new date or time",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "event_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Meeting identifier"
+                },
+                {
+                    "name": "start_time",
+                    "type": "string",
+                    "required": true,
+                    "description": "New start time"
+                }
+            ]
+        },
+        {
+            "id": "calendar.cancel_meeting",
+            "name": "cancel_meeting",
+            "cluster": "calendar",
+            "description": "Cancel a scheduled meeting and notify everyone invited",
+            "side_effects": "destructive",
+            "parameters": [
+                {
+                    "name": "event_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Meeting identifier"
+                }
+            ]
+        },
+        {
+            "id": "calendar.book_room",
+            "name": "book_room",
+            "cluster": "calendar",
+            "description": "Reserve a physical meeting room in the office for a time slot",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "room",
+                    "type": "string",
+                    "required": true,
+                    "description": "Room name"
+                },
+                {
+                    "name": "start_time",
+                    "type": "string",
+                    "required": true,
+                    "description": "Start time"
+                }
+            ]
+        },
+        {
+            "id": "ops.get_server_status",
+            "name": "get_server_status",
+            "cluster": "ops",
+            "description": "Check the health and uptime status of a server",
+            "side_effects": "read",
+            "parameters": [
+                {
+                    "name": "server",
+                    "type": "string",
+                    "required": true,
+                    "description": "Server name"
+                }
+            ]
+        },
+        {
+            "id": "ops.restart_server",
+            "name": "restart_server",
+            "cluster": "ops",
+            "description": "Restart a server, briefly interrupting the services running on it",
+            "side_effects": "destructive",
+            "parameters": [
+                {
+                    "name": "server",
+                    "type": "string",
+                    "required": true,
+                    "description": "Server name"
+                }
+            ]
+        },
+        {
+            "id": "ops.get_logs",
+            "name": "get_logs",
+            "cluster": "ops",
+            "description": "Read recent application log lines from a server for debugging",
+            "side_effects": "read",
+            "parameters": [
+                {
+                    "name": "server",
+                    "type": "string",
+                    "required": true,
+                    "description": "Server name"
+                },
+                {
+                    "name": "since",
+                    "type": "string",
+                    "required": false,
+                    "description": "Start time"
+                }
+            ]
+        },
+        {
+            "id": "ops.delete_logs",
+            "name": "delete_logs",
+            "cluster": "ops",
+            "description": "Permanently delete old log files from a server to free space",
+            "side_effects": "destructive",
+            "parameters": [
+                {
+                    "name": "server",
+                    "type": "string",
+                    "required": true,
+                    "description": "Server name"
+                },
+                {
+                    "name": "older_than_days",
+                    "type": "integer",
+                    "required": true,
+                    "description": "Age threshold"
+                }
+            ]
+        },
+        {
+            "id": "ops.create_incident",
+            "name": "create_incident",
+            "cluster": "ops",
+            "description": "Declare a production incident and page the on-call engineer",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "title",
+                    "type": "string",
+                    "required": true,
+                    "description": "Incident title"
+                },
+                {
+                    "name": "severity",
+                    "type": "string",
+                    "required": true,
+                    "description": "Severity level"
+                }
+            ]
+        },
+        {
+            "id": "ops.deploy_service",
+            "name": "deploy_service",
+            "cluster": "ops",
+            "description": "Deploy a new version of a service to an environment",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "service",
+                    "type": "string",
+                    "required": true,
+                    "description": "Service name"
+                },
+                {
+                    "name": "environment",
+                    "type": "string",
+                    "required": true,
+                    "description": "Target environment"
+                },
+                {
+                    "name": "release",
+                    "type": "string",
+                    "required": true,
+                    "description": "Release tag"
+                }
+            ]
+        },
+        {
+            "id": "ops.rollback_deployment",
+            "name": "rollback_deployment",
+            "cluster": "ops",
+            "description": "Roll a service back to the previously deployed release",
+            "side_effects": "destructive",
+            "parameters": [
+                {
+                    "name": "service",
+                    "type": "string",
+                    "required": true,
+                    "description": "Service name"
+                },
+                {
+                    "name": "environment",
+                    "type": "string",
+                    "required": true,
+                    "description": "Target environment"
+                }
+            ]
+        },
+        {
+            "id": "ops.get_metrics",
+            "name": "get_metrics",
+            "cluster": "ops",
+            "description": "Query performance metrics such as CPU, memory and error rate",
+            "side_effects": "read",
+            "parameters": [
+                {
+                    "name": "service",
+                    "type": "string",
+                    "required": true,
+                    "description": "Service name"
+                },
+                {
+                    "name": "metric",
+                    "type": "string",
+                    "required": true,
+                    "description": "Metric name"
+                }
+            ]
+        },
+        {
+            "id": "docs.search_documents",
+            "name": "search_documents",
+            "cluster": "docs",
+            "description": "Search shared drive documents by title or content",
+            "side_effects": "read",
+            "parameters": [
+                {
+                    "name": "query",
+                    "type": "string",
+                    "required": true,
+                    "description": "Search text"
+                }
+            ]
+        },
+        {
+            "id": "docs.upload_file",
+            "name": "upload_file",
+            "cluster": "docs",
+            "description": "Upload a file into a shared drive folder",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "file_path",
+                    "type": "string",
+                    "required": true,
+                    "description": "Local file"
+                },
+                {
+                    "name": "folder",
+                    "type": "string",
+                    "required": true,
+                    "description": "Destination folder"
+                }
+            ]
+        },
+        {
+            "id": "docs.share_document",
+            "name": "share_document",
+            "cluster": "docs",
+            "description": "Give another person permission to view or edit a document",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "document_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Document identifier"
+                },
+                {
+                    "name": "email",
+                    "type": "string",
+                    "required": true,
+                    "description": "Person to share with"
+                },
+                {
+                    "name": "role",
+                    "type": "string",
+                    "required": false,
+                    "description": "Viewer or editor"
+                }
+            ]
+        },
+        {
+            "id": "docs.delete_document",
+            "name": "delete_document",
+            "cluster": "docs",
+            "description": "Permanently delete a document from the shared drive",
+            "side_effects": "destructive",
+            "parameters": [
+                {
+                    "name": "document_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Document identifier"
+                }
+            ]
+        },
+        {
+            "id": "docs.export_to_spreadsheet",
+            "name": "export_to_spreadsheet",
+            "cluster": "docs",
+            "description": "Export rows of data into an Excel or CSV spreadsheet file",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "data",
+                    "type": "string",
+                    "required": true,
+                    "description": "Rows to export"
+                },
+                {
+                    "name": "format",
+                    "type": "string",
+                    "required": false,
+                    "description": "xlsx or csv"
+                }
+            ]
+        },
+        {
+            "id": "docs.generate_chart",
+            "name": "generate_chart",
+            "cluster": "docs",
+            "description": "Draw a bar, line or pie chart image from data",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "data",
+                    "type": "string",
+                    "required": true,
+                    "description": "Data series"
+                },
+                {
+                    "name": "chart_type",
+                    "type": "string",
+                    "required": true,
+                    "description": "bar, line or pie"
+                }
+            ]
+        },
+        {
+            "id": "docs.generate_pdf_report",
+            "name": "generate_pdf_report",
+            "cluster": "docs",
+            "description": "Build a formatted PDF report document from a template and data",
+            "side_effects": "write",
+            "parameters": [
+                {
+                    "name": "template",
+                    "type": "string",
+                    "required": true,
+                    "description": "Template name"
+                },
+                {
+                    "name": "data",
+                    "type": "string",
+                    "required": true,
+                    "description": "Report data"
+                }
+            ]
+        },
+        {
+            "id": "docs.search_files_legacy",
+            "name": "search_files_legacy",
+            "cluster": "docs",
+            "description": "Search the old file server archive by file name only",
+            "side_effects": "read",
+            "parameters": [
+                {
+                    "name": "filename",
+                    "type": "string",
+                    "required": true,
+                    "description": "File name"
+                }
+            ],
+            "deprecated": true,
+            "replaced_by": "docs.search_documents"
+        }
+    ]
+}

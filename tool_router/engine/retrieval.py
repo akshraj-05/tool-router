@@ -29,7 +29,8 @@ SWEEPING_TOKENS = frozenset("all every everything entire permanently".split())
 CONTINUITY_TOKENS = frozenset("always usual usually normally typically".split())
 # Personally-identifying / privileged data categories: tools scoped to these
 # are over-privileged for queries that don't ask for them (least privilege).
-SENSITIVE_TOKENS = frozenset("ssn social salary dob birthdate address pii compensation".split())
+# "address" is deliberately absent: it usually means an email, server or web address.
+SENSITIVE_TOKENS = frozenset("ssn social salary dob birthdate pii compensation".split())
 
 _ID_LIKE = re.compile(r"\b(?:[A-Za-z]+-\d+|\d{2,}|[A-Z]{2,}\d+)\b")   # U-1002, CUST-22, 500
 _EMAIL = re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.]+\b")
