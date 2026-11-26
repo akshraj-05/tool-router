@@ -64,11 +64,6 @@ class Settings:
     embedding_provider: str = "local"   # "local" | "gemini"
     llm_provider: str = "none"          # "none" (local planner) | "gemini"
     llm_model: str = ""                 # "" = the provider's own default model
-    # Default OFF: live testing found LLM ingest enrichment can blur near-duplicate
-    # tools (e.g. routed "total revenue" to the wrong near-identical finance tool)
-    # and adds a one-time cold-start cost per tool — see eval_report.md. Opt in only
-    # for thin/vague catalogs where it's likely to help more than it blurs.
-    llm_enrich: bool = False
     max_widen_rounds: int = 1           # bounded shortlist-widening re-plans (LLM cost cap)
     rebuild: bool = False               # wipe caches and re-derive (escape hatch)
     max_tools: int = 5000               # largest registry accepted
@@ -122,7 +117,6 @@ class Settings:
             embedding_provider=pick("TOOL_ROUTER_EMBEDDING_PROVIDER", "embedding_provider", "local"),
             llm_provider=pick("TOOL_ROUTER_LLM_PROVIDER", "llm_provider", "none"),
             llm_model=pick("TOOL_ROUTER_LLM_MODEL", "llm_model", ""),
-            llm_enrich=pick("TOOL_ROUTER_LLM_ENRICH", "llm_enrich", "off") in ("on", "1", "true"),
             max_widen_rounds=int(_env_float("TOOL_ROUTER_MAX_WIDEN_ROUNDS", 1)),
             max_tools=int(_env_float("TOOL_ROUTER_MAX_TOOLS", Settings.max_tools)),
             rebuild=os.environ.get("TOOL_ROUTER_REBUILD", "") in ("1", "true", "yes"),

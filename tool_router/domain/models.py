@@ -4,8 +4,7 @@ Design notes
 ------------
 - ``Tool`` is our *normalized* view of a catalog tool. We keep the ORIGINAL
   raw dict alongside it in ``IndexedTool.raw`` because clients (and any
-  external token accounting) must receive the tool exactly as registered —
-  enrichment is internal to retrieval only (see onboarding.md).
+  external token accounting) must receive the tool exactly as registered.
 - Vectors are ``dict[str, float]`` sparse maps for the default local TF-IDF
   provider. The provider interface also permits dense ``list[float]``
   (Gemini embeddings); similarity helpers handle both.
@@ -71,13 +70,13 @@ class GuardrailResult(BaseModel):
 
 
 class IndexedTool(BaseModel):
-    """A tool prepared for retrieval: normalized + enriched + vectorized."""
+    """A tool prepared for retrieval: normalized + tokenized + vectorized."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     tool: Tool
     raw: dict[str, Any]                    # original registration payload (returned to clients)
-    search_text: str                       # enriched text used for BM25 + embedding
+    search_text: str                       # flattened text used for BM25 + embedding
     tokens: list[str]                      # tokenized search_text
     capability_tokens: set[str]            # from params/tags — capability matching
     embedding: Optional[Vector] = None     # filled by the embedding provider

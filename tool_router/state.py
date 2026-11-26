@@ -4,7 +4,6 @@
         .gitignore        "*", so nothing in here is committed by accident
         catalog.json      current tools plus the history of older definitions
         embeddings.json   cached vectors
-        enrichment.json   cached LLM enrichment (only if enrichment is on)
 
 ``catalog.json`` is also a valid catalog file (its extra keys are ignored when
 loaded with ``--catalog``).

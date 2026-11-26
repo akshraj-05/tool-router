@@ -1,6 +1,6 @@
-"""Ingestion: raw catalog tool → normalized, enriched, index-ready entry.
+"""Ingestion: raw catalog tool → normalized, index-ready entry.
 
-Deterministic enrichment only (LLM enrichment is separate, see engine/enrich.py):
+Deterministic, built from the tool's own fields:
 - search_text: every routable text signal a tool carries — name (split),
   description, tags, cluster, parameter names/descriptions. This is what gets
   embedded and BM25-indexed. The tool NAME is
@@ -10,7 +10,7 @@ Deterministic enrichment only (LLM enrichment is separate, see engine/enrich.py)
   *abilities* (attachment, format, xlsx, ssn...). Used as an explicit
   capability-match signal in fused scoring.
 
-The raw dict is preserved as registered (returned to clients; enriched text never
+The raw dict is preserved as registered (returned to clients; search text never
 leaves the retrieval layer).
 """
 
@@ -37,7 +37,7 @@ def normalize_tool(raw: dict[str, Any]) -> Tool:
 
 
 def build_search_text(tool: Tool) -> str:
-    """Compose the enriched retrieval document for a tool."""
+    """Compose the retrieval document for a tool."""
     param_bits: list[str] = []
     for p in tool.parameters:
         param_bits.append(p.name)
@@ -68,7 +68,7 @@ def capability_tokens(tool: Tool) -> set[str]:
 
 
 def ingest_tools(raw_tools: list[dict[str, Any]]) -> list[IndexedTool]:
-    """Normalize + enrich a catalog into index-ready entries (embedding filled later)."""
+    """Normalize a catalog into index-ready entries (embedding filled later)."""
     if not raw_tools:
         raise CatalogError("Catalog contains no tools.")
     entries: list[IndexedTool] = []

@@ -1,9 +1,8 @@
-"""A cache or an optional LLM reply must never stop the router."""
+"""A damaged or unusable vector cache must never stop the router."""
 
 from __future__ import annotations
 
 import json
-from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -12,13 +11,9 @@ from tool_router.config import Settings
 from tool_router.engine.pipeline import RoutingEngine
 from tool_router.state import StateStore
 
-ENRICH = replace(Settings(), llm_enrich=True, llm_provider="gemini")
-GOOD = '{"description": "Shows totals", "tags": ["income"], "example_queries": ["what did we earn"]}'
 
-
-def _engine(catalog, **kwargs):
-    kwargs.setdefault("settings", Settings())
-    return RoutingEngine(catalog, store=StateStore(Path("state")), **kwargs)
+def _engine(catalog):
+    return RoutingEngine(catalog, settings=Settings(), store=StateStore(Path("state")))
 
 
 def _vectors(engine):
@@ -65,36 +60,3 @@ def test_unusable_cached_vectors_are_computed_again(catalog, value):
 
     assert _vectors(_engine(catalog)) == expected
     assert list(json.loads(path.read_text())["entries"].values())[0] != value
-
-
-@pytest.mark.parametrize("reply", [
-    '{"tags": [1, 2]}', '{"tags": 5}', '{"tags": "income"}',
-    '{"example_queries": [null]}', '{"description": ["a"]}',
-])
-def test_an_unusable_llm_reply_is_skipped_and_not_cached(catalog, fake_chat, reply):
-    plain = _engine(catalog)._index.entries[0].search_text
-
-    engine = _engine(catalog, settings=ENRICH, chat=fake_chat(reply))
-
-    assert engine._index.entries[0].search_text == plain
-    path = Path("state/enrichment.json")
-    assert not path.exists() or json.loads(path.read_text())["entries"] == {}
-
-
-def test_one_unusable_reply_does_not_stop_the_other_tools(catalog, fake_chat):
-    engine = _engine(catalog, settings=ENRICH, chat=fake_chat('{"tags": 5}', GOOD))
-    first, second = engine._index.entries[:2]
-
-    assert "income" not in first.search_text
-    assert "income" in second.search_text
-
-
-def test_unusable_cached_enrichment_is_asked_for_again(catalog, fake_chat):
-    _engine(catalog, settings=ENRICH, chat=fake_chat(GOOD))
-    path = Path("state/enrichment.json")
-    _damage_every_entry(path, {"tags": [1]})
-
-    engine = _engine(catalog, settings=ENRICH, chat=fake_chat(GOOD))
-
-    assert "income" in engine._index.entries[0].search_text
-    assert list(json.loads(path.read_text())["entries"].values())[0] == json.loads(GOOD)

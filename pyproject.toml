@@ -23,11 +23,6 @@ api = ["fastapi>=0.110", "uvicorn>=0.29"]          # REST service — implemente
 mcp = ["mcp>=1.30,<2"]                               # MCP server + importer — implemented, used (mcp 2.x renamed FastMCP: not supported yet)
 test = ["pytest>=8", "httpx>=0.27"]                 # run the test suite: pip install -e ".[api,mcp,test]"
 keyring = ["keyring>=24"]                           # OS keyring for secrets — used opportunistically if installed; falls back to a 0600 file otherwise (this is the tested path)
-# The two extras below are NOT WIRED into the engine today (no code imports them).
-# They were explored as possible future components — see engine-design.md / storage.md
-# "Not implemented" notes — and are kept here only as a documented extension point.
-rerank = ["sentence-transformers>=2.6"]             # NOT USED: a local cross-encoder re-rank stage was designed but not built; fused scoring does this job today
-chroma = ["chromadb>=0.5"]                          # NOT USED: the store is a plain JSON file cache, not a vector DB — see storage.md for why
 
 [project.scripts]
 tool-router = "tool_router.cli:main"

@@ -71,7 +71,7 @@ For the detailed design, see [architecture](docs/design/architecture.md), [engin
 - MCP SDK (optional MCP extra)
 - Docker
 
-The default local path works without an LLM API key. Gemini was used for the reported live hybrid evaluation. ChromaDB and sentence-transformers are listed as exploratory optional dependencies and are not used by the current routing engine.
+The default local path works without an LLM API key. Gemini was used for the reported live hybrid evaluation.
 
 ## Quick start
 

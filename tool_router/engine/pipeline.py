@@ -1,6 +1,6 @@
 """RoutingEngine — the orchestrator (architecture.md §7).
 
-Onboard once:  guardrail (strict) → ingest/enrich →
+Onboard once:  guardrail (strict) → ingest →
                embed + BM25-index → derive maps (clusters/dups/versions).
 Route per query: analyze → fused scoring → version/dup collapse →
                confidence gate (empty/clarify/proceed) → plan → assemble.
@@ -193,7 +193,7 @@ class RoutingEngine:
             raise CatalogError(f"near_duplicate_groups names unknown tool id(s): {', '.join(unknown)}")
 
     def _make_chat(self):
-        """One chat client shared by planner, HyDE and enrichment (or None)."""
+        """One chat client shared by the planner and HyDE (or None)."""
         provider = self._settings.llm_provider
         if provider == "none":
             return None
@@ -234,12 +234,6 @@ class RoutingEngine:
         compares tools in pairs, so the time grows steeply beyond that.
         """
         entries: list[IndexedTool] = ingest_tools(raw_tools)
-
-        # --- one-time LLM enrichment (internal-only, cached, optional) ------
-        if self._chat is not None and self._settings.llm_enrich:
-            from tool_router.engine.enrich import enrich_entries, is_enrichment
-            cache = self._cache("enrichment", "llm-enrich-v1", is_enrichment)
-            enrich_entries(entries, self._chat, cache)
 
         # --- embed (content-hash cached) + lexical index ---------------------
         provider = make_embedding_provider(self._settings.embedding_provider)
@@ -525,8 +519,7 @@ class RoutingEngine:
         return self._index.planner
 
     def raw_tool(self, tool_id: str) -> dict[str, Any]:
-        """The ORIGINAL registered schema for a tool — what clients receive
-        (enrichment never leaves the retrieval layer, see onboarding.md)."""
+        """The ORIGINAL registered schema for a tool — what clients receive."""
         return self._index.raw_by_id[tool_id]
 
     def route(self, query: str, context: Optional[dict] = None) -> RouteResult:

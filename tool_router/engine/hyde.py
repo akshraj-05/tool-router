@@ -1,8 +1,7 @@
 """Conditional HyDE — Hypothetical Document Embeddings, fired only on low confidence.
 
 Rationale (evidence-driven, engine-design.md): blind semantic expansion HURTS precision on
-look-alike tools (measured: dense embeddings 79% < TF-IDF 83%; LLM enrichment blurred
-near-duplicates). So HyDE is NOT in the default retrieval path. It activates whenever the top
+look-alike tools (measured: dense embeddings 79% < TF-IDF 83%). So HyDE is NOT in the default retrieval path. It activates whenever the top
 fused score is below hyde_max (see pipeline.py's trigger check) — deliberately with NO lower
 bound tied to the floor, since a colloquial in-scope query can score ~0 and needs HyDE exactly
 as much as a "weak but present" one does. In that range it can only help:

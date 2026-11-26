@@ -350,7 +350,7 @@ def create_app(
 
         key = body.pop("api_key", None)
         allowed = {k: str(v) for k, v in body.items()
-                   if k in {"llm_provider", "llm_model", "embedding_provider", "llm_enrich"}}
+                   if k in {"llm_provider", "llm_model", "embedding_provider"}}
         if allowed:
             save_stored_config(allowed)
         stored_where = None
