@@ -7,8 +7,8 @@ Deterministic, built from the tool's own fields:
   deliberately diluted by all other signals so naming decoys (cross-cluster
   traps like `data.email_report`) can't dominate matching.
 - param_tag_words: words from parameter names, parameter descriptions and tags
-  only — the inputs a tool takes (attachment, format, xlsx, ssn...). Used for
-  the parameter-match score.
+  only — the inputs a tool takes (attachment, format, xlsx, ssn...). Used by the
+  sensitive-data penalty and by the planner.
 
 The raw dict is preserved as registered (returned to clients; search text never
 leaves the retrieval layer).

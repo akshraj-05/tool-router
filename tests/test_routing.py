@@ -144,8 +144,7 @@ def test_only_sensitive_data_is_penalised(description_of_parameter, penalised):
         )]}, settings=Settings())
         candidate = engine.route("send a short note").trace["top_candidates"][0]
         weights = engine._settings.weights
-        expected = (weights.dense * candidate["dense"] + weights.bm25 * candidate["bm25"]
-                    + weights.param_match * candidate["param_match"])
+        expected = weights.dense * candidate["dense"] + weights.bm25 * candidate["bm25"]
         return expected - candidate["fused"]
 
     assert score(description_of_parameter) == pytest.approx(0.10 if penalised else 0.0, abs=1e-3)

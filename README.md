@@ -6,47 +6,95 @@ Tool Router is a Python routing service for large tool catalogs. Register tools 
 
 ## Evaluation
 
-The test data and the scoring command are in [`eval/`](eval/), so you can reproduce these results from a fresh checkout:
+The test data and the scoring command are in [`eval/`](eval/). A request passes only if the answer is exactly right: the expected tools in the expected order, a clarifying question, or nothing.
+
+| Test set | Tools | Requests | Tool definitions from |
+|---|---:|---:|---|
+| `github` | 84 | 81 | GitHub MCP server |
+| `playwright` | 17 | 19 | Playwright MCP server |
+| `custom` | 63 | 120 | Written for this repository |
+
+See [sources and licences](eval/SOURCES.md). Each set is split into a tuning half and a final half.
+
+### Results on the final halves, current code
+
+| Setup | `github` (40) | `playwright` (10) | `custom` (60) | All (110) |
+|---|---:|---:|---:|---:|
+| Keyword search baseline | 18 (45%) | 6 (60%) | 20 (33%) | 44 (40%) |
+| Local mode (no LLM, no key) | 25 (62%) | 8 (80%) | 38 (63%) | **71 (65%)** |
+
+| Request type, all sets | Local mode |
+|---|---:|
+| One tool | 26/38 |
+| Choosing between similar tools | 15/24 |
+| Several tools in order | 10/20 |
+| Current or old tool version (`custom` only) | 3/6 |
+| Unclear request: should ask a question | 9/11 |
+| No suitable tool: should return nothing | 8/11 |
+
+### With the Gemini planner (earlier measurement)
+
+Measured on 2026-11-27 with `gemini-3.5-flash-lite` and local vectors: one run, no failed calls.
+
+| Final half | Passed |
+|---|---:|
+| `custom` | **57/60 (95%)** |
+| GitHub and Playwright tools together in one catalog | **45/50 (90%)** |
+| Both | **102/110 (93%)** |
+
+These numbers are **not** from the current code or layout. Since then, a parameter-matching score was removed from retrieval, the vector and keyword weights changed, and the GitHub and Playwright tools were split into separate catalogs. They have not been re-run with Gemini yet.
+
+### What the results show
+
+- **The LLM planner made the largest difference** in the earlier run, mostly for similar tools, multi-step requests and unrelated requests.
+- **Choosing one tool in local mode is not clearly better than keyword search.** On requests that expect exactly one tool:
+
+  | | `github` | `playwright` | `custom` |
+  |---|---:|---:|---:|
+  | Keyword search | 18/26 | 6/6 | 20/36 |
+  | Local mode | 18/26 | 5/6 | 21/36 |
+
+  Local mode's advantage is asking questions, rejecting unrelated requests and planning several steps, which the baseline cannot do.
+- **Speed and cost:** local mode answers in milliseconds. With Gemini a request took roughly 1 to 2 seconds and needs an API key.
+- **Gemini embeddings** with the local planner scored about the same as local vectors on the tuning halves (earlier code), so they are not the recommended setup.
+
+### Limits of these results
+
+- The requests were written with an AI assistant and have not been independently reviewed. An LLM may find requests written this way easier than real users' requests, which would flatter the Gemini score.
+- The sets are small, `playwright` especially: one request changes its final score by 10 points, and it has no unclear requests.
+- Smaller catalogs are easier. Splitting GitHub and Playwright raised local scores on the same requests, from 30/50 to 33/50, without any change to the router.
+- 20 of the 121 tools in those two servers were rejected by the router's validation and are not part of the test.
+- Fixes are guided by the tuning halves only. The command does not list failures from the final halves.
+
+### Run it yourself
 
 ```bash
 pip install -e .
-python eval/run.py                  # tuning half, with every failure listed
-python eval/run.py --split final    # final half, totals only
+python eval/run.py --split final                         # local mode, GitHub set
+python eval/run.py --set playwright --split final
+python eval/run.py --set custom --split final
+python eval/run.py --set github --split final --baseline
+
+export GEMINI_API_KEY=your-key
+TOOL_ROUTER_LLM_PROVIDER=gemini TOOL_ROUTER_LLM_MODEL=gemini-3.5-flash-lite \
+  python eval/run.py --split final --from-env --delay 4.5
 ```
 
-Local mode (no LLM, no API key), 63 tools, 120 requests:
+`--delay` keeps within free-tier rate limits. Failed Gemini calls are counted, and a run with failures is marked as not a clean score.
 
-| Request type | Tuning half | Final half |
-|---|---:|---:|
-| One tool | 15/18 | 12/18 |
-| Choosing between similar tools | 7/12 | 7/12 |
-| Several tools in order | 5/12 | 8/12 |
-| Current or old tool version | 4/6 | 3/6 |
-| Unclear request: should ask a question | 6/6 | 5/6 |
-| No suitable tool: should return nothing | 5/6 | 4/6 |
-| **Total** | **42/60 (70%)** | **39/60 (65%)** |
-
-**How to read this**
-
-- A request passes only if the answer is exactly right: the expected tools in the expected order, a clarifying question, or nothing.
-- Fixes are guided by the tuning half only. Failures in the final half are not listed by the command.
-- With 60 requests per half, the 95% interval is wide: about 52% to 76% for the final half.
-- The requests were written by the project author, so they are not an independent benchmark.
-- Gemini embeddings and the LLM planner have not been scored on this set. `--from-env` runs it with your own settings.
-
-**Known causes of failures** (seen in the tuning half)
+**Known causes of local-mode failures** (seen in the tuning halves)
 
 - Local retrieval matches words, not meaning: "is web-01 up" finds no tool.
 - The local planner splits a request into steps only before a verb that starts a tool name, so "...and email it" loses the second step when the tool is `send_email`.
 - Similar tools are confused, for example reading an invoice instead of creating one.
 
-Earlier development results (up to 90% with an LLM) came from a different 29-query suite on older code that is not in this repository, and are not comparable. See [the earlier evaluation report](docs/eval_report.md).
+Earlier development results came from a different 29-query suite on older code that is not in this repository, and are not comparable. See [the earlier evaluation report](docs/eval_report.md).
 
 ## What it does
 
 1. **Register tools** from JSON or an MCP server.
 2. **Validate and normalize** tool definitions before they enter the catalog.
-3. **Retrieve candidates** using lexical, dense and parameter-match signals.
+3. **Retrieve candidates** using lexical (BM25) and vector signals.
 4. **Apply safeguards** for confidence, duplicates, versions, side effects and out-of-scope requests.
 5. **Build a compact plan** locally or with an optional LLM.
 6. **Return ordered tool selections** to the calling agent.
@@ -91,7 +139,7 @@ For the detailed design, see [architecture](docs/design/architecture.md), [engin
 - MCP SDK (optional MCP extra)
 - Docker
 
-The default local path works without an LLM API key. Gemini was used for the reported live hybrid evaluation.
+The default local path works without an LLM API key. With Gemini, the default model is `gemini-3.5-flash-lite`; see [Evaluation](#evaluation) for what it changes.
 
 ## Quick start
 
@@ -320,7 +368,7 @@ The local planner is deterministic and works offline. LLM-assisted features depe
 | `tool_router/api.py` | REST API |
 | `tool_router/mcp_server.py` | MCP server |
 | `tool_router/cli.py` | Command-line interface |
-| `eval/` | Test catalog, requests and scoring command |
+| `eval/` | Test catalogs, requests, scoring command and keyword baseline |
 | `docs/eval_report.md` | Earlier development results |
 | `docs/design/` | Architecture and design decisions |
 

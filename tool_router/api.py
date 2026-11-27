@@ -330,7 +330,7 @@ def create_app(
 <label>LLM provider ("none" for fully offline, or any provider name tool_router supports)</label>
 <input id=p value="{e(provider)}">
 <label>LLM model (any model name your provider supports)</label>
-<input id=m placeholder="e.g. gemini-flash-lite-latest" value="{e(stored.get("llm_model", ""))}">
+<input id=m placeholder="e.g. gemini-3.5-flash-lite" value="{e(stored.get("llm_model", ""))}">
 <label>Embedding provider</label>
 <input id=e value="{e(stored.get("embedding_provider", "local"))}">
 <label>API key (leave blank to keep current; not used for provider "none")</label>

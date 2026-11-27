@@ -1,0 +1,21 @@
+[
+ {"id": "single-32", "type": "single", "split": "final", "query": "go back to the previous page", "expect": {"tools": ["browser.browser_navigate_back"]}},
+ {"id": "single-33", "type": "single", "split": "dev", "query": "click the Sign in button", "expect": {"tools": ["browser.browser_click"]}},
+ {"id": "single-34", "type": "single", "split": "final", "query": "take a picture of what the page looks like right now", "expect": {"tools": ["browser.browser_take_screenshot"]}},
+ {"id": "single-35", "type": "single", "split": "dev", "query": "press the Escape key", "expect": {"tools": ["browser.browser_press_key"]}},
+ {"id": "single-36", "type": "single", "split": "final", "query": "pick Canada from the country dropdown", "expect": {"tools": ["browser.browser_select_option"]}},
+ {"id": "single-37", "type": "single", "split": "dev", "query": "drag the card from To Do onto Done", "expect": {"tools": ["browser.browser_drag"]}},
+ {"id": "single-38", "type": "single", "split": "final", "query": "wait until the text Upload complete appears", "expect": {"tools": ["browser.browser_wait_for"]}},
+ {"id": "single-39", "type": "single", "split": "dev", "query": "switch the page to dark colour scheme", "expect": {"tools": ["browser.browser_emulate_media"]}},
+ {"id": "single-40", "type": "single", "split": "final", "query": "shut the browser down", "expect": {"tools": ["browser.browser_close"]}},
+ {"id": "look_alike-23", "type": "look_alike", "split": "dev", "query": "get the text content of the current page so you can read its elements", "expect": {"tools": ["browser.browser_snapshot"]}},
+ {"id": "look_alike-24", "type": "look_alike", "split": "final", "query": "show the list of network calls the page has made", "expect": {"tools": ["browser.browser_network_requests"]}},
+ {"id": "multi-10", "type": "multi", "split": "final", "query": "click the search box and then press Enter", "expect": {"tools": ["browser.browser_click", "browser.browser_press_key"]}},
+ {"id": "multi-11", "type": "multi", "split": "dev", "query": "wait for the dashboard to load and then take a screenshot", "expect": {"tools": ["browser.browser_wait_for", "browser.browser_take_screenshot"]}},
+ {"id": "multi-12", "type": "multi", "split": "final", "query": "click Export and then show the network requests", "expect": {"tools": ["browser.browser_click", "browser.browser_network_requests"]}},
+ {"id": "multi-13", "type": "multi", "split": "dev", "query": "go back one page and take a snapshot of it", "expect": {"tools": ["browser.browser_navigate_back", "browser.browser_snapshot"]}},
+ {"id": "no_tool-03", "type": "no_tool", "split": "dev", "query": "how do I fix a leaking tap", "expect": {"outcome": "none"}},
+ {"id": "no_tool-04", "type": "no_tool", "split": "final", "query": "convert 10 miles to kilometres", "expect": {"outcome": "none"}},
+ {"id": "no_tool-07", "type": "no_tool", "split": "dev", "query": "help me plan a vegetarian dinner", "expect": {"outcome": "none"}},
+ {"id": "no_tool-08", "type": "no_tool", "split": "final", "query": "what does the word ephemeral mean", "expect": {"outcome": "none"}}
+]

@@ -1,0 +1,644 @@
+{
+ "tools": [
+  {
+   "id": "browser.browser_click",
+   "name": "browser_click",
+   "cluster": "browser",
+   "description": "Perform click on a web page",
+   "side_effects": "write",
+   "tags": [
+    "browser",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "element",
+     "type": "string",
+     "required": false,
+     "description": "Human-readable element description used to obtain permission to interact with the element"
+    },
+    {
+     "name": "target",
+     "type": "string",
+     "required": true,
+     "description": "Exact target element reference from the page snapshot, or a unique element selector"
+    },
+    {
+     "name": "doubleClick",
+     "type": "boolean",
+     "required": false,
+     "description": "Whether to perform a double click instead of a single click"
+    },
+    {
+     "name": "button",
+     "type": "string",
+     "required": false,
+     "description": "Button to click, defaults to left"
+    },
+    {
+     "name": "modifiers",
+     "type": "array",
+     "required": false,
+     "description": "Modifier keys to press"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "browser_click",
+    "description": "Perform click on a web page"
+   }
+  },
+  {
+   "id": "browser.browser_close",
+   "name": "browser_close",
+   "cluster": "browser",
+   "description": "Close the browser and all open tabs.",
+   "side_effects": "write",
+   "tags": [
+    "browser",
+    "mcp-import"
+   ],
+   "parameters": [],
+   "source": {
+    "type": "mcp",
+    "name": "browser_close",
+    "description": "Close the browser and all open tabs."
+   }
+  },
+  {
+   "id": "browser.browser_drag",
+   "name": "browser_drag",
+   "cluster": "browser",
+   "description": "Perform drag and drop between two elements",
+   "side_effects": "write",
+   "tags": [
+    "browser",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "startElement",
+     "type": "string",
+     "required": false,
+     "description": "Human-readable source element description used to obtain the permission to interact with the element"
+    },
+    {
+     "name": "startTarget",
+     "type": "string",
+     "required": true,
+     "description": "Exact target element reference from the page snapshot, or a unique element selector"
+    },
+    {
+     "name": "endElement",
+     "type": "string",
+     "required": false,
+     "description": "Human-readable target element description used to obtain the permission to interact with the element"
+    },
+    {
+     "name": "endTarget",
+     "type": "string",
+     "required": true,
+     "description": "Exact target element reference from the page snapshot, or a unique element selector"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "browser_drag",
+    "description": "Perform drag and drop between two elements"
+   }
+  },
+  {
+   "id": "browser.browser_drop",
+   "name": "browser_drop",
+   "cluster": "browser",
+   "description": "Drop files or MIME-typed data onto an element, as if dragged from outside the page. At least one of \"paths\" or \"data\" must be provided.",
+   "side_effects": "destructive",
+   "tags": [
+    "browser",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "element",
+     "type": "string",
+     "required": false,
+     "description": "Human-readable element description used to obtain permission to interact with the element"
+    },
+    {
+     "name": "target",
+     "type": "string",
+     "required": true,
+     "description": "Exact target element reference from the page snapshot, or a unique element selector"
+    },
+    {
+     "name": "paths",
+     "type": "array",
+     "required": false,
+     "description": "Absolute paths to files to drop onto the element."
+    },
+    {
+     "name": "data",
+     "type": "object",
+     "required": false,
+     "description": "Data to drop, as a map of MIME type to string value (e.g. {\"text/plain\": \"hello\", \"text/uri-list\": \"https://example.com\"})."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "browser_drop",
+    "description": "Drop files or MIME-typed data onto an element, as if dragged from outside the page. At least one of \"paths\" or \"data\" must be provided."
+   }
+  },
+  {
+   "id": "browser.browser_emulate_media",
+   "name": "browser_emulate_media",
+   "cluster": "browser",
+   "description": "Emulate CSS media features for the page, for example switch between the light and dark color scheme. Omitted parameters are left unchanged; null clears an override.",
+   "side_effects": "write",
+   "tags": [
+    "browser",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "colorScheme",
+     "type": "string",
+     "required": true,
+     "description": "Emulates the prefers-color-scheme media feature"
+    },
+    {
+     "name": "reducedMotion",
+     "type": "string",
+     "required": true,
+     "description": "Emulates the prefers-reduced-motion media feature"
+    },
+    {
+     "name": "forcedColors",
+     "type": "string",
+     "required": true,
+     "description": "Emulates the forced-colors media feature"
+    },
+    {
+     "name": "contrast",
+     "type": "string",
+     "required": true,
+     "description": "Emulates the prefers-contrast media feature"
+    },
+    {
+     "name": "media",
+     "type": "string",
+     "required": true,
+     "description": "Changes the CSS media type of the page"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "browser_emulate_media",
+    "description": "Emulate CSS media features for the page, for example switch between the light and dark color scheme. Omitted parameters are left unchanged; null clears an override."
+   }
+  },
+  {
+   "id": "browser.browser_evaluate",
+   "name": "browser_evaluate",
+   "cluster": "browser",
+   "description": "Evaluate JavaScript expression on page or element",
+   "side_effects": "write",
+   "tags": [
+    "browser",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "element",
+     "type": "string",
+     "required": false,
+     "description": "Human-readable element description used to obtain permission to interact with the element"
+    },
+    {
+     "name": "target",
+     "type": "string",
+     "required": false,
+     "description": "Exact target element reference from the page snapshot, or a unique element selector"
+    },
+    {
+     "name": "function",
+     "type": "string",
+     "required": true,
+     "description": "() => { /* code */ } or (element) => { /* code */ } when element is provided"
+    },
+    {
+     "name": "filename",
+     "type": "string",
+     "required": false,
+     "description": "File name to save the result to. Relative file names are resolved against the workspace root. If not provided, result is returned as text."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "browser_evaluate",
+    "description": "Evaluate JavaScript expression on page or element"
+   }
+  },
+  {
+   "id": "browser.browser_find",
+   "name": "browser_find",
+   "cluster": "browser",
+   "description": "Search the accessibility snapshot of the current page for text or a regular expression. Returns matching snapshot nodes with a few lines of surrounding context (like search snippets), each shown under its path from the root of the tree, which is cheaper than capturing the whole snapshot when you only need to locate an element and its ref.",
+   "side_effects": "read",
+   "tags": [
+    "browser",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "text",
+     "type": "string",
+     "required": false,
+     "description": "Plain text to search for in the page snapshot (case-insensitive substring match). Provide either text or regex, not both."
+    },
+    {
+     "name": "regex",
+     "type": "string",
+     "required": false,
+     "description": "Regular expression to search for in the page snapshot. Matching is case-sensitive by default; wrap the pattern in slashes to add flags, e.g. \"/error/i\" for case-insensitive. Provide either text or regex, not both."
+    },
+    {
+     "name": "maxResults",
+     "type": "number",
+     "required": false,
+     "description": "Maximum number of matching items to return. Defaults to returning all matches."
+    },
+    {
+     "name": "filename",
+     "type": "string",
+     "required": false,
+     "description": "Save results to a file instead of returning them in the response. Relative file names are resolved against the workspace root."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "browser_find",
+    "description": "Search the accessibility snapshot of the current page for text or a regular expression. Returns matching snapshot nodes with a few lines of surrounding context (like search snippets), each shown under its path from the root of the tree, which is cheaper than capturing the whole snapshot when you only need to locate an element and its ref."
+   }
+  },
+  {
+   "id": "browser.browser_navigate_back",
+   "name": "browser_navigate_back",
+   "cluster": "browser",
+   "description": "Go back to the previous page in the history",
+   "side_effects": "write",
+   "tags": [
+    "browser",
+    "mcp-import"
+   ],
+   "parameters": [],
+   "source": {
+    "type": "mcp",
+    "name": "browser_navigate_back",
+    "description": "Go back to the previous page in the history"
+   }
+  },
+  {
+   "id": "browser.browser_network_request",
+   "name": "browser_network_request",
+   "cluster": "browser",
+   "description": "Returns full details (headers and body) of a single network request, or a single part if `part` is set. Use the number from browser_network_requests.",
+   "side_effects": "read",
+   "tags": [
+    "browser",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "index",
+     "type": "integer",
+     "required": true,
+     "description": "1-based index of the request, as printed by browser_network_requests."
+    },
+    {
+     "name": "part",
+     "type": "string",
+     "required": false,
+     "description": "Return only this part of the request. Omit to return full details."
+    },
+    {
+     "name": "filename",
+     "type": "string",
+     "required": false,
+     "description": "File name to save the result to. Relative file names are resolved against the workspace root. If not provided, output is returned as text."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "browser_network_request",
+    "description": "Returns full details (headers and body) of a single network request, or a single part if `part` is set. Use the number from browser_network_requests."
+   }
+  },
+  {
+   "id": "browser.browser_network_requests",
+   "name": "browser_network_requests",
+   "cluster": "browser",
+   "description": "Returns a numbered list of network requests since loading the page. Use browser_network_request with the number to get full details.",
+   "side_effects": "read",
+   "tags": [
+    "browser",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "static",
+     "type": "boolean",
+     "required": true,
+     "description": "Whether to include successful static resources like images, fonts, scripts, etc. Defaults to false."
+    },
+    {
+     "name": "filter",
+     "type": "string",
+     "required": false,
+     "description": "Only return requests whose URL matches this regexp (e.g. \"/api/.*user\")."
+    },
+    {
+     "name": "all",
+     "type": "boolean",
+     "required": false,
+     "description": "Return all network requests since the beginning of the session, not just since the last navigation. Defaults to false."
+    },
+    {
+     "name": "filename",
+     "type": "string",
+     "required": false,
+     "description": "File name to save the network requests to. Relative file names are resolved against the workspace root. If not provided, requests are returned as text."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "browser_network_requests",
+    "description": "Returns a numbered list of network requests since loading the page. Use browser_network_request with the number to get full details."
+   }
+  },
+  {
+   "id": "browser.browser_press_key",
+   "name": "browser_press_key",
+   "cluster": "browser",
+   "description": "Press a key on the keyboard",
+   "side_effects": "write",
+   "tags": [
+    "browser",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "key",
+     "type": "string",
+     "required": true,
+     "description": "Name of the key to press or a character to generate, such as `ArrowLeft` or `a`"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "browser_press_key",
+    "description": "Press a key on the keyboard"
+   }
+  },
+  {
+   "id": "browser.browser_run_code_unsafe",
+   "name": "browser_run_code_unsafe",
+   "cluster": "browser",
+   "description": "Run a Playwright code snippet. Unsafe: executes arbitrary JavaScript in the Playwright server process and is RCE-equivalent.",
+   "side_effects": "write",
+   "tags": [
+    "browser",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "code",
+     "type": "string",
+     "required": false,
+     "description": "A JavaScript function containing Playwright code to execute. It will be invoked with a single argument, page, which you can use for any page interaction. For example: `async (page) => { await page.getByRole('button', { name: 'Submit' }).click(); return await page.title(); }`"
+    },
+    {
+     "name": "filename",
+     "type": "string",
+     "required": false,
+     "description": "Load code from the specified file. Relative file names are resolved against the workspace root. If both code and filename are provided, code will be ignored."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "browser_run_code_unsafe",
+    "description": "Run a Playwright code snippet. Unsafe: executes arbitrary JavaScript in the Playwright server process and is RCE-equivalent."
+   }
+  },
+  {
+   "id": "browser.browser_select_option",
+   "name": "browser_select_option",
+   "cluster": "browser",
+   "description": "Select an option in a dropdown",
+   "side_effects": "write",
+   "tags": [
+    "browser",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "element",
+     "type": "string",
+     "required": false,
+     "description": "Human-readable element description used to obtain permission to interact with the element"
+    },
+    {
+     "name": "target",
+     "type": "string",
+     "required": true,
+     "description": "Exact target element reference from the page snapshot, or a unique element selector"
+    },
+    {
+     "name": "values",
+     "type": "array",
+     "required": true,
+     "description": "Array of values to select in the dropdown. This can be a single value or multiple values."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "browser_select_option",
+    "description": "Select an option in a dropdown"
+   }
+  },
+  {
+   "id": "browser.browser_snapshot",
+   "name": "browser_snapshot",
+   "cluster": "browser",
+   "description": "Capture accessibility snapshot of the current page, this is better than screenshot",
+   "side_effects": "read",
+   "tags": [
+    "browser",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "target",
+     "type": "string",
+     "required": false,
+     "description": "Exact target element reference from the page snapshot, or a unique element selector"
+    },
+    {
+     "name": "filename",
+     "type": "string",
+     "required": false,
+     "description": "Save snapshot to a file instead of returning it in the response. Relative file names are resolved against the workspace root."
+    },
+    {
+     "name": "depth",
+     "type": "number",
+     "required": false,
+     "description": "Limit the depth of the snapshot tree"
+    },
+    {
+     "name": "boxes",
+     "type": "boolean",
+     "required": false,
+     "description": "Include each element's bounding box as [box=x,y,width,height] in the snapshot. Coordinates are viewport-relative, in CSS pixels (Element.getBoundingClientRect)"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "browser_snapshot",
+    "description": "Capture accessibility snapshot of the current page, this is better than screenshot"
+   }
+  },
+  {
+   "id": "browser.browser_take_screenshot",
+   "name": "browser_take_screenshot",
+   "cluster": "browser",
+   "description": "Take a screenshot of the current page. Use browser_snapshot for actions by default. With the vision capability enabled, use screenshot coordinates with the coordinate-based mouse tools for elements not exposed in the accessibility snapshot.",
+   "side_effects": "read",
+   "tags": [
+    "browser",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "element",
+     "type": "string",
+     "required": false,
+     "description": "Human-readable element description used to obtain permission to interact with the element"
+    },
+    {
+     "name": "target",
+     "type": "string",
+     "required": false,
+     "description": "Exact target element reference from the page snapshot, or a unique element selector"
+    },
+    {
+     "name": "type",
+     "type": "string",
+     "required": false,
+     "description": "Image format for the screenshot. If unset, inferred from the filename extension, otherwise png."
+    },
+    {
+     "name": "filename",
+     "type": "string",
+     "required": false,
+     "description": "File name to save the screenshot to. Relative file names are resolved against the workspace root. If not specified, the screenshot is saved into the output directory as `page-{timestamp}.{png|jpeg|webp}`."
+    },
+    {
+     "name": "fullPage",
+     "type": "boolean",
+     "required": false,
+     "description": "When true, takes a screenshot of the full scrollable page, instead of the currently visible viewport. Cannot be used with element screenshots."
+    },
+    {
+     "name": "scale",
+     "type": "string",
+     "required": true,
+     "description": "Image resolution scale. \"css\" produces a screenshot sized in CSS pixels (smaller, consistent across devices). \"device\" produces a high-resolution screenshot using device pixels (larger, accounts for the device pixel ratio). Default is css."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "browser_take_screenshot",
+    "description": "Take a screenshot of the current page. Use browser_snapshot for actions by default. With the vision capability enabled, use screenshot coordinates with the coordinate-based mouse tools for elements not exposed in the accessibility snapshot."
+   }
+  },
+  {
+   "id": "browser.browser_wait_for",
+   "name": "browser_wait_for",
+   "cluster": "browser",
+   "description": "Wait for text to appear or disappear or a specified time to pass. When both text and textGone are provided, waits for the first one to happen",
+   "side_effects": "write",
+   "tags": [
+    "browser",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "time",
+     "type": "number",
+     "required": false,
+     "description": "The time to wait in seconds, at most 30. When combined with text or textGone, serves as a timeout for them instead of the default action timeout"
+    },
+    {
+     "name": "text",
+     "type": "string",
+     "required": false,
+     "description": "The text to wait for"
+    },
+    {
+     "name": "textGone",
+     "type": "string",
+     "required": false,
+     "description": "The text to wait for to disappear"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "browser_wait_for",
+    "description": "Wait for text to appear or disappear or a specified time to pass. When both text and textGone are provided, waits for the first one to happen"
+   }
+  },
+  {
+   "id": "browser.browser_tabs",
+   "name": "browser_tabs",
+   "cluster": "browser",
+   "description": "List, create, close, or select a browser tab.",
+   "side_effects": "write",
+   "tags": [
+    "browser",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "action",
+     "type": "string",
+     "required": true,
+     "description": "Operation to perform"
+    },
+    {
+     "name": "index",
+     "type": "number",
+     "required": false,
+     "description": "Tab index, used for close/select. If omitted for close, current tab is closed."
+    },
+    {
+     "name": "url",
+     "type": "string",
+     "required": false,
+     "description": "URL to navigate to in the new tab, used for new."
+    },
+    {
+     "name": "isolatedContext",
+     "type": "string",
+     "required": false,
+     "description": "Name of an isolated browser context to create the new tab in, used for new. Tabs in the same isolated context share cookies and storage, tabs in different contexts are fully isolated. If omitted or \"default\", the tab is created in the default context."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "browser_tabs",
+    "description": "List, create, close, or select a browser tab."
+   }
+  }
+ ]
+}

@@ -2,7 +2,6 @@
 
 fused(t) = w_dense * cosine(query_vec, tool_vec)      # semantic
          + w_bm25  * bm25(query, tool)                # lexical (exact terms)
-         + w_param * param_match(query, tool)         # does it take what's mentioned?
          - side-effect penalty  (destructive tool, non-destructive query)
          - deprecated penalty   (old version, no legacy signal)
 
@@ -98,7 +97,6 @@ class Candidate:
     fused: float
     dense: float
     bm25: float
-    param_match: float
 
     @property
     def tool_id(self) -> str:
@@ -123,10 +121,7 @@ def score_tools(
     for i, entry in enumerate(entries):
         dense = cosine(query_vector, entry.embedding)
         lexical = bm25_scores[i]
-        overlap = len(signals.content & entry.param_tag_words)
-        param_match = min(1.0, overlap / 3.0)  # saturate: 3+ shared words is a strong match
-
-        fused = weights.dense * dense + weights.bm25 * lexical + weights.param_match * param_match
+        fused = weights.dense * dense + weights.bm25 * lexical
         if entry.tool.side_effects == "destructive" and not signals.destructive_intent:
             fused -= weights.side_effect_penalty
         if not entry.is_current and not signals.legacy_signal:
@@ -138,7 +133,7 @@ def score_tools(
             fused -= 0.10
 
         candidates.append(
-            Candidate(entry=entry, fused=fused, dense=dense, bm25=lexical, param_match=param_match)
+            Candidate(entry=entry, fused=fused, dense=dense, bm25=lexical)
         )
     # Deterministic ordering: score desc, then id asc for stable ties.
     candidates.sort(key=lambda c: (-c.fused, c.tool_id))

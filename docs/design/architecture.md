@@ -81,7 +81,7 @@ If Gemini fails, the router falls back to the local implementation and keeps run
 ## 7. The routing pipeline
 
 1. Read signals from the query (destructive words, identifiers, lists, legacy words).
-2. Score every tool: vector similarity, keyword score, parameter match, minus penalties.
+2. Score every tool: vector similarity and keyword score, minus penalties.
 3. Optional HyDE when the best score is low and an LLM is configured.
 4. Keep one tool per version family and per near-duplicate group.
 5. Gate: return nothing, ask a question, or continue with a shortlist.

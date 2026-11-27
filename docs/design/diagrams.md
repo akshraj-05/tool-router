@@ -4,7 +4,7 @@ One query through the engine. Orange steps call an LLM and run only when one is 
 
 ```mermaid
 flowchart TB
-  Q[Query] --> S[Score every tool:<br/>vector + BM25 + parameter match - penalties]
+  Q[Query] --> S[Score every tool:<br/>vector + BM25 - penalties]
   S --> H{LLM configured and<br/>best score < 0.38?}
   H -->|yes| HY[HyDE: score again with<br/>a described ideal tool]:::llm
   H -->|no| D

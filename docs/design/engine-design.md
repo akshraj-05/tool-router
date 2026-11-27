@@ -55,17 +55,16 @@ Every tool is scored. Text after "so that", "so" or "in order to" is ignored whe
 remain before it.
 
 ```
-fused = 0.45 · vector similarity
-      + 0.45 · BM25
-      + 0.10 · parameter match
+fused = 0.50 · vector similarity
+      + 0.50 · BM25
       − 0.15  destructive tool, no destructive word in the query
       − 0.15  tool not current, no legacy word in the query
       − 0.10  tool handles sensitive data the query did not mention
 ```
 
 BM25 (`k1 = 1.5`, `b = 0.75`) is normalised as `score / (score + 3)`, so a weak match stays
-weak. Parameter match is `min(1, matching words / 3)`. Weights can be changed with
-`TOOL_ROUTER_W_DENSE`, `_BM25`, `_PARAM_MATCH`, `_SIDE_EFFECT` and `_DEPRECATED`.
+weak. Weights can be changed with
+`TOOL_ROUTER_W_DENSE`, `_BM25`, `_SIDE_EFFECT` and `_DEPRECATED`.
 
 ## 3. HyDE (`hyde.py`, LLM only)
 

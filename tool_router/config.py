@@ -26,14 +26,13 @@ def _env_float(name: str, default: float) -> float:
 class RetrievalWeights:
     """Weights of the fused retrieval score (see engine-design.md §2).
 
-    fused = dense*w_dense + bm25*w_bm25 + param_match*w_param_match
+    fused = dense*w_dense + bm25*w_bm25
             - side_effect_penalty (destructive tools on non-destructive queries)
             - deprecated_penalty  (deprecated tools without a legacy signal)
     """
 
-    dense: float = 0.45
-    bm25: float = 0.45
-    param_match: float = 0.10
+    dense: float = 0.50
+    bm25: float = 0.50
     side_effect_penalty: float = 0.15
     deprecated_penalty: float = 0.15
 
@@ -85,7 +84,6 @@ class Settings:
             weights=RetrievalWeights(
                 dense=_env_float("TOOL_ROUTER_W_DENSE", RetrievalWeights.dense),
                 bm25=_env_float("TOOL_ROUTER_W_BM25", RetrievalWeights.bm25),
-                param_match=_env_float("TOOL_ROUTER_W_PARAM_MATCH", RetrievalWeights.param_match),
                 side_effect_penalty=_env_float(
                     "TOOL_ROUTER_W_SIDE_EFFECT", RetrievalWeights.side_effect_penalty
                 ),

@@ -22,6 +22,10 @@ logger = get_logger("providers.gemini")
 
 _BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 _RETRIES = (10, 25, 45)  # seconds of backoff on 429
+DEFAULT_CHAT_MODEL = "gemini-3.5-flash-lite"
+# These models "think" before answering unless told not to, and the thinking is
+# taken from the reply limit, which cuts our short replies off.
+_THINKING_CAN_BE_OFF = ("gemini-2.5-flash",)
 
 
 def _key() -> str:
@@ -53,11 +57,25 @@ def _post(url: str, payload: dict) -> dict:
     raise ProviderError("Gemini call failed after retries")
 
 
+def _check_not_cut_off_by_thinking(data: dict, model: str) -> None:
+    """Raise if a model spent the reply limit on thinking and returned a fragment."""
+    try:
+        cut_off = data["candidates"][0].get("finishReason") == "MAX_TOKENS"
+        thinking = data.get("usageMetadata", {}).get("thoughtsTokenCount")
+    except (KeyError, IndexError, TypeError, AttributeError):
+        return                       # an unexpected shape is reported by the caller
+    if cut_off and thinking:
+        raise ProviderError(
+            f"{model} used {thinking} tokens on thinking and its reply was cut off "
+            f"(try the model {DEFAULT_CHAT_MODEL})"
+        )
+
+
 class GeminiChat:
     """Chat client with the same .complete(system, user, max_tokens) contract."""
 
     def __init__(self, model_id: str | None = None) -> None:
-        self._model = model_id or os.environ.get("TOOL_ROUTER_LLM_MODEL") or "gemini-2.5-flash"
+        self._model = model_id or os.environ.get("TOOL_ROUTER_LLM_MODEL") or DEFAULT_CHAT_MODEL
         _key()  # fail fast if unconfigured
         logger.info("gemini chat ready: model=%s key=present", self._model)
 
@@ -66,6 +84,8 @@ class GeminiChat:
             "contents": [{"role": "user", "parts": [{"text": user}]}],
             "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0.0},
         }
+        if self._model.startswith(_THINKING_CAN_BE_OFF):
+            payload["generationConfig"]["thinkingConfig"] = {"thinkingBudget": 0}
         # Gemma models on this API don't accept systemInstruction — fold the
         # system prompt into the user turn instead (same effective prompt).
         if self._model.startswith("gemma"):
@@ -73,10 +93,11 @@ class GeminiChat:
         else:
             payload["systemInstruction"] = {"parts": [{"text": system}]}
         data = _post(f"{_BASE}/{self._model}:generateContent", payload)
+        _check_not_cut_off_by_thinking(data, self._model)
         try:
             parts = data["candidates"][0]["content"]["parts"]
             return "".join(p.get("text", "") for p in parts)
-        except (KeyError, IndexError) as exc:
+        except (KeyError, IndexError, TypeError, AttributeError) as exc:
             raise ProviderError(f"Gemini reply had no text (finish={data.get('candidates')})") from exc
 
 

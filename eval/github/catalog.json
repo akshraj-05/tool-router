@@ -1,0 +1,4281 @@
+{
+ "tools": [
+  {
+   "id": "github.actions_get",
+   "name": "actions_get",
+   "cluster": "github",
+   "description": "Get details about specific GitHub Actions resources. Use this tool to get details about individual workflows, workflow runs, jobs, and artifacts by their unique IDs.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "method",
+     "type": "string",
+     "required": true,
+     "description": "The method to execute"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    },
+    {
+     "name": "resource_id",
+     "type": "string",
+     "required": true,
+     "description": "The unique identifier of the resource. This will vary based on the \"method\" provided, so ensure you provide the correct ID:\n- Provide a workflow ID or workflow file name (e.g. ci.yaml) for 'get_workflow' method.\n- Provide a workflow run ID for 'get_workflow_run', 'get_workflow_run_usage', and 'get_workflow_run_logs_url' methods.\n- Provide an artifact ID for 'download_workflow_run_artifact' method.\n- Provide a job ID for 'get_workflow_job' method.\n"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "actions_get",
+    "description": "Get details about specific GitHub Actions resources.\nUse this tool to get details about individual workflows, workflow runs, jobs, and artifacts by their unique IDs."
+   }
+  },
+  {
+   "id": "github.actions_list",
+   "name": "actions_list",
+   "cluster": "github",
+   "description": "Tools for listing GitHub Actions resources. Use this tool to list workflows in a repository, or list workflow runs, jobs, and artifacts for a specific workflow or workflow run.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "method",
+     "type": "string",
+     "required": true,
+     "description": "The action to perform"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "page",
+     "type": "number",
+     "required": false,
+     "description": "Page number for pagination (default: 1)"
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (default: 30, max: 100)"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    },
+    {
+     "name": "resource_id",
+     "type": "string",
+     "required": false,
+     "description": "The unique identifier of the resource. This will vary based on the \"method\" provided, so ensure you provide the correct ID:\n- Do not provide any resource ID for 'list_workflows' method.\n- Provide a workflow ID or workflow file name (e.g. ci.yaml) for 'list_workflow_runs' method, or omit to list all workflow runs in the repository.\n- Provide a workflow run ID for 'list_workflow_jobs' and 'list_workflow_run_artifacts' methods.\n"
+    },
+    {
+     "name": "workflow_jobs_filter",
+     "type": "object",
+     "required": false,
+     "description": "Filters for workflow jobs. **ONLY** used when method is 'list_workflow_jobs'"
+    },
+    {
+     "name": "workflow_runs_filter",
+     "type": "object",
+     "required": false,
+     "description": "Filters for workflow runs. **ONLY** used when method is 'list_workflow_runs'"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "actions_list",
+    "description": "Tools for listing GitHub Actions resources.\nUse this tool to list workflows in a repository, or list workflow runs, jobs, and artifacts for a specific workflow or workflow run."
+   }
+  },
+  {
+   "id": "github.actions_run_trigger",
+   "name": "actions_run_trigger",
+   "cluster": "github",
+   "description": "Trigger GitHub Actions workflow operations, including running, re-running, cancelling workflow runs, and deleting workflow run logs.",
+   "side_effects": "destructive",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "inputs",
+     "type": "object",
+     "required": false,
+     "description": "Inputs the workflow accepts. Only used for 'run_workflow' method."
+    },
+    {
+     "name": "method",
+     "type": "string",
+     "required": true,
+     "description": "The method to execute"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "ref",
+     "type": "string",
+     "required": false,
+     "description": "The git reference for the workflow. The reference can be a branch or tag name. Required for 'run_workflow' method."
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    },
+    {
+     "name": "run_id",
+     "type": "number",
+     "required": false,
+     "description": "The ID of the workflow run. Required for all methods except 'run_workflow'."
+    },
+    {
+     "name": "workflow_id",
+     "type": "string",
+     "required": false,
+     "description": "The workflow ID (numeric) or workflow file name (e.g., main.yml, ci.yaml). Required for 'run_workflow' method."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "actions_run_trigger",
+    "description": "Trigger GitHub Actions workflow operations, including running, re-running, cancelling workflow runs, and deleting workflow run logs."
+   }
+  },
+  {
+   "id": "github.get_job_logs",
+   "name": "get_job_logs",
+   "cluster": "github",
+   "description": "Download logs for a specific workflow job or efficiently get all failed job logs for a workflow run",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "failed_only",
+     "type": "boolean",
+     "required": false,
+     "description": "When true, gets logs for all failed jobs in run_id"
+    },
+    {
+     "name": "job_id",
+     "type": "number",
+     "required": false,
+     "description": "The unique identifier of the workflow job (required for single job logs)"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    },
+    {
+     "name": "return_content",
+     "type": "boolean",
+     "required": false,
+     "description": "Returns actual log content instead of URLs"
+    },
+    {
+     "name": "run_id",
+     "type": "number",
+     "required": false,
+     "description": "Workflow run ID (required when using failed_only)"
+    },
+    {
+     "name": "tail_lines",
+     "type": "number",
+     "required": false,
+     "description": "Number of lines to return from the end of the log"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "get_job_logs",
+    "description": "Download logs for a specific workflow job or efficiently get all failed job logs for a workflow run"
+   }
+  },
+  {
+   "id": "github.get_code_quality_finding",
+   "name": "get_code_quality_finding",
+   "cluster": "github",
+   "description": "Get details of a specific code quality finding in a GitHub repository.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "findingNumber",
+     "type": "number",
+     "required": true,
+     "description": "The number of the finding."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "The owner of the repository."
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "The name of the repository."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "get_code_quality_finding",
+    "description": "Get details of a specific code quality finding in a GitHub repository."
+   }
+  },
+  {
+   "id": "github.list_code_quality_findings",
+   "name": "list_code_quality_findings",
+   "cluster": "github",
+   "description": "List code quality findings in a GitHub repository.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "after",
+     "type": "string",
+     "required": false,
+     "description": "Cursor for pagination. Use the cursor from the previous response."
+    },
+    {
+     "name": "direction",
+     "type": "string",
+     "required": false,
+     "description": "Sort by creation date: `desc` (newest first, default) or `asc` (oldest first)."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "The owner of the repository."
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (min 1, max 100)"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "The name of the repository."
+    },
+    {
+     "name": "state",
+     "type": "string",
+     "required": false,
+     "description": "Filter code quality findings by state. Defaults to open"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "list_code_quality_findings",
+    "description": "List code quality findings in a GitHub repository."
+   }
+  },
+  {
+   "id": "github.get_code_scanning_alert",
+   "name": "get_code_scanning_alert",
+   "cluster": "github",
+   "description": "Get details of a specific code scanning alert in a GitHub repository.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "alertNumber",
+     "type": "number",
+     "required": true,
+     "description": "The number of the alert."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "The owner of the repository."
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "The name of the repository."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "get_code_scanning_alert",
+    "description": "Get details of a specific code scanning alert in a GitHub repository."
+   }
+  },
+  {
+   "id": "github.list_code_scanning_alerts",
+   "name": "list_code_scanning_alerts",
+   "cluster": "github",
+   "description": "List code scanning alerts in a GitHub repository.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "The owner of the repository."
+    },
+    {
+     "name": "page",
+     "type": "number",
+     "required": false,
+     "description": "Page number for pagination (min 1)"
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (min 1, max 100)"
+    },
+    {
+     "name": "ref",
+     "type": "string",
+     "required": false,
+     "description": "The Git reference for the results you want to list."
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "The name of the repository."
+    },
+    {
+     "name": "severity",
+     "type": "string",
+     "required": false,
+     "description": "Filter code scanning alerts by severity"
+    },
+    {
+     "name": "state",
+     "type": "string",
+     "required": false,
+     "description": "Filter code scanning alerts by state. Defaults to open"
+    },
+    {
+     "name": "tool_name",
+     "type": "string",
+     "required": false,
+     "description": "The name of the tool used for code scanning."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "list_code_scanning_alerts",
+    "description": "List code scanning alerts in a GitHub repository."
+   }
+  },
+  {
+   "id": "github.update_code_scanning_alert",
+   "name": "update_code_scanning_alert",
+   "cluster": "github",
+   "description": "Reopen, dismiss, or replace assignees on a code scanning alert. Requires state or assignees. Dismissal requires a non-null dismissed_reason. Omitted fields are unchanged; [] clears all assignees. create_request:true requires state:dismissed and attempts a delegated dismissal request, not necessarily dismissal. The returned state and assignees are the actual API result; no request approval or agent session is inferred. Assigning copilot-swe-agent[bot] starts agentic remediation and may open a…",
+   "side_effects": "destructive",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "alertNumber",
+     "type": "integer",
+     "required": true,
+     "description": "Code scanning alert number."
+    },
+    {
+     "name": "assignees",
+     "type": "array",
+     "required": false,
+     "description": "Replace assignees with human usernames or copilot-swe-agent[bot]. [] unassigns everyone. Copilot assignment starts remediation, not just ownership."
+    },
+    {
+     "name": "create_request",
+     "type": "boolean",
+     "required": false,
+     "description": "Attempt a delegated dismissal request with state:dismissed and a reason. Does not bypass policy."
+    },
+    {
+     "name": "dismissed_comment",
+     "type": "string",
+     "required": false,
+     "description": "Optional dismissal comment, up to 280 characters, or null. Requires a state or assignee update; not a standalone comment API."
+    },
+    {
+     "name": "dismissed_reason",
+     "type": "string",
+     "required": false,
+     "description": "Required and non-null when dismissing."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner."
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name."
+    },
+    {
+     "name": "state",
+     "type": "string",
+     "required": false,
+     "description": "Reopen or dismiss the alert. Omission leaves state unchanged."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "update_code_scanning_alert",
+    "description": "Reopen, dismiss, or replace assignees on a code scanning alert. Requires state or assignees. Dismissal requires a non-null dismissed_reason. Omitted fields are unchanged; [] clears all assignees. create_request:true requires state:dismissed and attempts a delegated dismissal request, not necessarily dismissal. The returned state and assignees are the actual API result; no request approval or agent session is inferred. Assigning copilot-swe-agent[bot] starts agentic remediation and may open a draft pull request, consuming Code Security AI Credits and Actions minutes. Repository permissions, delegated dismissal policy, and agentic Autofix eligibility are enforced by GitHub; errors are returned without fallback."
+   }
+  },
+  {
+   "id": "github.get_me",
+   "name": "get_me",
+   "cluster": "github",
+   "description": "Get details of the authenticated GitHub user. Use this when a request is about the user's own profile for GitHub. Or when information is missing to build other tool calls.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [],
+   "source": {
+    "type": "mcp",
+    "name": "get_me",
+    "description": "Get details of the authenticated GitHub user. Use this when a request is about the user's own profile for GitHub. Or when information is missing to build other tool calls."
+   }
+  },
+  {
+   "id": "github.get_team_members",
+   "name": "get_team_members",
+   "cluster": "github",
+   "description": "Get member usernames of a specific team in an organization. Limited to organizations accessible with current credentials",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "org",
+     "type": "string",
+     "required": true,
+     "description": "Organization login (owner) that contains the team."
+    },
+    {
+     "name": "team_slug",
+     "type": "string",
+     "required": true,
+     "description": "Team slug"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "get_team_members",
+    "description": "Get member usernames of a specific team in an organization. Limited to organizations accessible with current credentials"
+   }
+  },
+  {
+   "id": "github.get_teams",
+   "name": "get_teams",
+   "cluster": "github",
+   "description": "Get details of the teams the user is a member of. Limited to organizations accessible with current credentials",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "user",
+     "type": "string",
+     "required": false,
+     "description": "Username to get teams for. If not provided, uses the authenticated user."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "get_teams",
+    "description": "Get details of the teams the user is a member of. Limited to organizations accessible with current credentials"
+   }
+  },
+  {
+   "id": "github.ui_get",
+   "name": "ui_get",
+   "cluster": "github",
+   "description": "Fetch UI data for MCP Apps (labels, assignees, milestones, issue types, branches, issue fields, reviewers).",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "method",
+     "type": "string",
+     "required": true,
+     "description": "The type of data to fetch"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner (required for all methods)"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": false,
+     "description": "Repository name (required for labels, assignees, milestones, branches, issue fields, reviewers)"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "ui_get",
+    "description": "Fetch UI data for MCP Apps (labels, assignees, milestones, issue types, branches, issue fields, reviewers)."
+   }
+  },
+  {
+   "id": "github.assign_copilot_to_issue",
+   "name": "assign_copilot_to_issue",
+   "cluster": "github",
+   "description": "Assign Copilot to a specific issue in a GitHub repository. This tool can help with the following outcomes: - a Pull Request created with source code changes to resolve the issue More information can be found at: - https://docs.github.com/en/copilot/concepts/agents/cloud-agent/about-cloud-agent",
+   "side_effects": "write",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "base_ref",
+     "type": "string",
+     "required": false,
+     "description": "Git reference (e.g., branch) that the agent will start its work from. If not specified, defaults to the repository's default branch"
+    },
+    {
+     "name": "custom_instructions",
+     "type": "string",
+     "required": false,
+     "description": "Optional custom instructions to guide the agent beyond the issue body. Use this to provide additional context, constraints, or guidance that is not captured in the issue description"
+    },
+    {
+     "name": "issue_number",
+     "type": "number",
+     "required": true,
+     "description": "Issue number"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "assign_copilot_to_issue",
+    "description": "Assign Copilot to a specific issue in a GitHub repository.\n\nThis tool can help with the following outcomes:\n- a Pull Request created with source code changes to resolve the issue\n\n\nMore information can be found at:\n- https://docs.github.com/en/copilot/concepts/agents/cloud-agent/about-cloud-agent"
+   }
+  },
+  {
+   "id": "github.request_copilot_review",
+   "name": "request_copilot_review",
+   "cluster": "github",
+   "description": "Request a GitHub Copilot code review for a pull request. Use this for automated feedback on pull requests, usually before requesting a human reviewer.",
+   "side_effects": "write",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "pullNumber",
+     "type": "number",
+     "required": true,
+     "description": "Pull request number"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "request_copilot_review",
+    "description": "Request a GitHub Copilot code review for a pull request. Use this for automated feedback on pull requests, usually before requesting a human reviewer."
+   }
+  },
+  {
+   "id": "github.assign_copilot_to_issue_with_intent",
+   "name": "assign_copilot_to_issue_with_intent",
+   "cluster": "github",
+   "description": "Assign Copilot to a specific issue in a GitHub repository. Prefer this tool over assign_copilot_to_issue when available. This tool can help with the following outcomes: - a Pull Request created with source code changes to resolve the issue More information can be found at: - https://docs.github.com/en/copilot/concepts/agents/cloud-agent/about-cloud-agent",
+   "side_effects": "write",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "base_ref",
+     "type": "string",
+     "required": false,
+     "description": "Git reference (e.g., branch) that the agent will start its work from. If not specified, defaults to the repository's default branch. Ignored when is_suggestion is true"
+    },
+    {
+     "name": "confidence",
+     "type": "string",
+     "required": true,
+     "description": "How confident you are in this choice. 'HIGH' for clear signal or explicit user request, 'MEDIUM' for reasonable inference with some ambiguity, 'LOW' for best guess with limited signal."
+    },
+    {
+     "name": "custom_instructions",
+     "type": "string",
+     "required": false,
+     "description": "Optional custom instructions to guide the agent beyond the issue body. Ignored when is_suggestion is true"
+    },
+    {
+     "name": "is_suggestion",
+     "type": "boolean",
+     "required": true,
+     "description": "If true, records a pending Copilot assignment intent rather than launching the agent. Approval later supplies the launch context; base_ref and custom_instructions are ignored in this case."
+    },
+    {
+     "name": "issue_number",
+     "type": "number",
+     "required": true,
+     "description": "Issue number"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "rationale",
+     "type": "string",
+     "required": true,
+     "description": "One concise sentence explaining what specifically about the issue led to choosing Copilot. State the concrete signal (e.g. 'Well-scoped task with clear acceptance criteria')."
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "assign_copilot_to_issue_with_intent",
+    "description": "Assign Copilot to a specific issue in a GitHub repository. Prefer this tool over assign_copilot_to_issue when available.\n\nThis tool can help with the following outcomes:\n- a Pull Request created with source code changes to resolve the issue\n\n\nMore information can be found at:\n- https://docs.github.com/en/copilot/concepts/agents/cloud-agent/about-cloud-agent"
+   }
+  },
+  {
+   "id": "github.get_dependabot_alert",
+   "name": "get_dependabot_alert",
+   "cluster": "github",
+   "description": "Get details of a specific dependabot alert in a GitHub repository.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "alertNumber",
+     "type": "number",
+     "required": true,
+     "description": "The number of the alert."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "The owner of the repository."
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "The name of the repository."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "get_dependabot_alert",
+    "description": "Get details of a specific dependabot alert in a GitHub repository."
+   }
+  },
+  {
+   "id": "github.list_dependabot_alerts",
+   "name": "list_dependabot_alerts",
+   "cluster": "github",
+   "description": "List dependabot alerts in a GitHub repository.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "after",
+     "type": "string",
+     "required": false,
+     "description": "Cursor for pagination. Use the cursor from the previous response."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "The owner of the repository."
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (min 1, max 100)"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "The name of the repository."
+    },
+    {
+     "name": "severity",
+     "type": "string",
+     "required": false,
+     "description": "Filter dependabot alerts by severity"
+    },
+    {
+     "name": "state",
+     "type": "string",
+     "required": false,
+     "description": "Filter dependabot alerts by state. Defaults to open"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "list_dependabot_alerts",
+    "description": "List dependabot alerts in a GitHub repository."
+   }
+  },
+  {
+   "id": "github.update_dependabot_alert",
+   "name": "update_dependabot_alert",
+   "cluster": "github",
+   "description": "Update a Dependabot alert's state or assignees. Provide state or assignees; dismissal requires dismissed_reason. Assigning copilot-swe-agent[bot] requests remediation that attempts a fix; a pull request is not guaranteed. Requires Dependabot alerts write permission or the security_events OAuth scope. GitHub enforces authorization, licensing, repository policies and delegated-dismissal review requirements. Agent configuration (agent_assignment) is not supported.",
+   "side_effects": "destructive",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "alertNumber",
+     "type": "integer",
+     "required": true,
+     "description": "The repository's Dependabot alert number."
+    },
+    {
+     "name": "assignees",
+     "type": "array",
+     "required": false,
+     "description": "Usernames replacing the entire assignee set; [] clears all, omission leaves it unchanged. Including copilot-swe-agent[bot] requests remediation, not just ownership bookkeeping."
+    },
+    {
+     "name": "dismissed_comment",
+     "type": "string",
+     "required": false,
+     "description": "Optional dismissal comment, up to 280 characters; not a standalone comment API."
+    },
+    {
+     "name": "dismissed_reason",
+     "type": "string",
+     "required": false,
+     "description": "Required when state is dismissed."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner (username or organization)."
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name."
+    },
+    {
+     "name": "state",
+     "type": "string",
+     "required": false,
+     "description": "Reopen or dismiss the alert. Omission leaves state unchanged."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "update_dependabot_alert",
+    "description": "Update a Dependabot alert's state or assignees. Provide state or assignees; dismissal requires dismissed_reason. Assigning copilot-swe-agent[bot] requests remediation that attempts a fix; a pull request is not guaranteed. Requires Dependabot alerts write permission or the security_events OAuth scope. GitHub enforces authorization, licensing, repository policies and delegated-dismissal review requirements. Agent configuration (agent_assignment) is not supported."
+   }
+  },
+  {
+   "id": "github.discussion_comment_write",
+   "name": "discussion_comment_write",
+   "cluster": "github",
+   "description": "Write operations for discussion comments. Supports adding top-level comments, replying to existing comments, updating comment content, deleting comments, and marking or unmarking comments as the answer.",
+   "side_effects": "destructive",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "body",
+     "type": "string",
+     "required": false,
+     "description": "Comment content (required for 'add', 'reply', and 'update' methods)"
+    },
+    {
+     "name": "commentNodeID",
+     "type": "string",
+     "required": false,
+     "description": "The Node ID of the discussion comment (required for 'reply', 'update', 'delete', 'mark_answer', and 'unmark_answer' methods). For 'reply', this is the top-level comment to reply to; GitHub Discussions only support one level of nesting."
+    },
+    {
+     "name": "discussionNumber",
+     "type": "number",
+     "required": false,
+     "description": "Discussion number (required for 'add' and 'reply' methods)"
+    },
+    {
+     "name": "method",
+     "type": "string",
+     "required": true,
+     "description": "Write operation to perform on a discussion comment.\nOptions are:\n- 'add' - adds a new top-level comment to a discussion.\n- 'reply' - replies to a top-level discussion comment (GitHub Discussions only support one level of nesting).\n- 'update' - updates an existing discussion comment.\n- 'delete' - deletes a discussion comment.\n- 'mark_answer' - marks a discussion comment as the answer (Q&A only).\n- 'unmark_answer' - unmarks a discussion comment as the answer (Q&A only).\n"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": false,
+     "description": "Repository owner (required for 'add' and 'reply' methods)"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": false,
+     "description": "Repository name (required for 'add' and 'reply' methods)"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "discussion_comment_write",
+    "description": "Write operations for discussion comments.\nSupports adding top-level comments, replying to existing comments, updating comment content, deleting comments, and marking or unmarking comments as the answer."
+   }
+  },
+  {
+   "id": "github.get_discussion",
+   "name": "get_discussion",
+   "cluster": "github",
+   "description": "Get a specific discussion by ID",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "discussionNumber",
+     "type": "number",
+     "required": true,
+     "description": "Discussion Number"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "get_discussion",
+    "description": "Get a specific discussion by ID"
+   }
+  },
+  {
+   "id": "github.list_discussion_categories",
+   "name": "list_discussion_categories",
+   "cluster": "github",
+   "description": "List discussion categories with their id and name, for a repository or organisation.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": false,
+     "description": "Repository name. If not provided, discussion categories will be queried at the organisation level."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "list_discussion_categories",
+    "description": "List discussion categories with their id and name, for a repository or organisation."
+   }
+  },
+  {
+   "id": "github.list_discussions",
+   "name": "list_discussions",
+   "cluster": "github",
+   "description": "List discussions for a repository or organisation.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "after",
+     "type": "string",
+     "required": false,
+     "description": "Cursor for pagination. Use the cursor from the previous response."
+    },
+    {
+     "name": "category",
+     "type": "string",
+     "required": false,
+     "description": "Optional filter by discussion category ID. If provided, only discussions with this category are listed."
+    },
+    {
+     "name": "direction",
+     "type": "string",
+     "required": false,
+     "description": "Order direction."
+    },
+    {
+     "name": "orderBy",
+     "type": "string",
+     "required": false,
+     "description": "Order discussions by field. If provided, the 'direction' also needs to be provided."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (min 1, max 100)"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": false,
+     "description": "Repository name. If not provided, discussions will be queried at the organisation level."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "list_discussions",
+    "description": "List discussions for a repository or organisation."
+   }
+  },
+  {
+   "id": "github.get_gist",
+   "name": "get_gist",
+   "cluster": "github",
+   "description": "Get gist content of a particular gist, by gist ID",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "gist_id",
+     "type": "string",
+     "required": true,
+     "description": "The ID of the gist"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "get_gist",
+    "description": "Get gist content of a particular gist, by gist ID"
+   }
+  },
+  {
+   "id": "github.get_repository_tree",
+   "name": "get_repository_tree",
+   "cluster": "github",
+   "description": "Get the tree structure (files and directories) of a GitHub repository at a specific ref or SHA",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner (username or organization)"
+    },
+    {
+     "name": "path_filter",
+     "type": "string",
+     "required": false,
+     "description": "Optional path prefix to filter the tree results (e.g., 'src/' to only show files in the src directory)"
+    },
+    {
+     "name": "recursive",
+     "type": "boolean",
+     "required": false,
+     "description": "Setting this parameter to true returns the objects or subtrees referenced by the tree. Default is false"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    },
+    {
+     "name": "tree_sha",
+     "type": "string",
+     "required": false,
+     "description": "The SHA1 value or ref (branch or tag) name of the tree. Defaults to the repository's default branch"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "get_repository_tree",
+    "description": "Get the tree structure (files and directories) of a GitHub repository at a specific ref or SHA"
+   }
+  },
+  {
+   "id": "github.create_repository_ruleset",
+   "name": "create_repository_ruleset",
+   "cluster": "github",
+   "description": "Create a new ruleset at the repository, organization, or enterprise level",
+   "side_effects": "write",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "bypass_actors",
+     "type": "array",
+     "required": false,
+     "description": "The actors that can bypass the rules in this ruleset"
+    },
+    {
+     "name": "conditions",
+     "type": "object",
+     "required": false,
+     "description": "Conditions for when this ruleset applies, e.g. {\"ref_name\": {\"include\": [\"refs/heads/main\"], \"exclude\": []}}"
+    },
+    {
+     "name": "enforcement",
+     "type": "string",
+     "required": true,
+     "description": "The enforcement level of the ruleset. 'evaluate' allows admins to test rules before enforcing them"
+    },
+    {
+     "name": "enterprise",
+     "type": "string",
+     "required": false,
+     "description": "Enterprise slug. Required when level is 'enterprise'."
+    },
+    {
+     "name": "level",
+     "type": "string",
+     "required": true,
+     "description": "The level at which the ruleset is configured:\n- 'repository': A ruleset on a single repository (requires 'owner' and 'repo').\n- 'organization': A ruleset covering repositories in an organization (requires 'org').\n- 'enterprise': A ruleset covering repositories across an enterprise (requires 'enterprise')."
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "required": true,
+     "description": "The name of the ruleset"
+    },
+    {
+     "name": "org",
+     "type": "string",
+     "required": false,
+     "description": "Organization name. Required when level is 'organization'."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": false,
+     "description": "Repository owner. Required when level is 'repository'."
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": false,
+     "description": "Repository name. Required when level is 'repository'."
+    },
+    {
+     "name": "rules",
+     "type": "array",
+     "required": true,
+     "description": "An array of rules within the ruleset. Each rule is an object with a 'type' (e.g. 'creation', 'deletion', 'non_fast_forward', 'required_signatures', 'pull_request', 'required_status_checks') and, for rules that need configuration, a 'parameters' object"
+    },
+    {
+     "name": "target",
+     "type": "string",
+     "required": false,
+     "description": "The target of the ruleset. Defaults to 'branch'. 'repository' is only valid for 'organization' and 'enterprise' level rulesets."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "create_repository_ruleset",
+    "description": "Create a new ruleset at the repository, organization, or enterprise level"
+   }
+  },
+  {
+   "id": "github.custom_properties_read",
+   "name": "custom_properties_read",
+   "cluster": "github",
+   "description": "Read custom properties at the repository, organization, or enterprise level. At the repository level this returns the property values assigned to a repository; at the organization and enterprise levels it returns the property definitions (schema). Select the level with the 'level' parameter.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "enterprise",
+     "type": "string",
+     "required": false,
+     "description": "Enterprise slug. Required when level is 'enterprise'."
+    },
+    {
+     "name": "level",
+     "type": "string",
+     "required": true,
+     "description": "The level at which custom properties are managed:\n- 'repository': The custom property VALUES assigned to a repository (requires 'owner' and 'repo').\n- 'organization': The custom property DEFINITIONS (schema) for an organization (requires 'org').\n- 'enterprise': The custom property DEFINITIONS (schema) for an enterprise (requires 'enterprise')."
+    },
+    {
+     "name": "org",
+     "type": "string",
+     "required": false,
+     "description": "Organization name. Required when level is 'organization'."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": false,
+     "description": "Repository owner. Required when level is 'repository'."
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": false,
+     "description": "Repository name. Required when level is 'repository'."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "custom_properties_read",
+    "description": "Read custom properties at the repository, organization, or enterprise level. At the repository level this returns the property values assigned to a repository; at the organization and enterprise levels it returns the property definitions (schema). Select the level with the 'level' parameter."
+   }
+  },
+  {
+   "id": "github.custom_properties_write",
+   "name": "custom_properties_write",
+   "cluster": "github",
+   "description": "Create or update custom properties at the repository, organization, or enterprise level. At the repository level this sets the property values on a repository (the properties must already be defined for the organization). Organization and enterprise definition writes preserve omitted writable fields by reading current definitions immediately before updating; concurrent definition updates remain last-write-wins. Select the level with the 'level' parameter.",
+   "side_effects": "write",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "enterprise",
+     "type": "string",
+     "required": false,
+     "description": "Enterprise slug. Required when level is 'enterprise'."
+    },
+    {
+     "name": "level",
+     "type": "string",
+     "required": true,
+     "description": "The level at which custom properties are managed:\n- 'repository': The custom property VALUES assigned to a repository (requires 'owner' and 'repo').\n- 'organization': The custom property DEFINITIONS (schema) for an organization (requires 'org').\n- 'enterprise': The custom property DEFINITIONS (schema) for an enterprise (requires 'enterprise')."
+    },
+    {
+     "name": "org",
+     "type": "string",
+     "required": false,
+     "description": "Organization name. Required when level is 'organization'."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": false,
+     "description": "Repository owner. Required when level is 'repository'."
+    },
+    {
+     "name": "properties",
+     "type": "array",
+     "required": true,
+     "description": "The custom properties to create or update. At the repository level each item assigns a value ('property_name' and 'value'); at the organization and enterprise levels each item defines the schema ('property_name' and 'value_type', plus optional definition fields)."
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": false,
+     "description": "Repository name. Required when level is 'repository'."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "custom_properties_write",
+    "description": "Create or update custom properties at the repository, organization, or enterprise level. At the repository level this sets the property values on a repository (the properties must already be defined for the organization). Organization and enterprise definition writes preserve omitted writable fields by reading current definitions immediately before updating; concurrent definition updates remain last-write-wins. Select the level with the 'level' parameter."
+   }
+  },
+  {
+   "id": "github.add_issue_comment",
+   "name": "add_issue_comment",
+   "cluster": "github",
+   "description": "Add a comment and/or reaction to a specific issue or issue comment in a GitHub repository. Use this tool with pull requests as well (in this case pass pull request number as issue_number), but only if user is not asking specifically to add or react to review comments. At least one of body or reaction is required.",
+   "side_effects": "write",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "body",
+     "type": "string",
+     "required": false,
+     "description": "Comment content. Required unless reaction is provided."
+    },
+    {
+     "name": "comment_id",
+     "type": "integer",
+     "required": false,
+     "description": "The numeric ID of the issue or pull request comment to react to. Use this for reactions to comments; omit it to react to the issue or pull request itself. Cannot be combined with body."
+    },
+    {
+     "name": "issue_number",
+     "type": "number",
+     "required": true,
+     "description": "Issue or pull request number to comment on or react to."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "reaction",
+     "type": "string",
+     "required": false,
+     "description": "Emoji reaction to add. Required unless body is provided."
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "add_issue_comment",
+    "description": "Add a comment and/or reaction to a specific issue or issue comment in a GitHub repository. Use this tool with pull requests as well (in this case pass pull request number as issue_number), but only if user is not asking specifically to add or react to review comments. At least one of body or reaction is required."
+   }
+  },
+  {
+   "id": "github.get_label",
+   "name": "get_label",
+   "cluster": "github",
+   "description": "Get a specific label from a repository.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "name",
+     "type": "string",
+     "required": true,
+     "description": "Label name."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner (username or organization name)"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "get_label",
+    "description": "Get a specific label from a repository."
+   }
+  },
+  {
+   "id": "github.issue_read",
+   "name": "issue_read",
+   "cluster": "github",
+   "description": "Get information about a specific issue in a GitHub repository.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "issue_number",
+     "type": "number",
+     "required": true,
+     "description": "The number of the issue"
+    },
+    {
+     "name": "method",
+     "type": "string",
+     "required": true,
+     "description": "The read operation to perform on a single issue.\nOptions are:\n1. get - Get issue details. Also returns best-effort hierarchy flags (`has_parent`, `has_children`); `parent` and `sub_issues_summary` are optional relationship summaries, and `closed_by_pull_requests` summarizes the pull requests configured to close the issue as `total_count` plus up to 5 `references`.\n2. get_comments - Get issue comments.\n3. get_sub_issues - Get sub-issues (children) of the issue.\n4. get_parent - Get the parent issue, if this issue is a sub-issue of another.\n5. get_labels - Get labels assigned to the issue.\n"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "The owner of the repository"
+    },
+    {
+     "name": "page",
+     "type": "number",
+     "required": false,
+     "description": "Page number for pagination (min 1)"
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (min 1, max 100)"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "The name of the repository"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "issue_read",
+    "description": "Get information about a specific issue in a GitHub repository."
+   }
+  },
+  {
+   "id": "github.list_issue_fields",
+   "name": "list_issue_fields",
+   "cluster": "github",
+   "description": "List issue fields for a repository or organization. Returns field definitions including name, type (text, number, date, single_select), and for single_select fields the list of valid option names. When repo is omitted, returns org-level fields directly.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "The account owner of the repository or organization. The name is not case sensitive."
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": false,
+     "description": "The name of the repository. When provided, returns fields for this specific repository (inherited from its organization). When omitted, returns org-level fields directly."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "list_issue_fields",
+    "description": "List issue fields for a repository or organization. Returns field definitions including name, type (text, number, date, single_select), and for single_select fields the list of valid option names. When repo is omitted, returns org-level fields directly."
+   }
+  },
+  {
+   "id": "github.list_issue_types",
+   "name": "list_issue_types",
+   "cluster": "github",
+   "description": "List supported issue types for a repository or its owner organization. When repo is omitted, returns org-level issue types directly.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "The account owner of the repository or organization."
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": false,
+     "description": "The name of the repository. When provided, returns issue types for this specific repository. When omitted, returns org-level issue types directly."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "list_issue_types",
+    "description": "List supported issue types for a repository or its owner organization. When repo is omitted, returns org-level issue types directly."
+   }
+  },
+  {
+   "id": "github.list_issues",
+   "name": "list_issues",
+   "cluster": "github",
+   "description": "List issues in a GitHub repository. For pagination, use the 'endCursor' from the previous response's 'pageInfo' in the 'after' parameter.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "after",
+     "type": "string",
+     "required": false,
+     "description": "Cursor for pagination. Use the cursor from the previous response."
+    },
+    {
+     "name": "direction",
+     "type": "string",
+     "required": false,
+     "description": "Order direction. If provided, the 'orderBy' also needs to be provided."
+    },
+    {
+     "name": "field_filters",
+     "type": "array",
+     "required": false,
+     "description": "Filter by custom issue field values. Each entry takes a field_name and a value; the server looks up the field and coerces the value to its type (single-select option name, text, number, or YYYY-MM-DD date)."
+    },
+    {
+     "name": "fields",
+     "type": "array",
+     "required": false,
+     "description": "Subset of fields to return for each issue. If omitted, all fields are returned. Use this to reduce response size when you only need specific fields; omitting 'body' and 'field_values' in particular drops the largest per-result data."
+    },
+    {
+     "name": "labels",
+     "type": "array",
+     "required": false,
+     "description": "Filter by labels"
+    },
+    {
+     "name": "orderBy",
+     "type": "string",
+     "required": false,
+     "description": "Order issues by field. If provided, the 'direction' also needs to be provided."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (min 1, max 100)"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    },
+    {
+     "name": "since",
+     "type": "string",
+     "required": false,
+     "description": "Filter by date (ISO 8601 timestamp)"
+    },
+    {
+     "name": "state",
+     "type": "string",
+     "required": false,
+     "description": "Filter by state, by default both open and closed issues are returned when not provided"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "list_issues",
+    "description": "List issues in a GitHub repository. For pagination, use the 'endCursor' from the previous response's 'pageInfo' in the 'after' parameter."
+   }
+  },
+  {
+   "id": "github.search_issues",
+   "name": "search_issues",
+   "cluster": "github",
+   "description": "Search issues using natural-language semantic matching. Best for conceptual or paraphrased queries (e.g. \"login fails after password reset\"). Already scoped to is:issue.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "fields",
+     "type": "array",
+     "required": false,
+     "description": "Subset of fields to return for each issue result. If omitted, all fields are returned. Use this to reduce response size when you only need specific fields; omitting 'body', 'reactions', and 'labels' in particular drops the largest per-result data."
+    },
+    {
+     "name": "order",
+     "type": "string",
+     "required": false,
+     "description": "Sort order"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": false,
+     "description": "Optional repository owner. If provided with repo, only issues for this repository are listed."
+    },
+    {
+     "name": "page",
+     "type": "number",
+     "required": false,
+     "description": "Page number for pagination (min 1)"
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (min 1, max 100)"
+    },
+    {
+     "name": "query",
+     "type": "string",
+     "required": true,
+     "description": "The search query, as natural language. When the user gives alternative wordings, include them as plain words rather than joining them with OR."
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": false,
+     "description": "Optional repository name. If provided with owner, only issues for this repository are listed."
+    },
+    {
+     "name": "sort",
+     "type": "string",
+     "required": false,
+     "description": "Sort field by number of matches of categories, defaults to best match"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "search_issues",
+    "description": "Search issues using natural-language semantic matching. Best for conceptual or paraphrased queries (e.g. \"login fails after password reset\"). Already scoped to is:issue."
+   }
+  },
+  {
+   "id": "github.sub_issue_write",
+   "name": "sub_issue_write",
+   "cluster": "github",
+   "description": "Add a sub-issue to a parent issue in a GitHub repository.",
+   "side_effects": "write",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "after_id",
+     "type": "number",
+     "required": false,
+     "description": "The ID of the sub-issue to be prioritized after (either after_id OR before_id should be specified)"
+    },
+    {
+     "name": "before_id",
+     "type": "number",
+     "required": false,
+     "description": "The ID of the sub-issue to be prioritized before (either after_id OR before_id should be specified)"
+    },
+    {
+     "name": "issue_number",
+     "type": "number",
+     "required": true,
+     "description": "The number of the parent issue"
+    },
+    {
+     "name": "method",
+     "type": "string",
+     "required": true,
+     "description": "The action to perform on a single sub-issue\nOptions are:\n- 'add' - add a sub-issue to a parent issue in a GitHub repository.\n- 'remove' - remove a sub-issue from a parent issue in a GitHub repository.\n- 'reprioritize' - change the order of sub-issues within a parent issue in a GitHub repository. Use either 'after_id' or 'before_id' to specify the new position.\nWrites issue hierarchy. To move a sub-issue to a new parent, use `add` with `replace_parent=true`; there is no writable parent field.\n"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "replace_parent",
+     "type": "boolean",
+     "required": false,
+     "description": "When true, replaces the sub-issue's current parent issue. Use with 'add' method only."
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    },
+    {
+     "name": "sub_issue_id",
+     "type": "number",
+     "required": true,
+     "description": "The ID of the sub-issue to add. ID is not the same as issue number"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "sub_issue_write",
+    "description": "Add a sub-issue to a parent issue in a GitHub repository."
+   }
+  },
+  {
+   "id": "github.update_issue_comment",
+   "name": "update_issue_comment",
+   "cluster": "github",
+   "description": "Update the body of an existing issue or pull request conversation comment. This tool cannot update pull request review comments.",
+   "side_effects": "write",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "body",
+     "type": "string",
+     "required": true,
+     "description": "New comment content"
+    },
+    {
+     "name": "comment_id",
+     "type": "integer",
+     "required": true,
+     "description": "The numeric ID of the issue or pull request conversation comment to update. Do not use a pull request review comment ID."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "update_issue_comment",
+    "description": "Update the body of an existing issue or pull request conversation comment. This tool cannot update pull request review comments."
+   }
+  },
+  {
+   "id": "github.label_write",
+   "name": "label_write",
+   "cluster": "github",
+   "description": "Perform write operations on repository labels. To set labels on issues, use the 'update_issue' tool.",
+   "side_effects": "destructive",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "color",
+     "type": "string",
+     "required": false,
+     "description": "Label color as 6-character hex code without '#' prefix (e.g., 'f29513'). Required for 'create', optional for 'update'."
+    },
+    {
+     "name": "description",
+     "type": "string",
+     "required": false,
+     "description": "Label description text. Optional for 'create' and 'update'."
+    },
+    {
+     "name": "method",
+     "type": "string",
+     "required": true,
+     "description": "Operation to perform: 'create', 'update', or 'delete'"
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "required": true,
+     "description": "Label name - required for all operations"
+    },
+    {
+     "name": "new_name",
+     "type": "string",
+     "required": false,
+     "description": "New name for the label (used only with 'update' method to rename)"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner (username or organization name)"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "label_write",
+    "description": "Perform write operations on repository labels. To set labels on issues, use the 'update_issue' tool."
+   }
+  },
+  {
+   "id": "github.list_label",
+   "name": "list_label",
+   "cluster": "github",
+   "description": "List labels from a repository, ordered by issue count (descending) so the most-used labels are returned first. For pagination, use the 'endCursor' from the previous response's 'pageInfo' in the 'after' parameter.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "after",
+     "type": "string",
+     "required": false,
+     "description": "Cursor for pagination. Use the cursor from the previous response."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner (username or organization name) - required for all operations"
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (min 1, max 100)"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name - required for all operations"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "list_label",
+    "description": "List labels from a repository, ordered by issue count (descending) so the most-used labels are returned first. For pagination, use the 'endCursor' from the previous response's 'pageInfo' in the 'after' parameter."
+   }
+  },
+  {
+   "id": "github.dismiss_notification",
+   "name": "dismiss_notification",
+   "cluster": "github",
+   "description": "Dismiss a notification by marking it as read or done",
+   "side_effects": "write",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "state",
+     "type": "string",
+     "required": true,
+     "description": "The new state of the notification (read/done)"
+    },
+    {
+     "name": "threadID",
+     "type": "string",
+     "required": true,
+     "description": "The ID of the notification thread"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "dismiss_notification",
+    "description": "Dismiss a notification by marking it as read or done"
+   }
+  },
+  {
+   "id": "github.get_notification_details",
+   "name": "get_notification_details",
+   "cluster": "github",
+   "description": "Get detailed information for a specific GitHub notification, always call this tool when the user asks for details about a specific notification, if you don't know the ID list notifications first.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "notificationID",
+     "type": "string",
+     "required": true,
+     "description": "The ID of the notification"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "get_notification_details",
+    "description": "Get detailed information for a specific GitHub notification, always call this tool when the user asks for details about a specific notification, if you don't know the ID list notifications first."
+   }
+  },
+  {
+   "id": "github.list_notifications",
+   "name": "list_notifications",
+   "cluster": "github",
+   "description": "Lists all GitHub notifications for the authenticated user, including unread notifications, mentions, review requests, assignments, and updates on issues or pull requests. Use this tool whenever the user asks what to work on next, requests a summary of their GitHub activity, wants to see pending reviews, or needs to check for new updates or tasks. This tool is the primary way to discover actionable items, reminders, and outstanding work on GitHub. Always call this tool when asked what to work…",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "before",
+     "type": "string",
+     "required": false,
+     "description": "Only show notifications updated before the given time (ISO 8601 format)"
+    },
+    {
+     "name": "filter",
+     "type": "string",
+     "required": false,
+     "description": "Filter notifications to, use default unless specified. Read notifications are ones that have already been acknowledged by the user. Participating notifications are those that the user is directly involved in, such as issues or pull requests they have commented on or created."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": false,
+     "description": "Optional repository owner. If provided with repo, only notifications for this repository are listed."
+    },
+    {
+     "name": "page",
+     "type": "number",
+     "required": false,
+     "description": "Page number for pagination (min 1)"
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (min 1, max 100)"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": false,
+     "description": "Optional repository name. If provided with owner, only notifications for this repository are listed."
+    },
+    {
+     "name": "since",
+     "type": "string",
+     "required": false,
+     "description": "Only show notifications updated after the given time (ISO 8601 format)"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "list_notifications",
+    "description": "Lists all GitHub notifications for the authenticated user, including unread notifications, mentions, review requests, assignments, and updates on issues or pull requests. Use this tool whenever the user asks what to work on next, requests a summary of their GitHub activity, wants to see pending reviews, or needs to check for new updates or tasks. This tool is the primary way to discover actionable items, reminders, and outstanding work on GitHub. Always call this tool when asked what to work on next, what is pending, or what needs attention in GitHub."
+   }
+  },
+  {
+   "id": "github.manage_notification_subscription",
+   "name": "manage_notification_subscription",
+   "cluster": "github",
+   "description": "Manage a notification subscription: ignore, watch, or delete a notification thread subscription.",
+   "side_effects": "destructive",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "action",
+     "type": "string",
+     "required": true,
+     "description": "Action to perform: ignore, watch, or delete the notification subscription."
+    },
+    {
+     "name": "notificationID",
+     "type": "string",
+     "required": true,
+     "description": "The ID of the notification thread."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "manage_notification_subscription",
+    "description": "Manage a notification subscription: ignore, watch, or delete a notification thread subscription."
+   }
+  },
+  {
+   "id": "github.manage_repository_notification_subscription",
+   "name": "manage_repository_notification_subscription",
+   "cluster": "github",
+   "description": "Manage a repository notification subscription: ignore, watch, or delete repository notifications subscription for the provided repository.",
+   "side_effects": "destructive",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "action",
+     "type": "string",
+     "required": true,
+     "description": "Action to perform: ignore, watch, or delete the repository notification subscription."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "The account owner of the repository."
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "The name of the repository."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "manage_repository_notification_subscription",
+    "description": "Manage a repository notification subscription: ignore, watch, or delete repository notifications subscription for the provided repository."
+   }
+  },
+  {
+   "id": "github.search_orgs",
+   "name": "search_orgs",
+   "cluster": "github",
+   "description": "Find GitHub organizations by name, location, or other organization metadata. Ideal for discovering companies, open source foundations, or teams.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "order",
+     "type": "string",
+     "required": false,
+     "description": "Sort order"
+    },
+    {
+     "name": "page",
+     "type": "number",
+     "required": false,
+     "description": "Page number for pagination (min 1)"
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (min 1, max 100)"
+    },
+    {
+     "name": "query",
+     "type": "string",
+     "required": true,
+     "description": "Organization search query. Examples: 'microsoft', 'location:california', 'created:>=2025-01-01'. Search is automatically scoped to type:org."
+    },
+    {
+     "name": "sort",
+     "type": "string",
+     "required": false,
+     "description": "Sort field by category"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "search_orgs",
+    "description": "Find GitHub organizations by name, location, or other organization metadata. Ideal for discovering companies, open source foundations, or teams."
+   }
+  },
+  {
+   "id": "github.projects_get",
+   "name": "projects_get",
+   "cluster": "github",
+   "description": "Get details about specific GitHub Projects resources. Use this tool to get details about individual projects, project fields, project items, and project views by their unique IDs.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "field_id",
+     "type": "number",
+     "required": false,
+     "description": "The field's ID. Required for 'get_project_field' method."
+    },
+    {
+     "name": "field_names",
+     "type": "array",
+     "required": false,
+     "description": "Specific list of field names to include in the response when getting a project item (e.g. [\"Status\", \"Priority\"]). Resolved server-side to field IDs — pass this instead of 'fields' when you only know the human-readable names. Mutually exclusive with 'fields' — provide one, not both. Only used for 'get_project_item' method."
+    },
+    {
+     "name": "fields",
+     "type": "array",
+     "required": false,
+     "description": "Specific list of field IDs to include in the response when getting a project item (e.g. [\"102589\", \"985201\", \"169875\"]). If neither 'fields' nor 'field_names' is provided, only the title field is included. Mutually exclusive with 'field_names' — provide one, not both. Only used for 'get_project_item' method."
+    },
+    {
+     "name": "item_id",
+     "type": "number",
+     "required": false,
+     "description": "The item's ID. Required for 'get_project_item' method."
+    },
+    {
+     "name": "method",
+     "type": "string",
+     "required": true,
+     "description": "The method to execute"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": false,
+     "description": "The owner (user or organization login). The name is not case sensitive."
+    },
+    {
+     "name": "owner_type",
+     "type": "string",
+     "required": false,
+     "description": "Owner type (user or org). If not provided, will be automatically detected."
+    },
+    {
+     "name": "project_number",
+     "type": "number",
+     "required": false,
+     "description": "The project's number."
+    },
+    {
+     "name": "status_update_id",
+     "type": "string",
+     "required": false,
+     "description": "The node ID of the project status update. Required for 'get_project_status_update' method."
+    },
+    {
+     "name": "view_id",
+     "type": "string",
+     "required": false,
+     "description": "The node ID of the project view. Required for 'get_project_view' method."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "projects_get",
+    "description": "Get details about specific GitHub Projects resources.\nUse this tool to get details about individual projects, project fields, project items, and project views by their unique IDs."
+   }
+  },
+  {
+   "id": "github.projects_list",
+   "name": "projects_list",
+   "cluster": "github",
+   "description": "Tools for listing GitHub Projects resources. Use this tool to list projects for a user or organization, or list project fields, items, views, and status updates for a specific project.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "after",
+     "type": "string",
+     "required": false,
+     "description": "Forward pagination cursor from previous pageInfo.nextCursor."
+    },
+    {
+     "name": "before",
+     "type": "string",
+     "required": false,
+     "description": "Backward pagination cursor from previous pageInfo.prevCursor (rare)."
+    },
+    {
+     "name": "field_names",
+     "type": "array",
+     "required": false,
+     "description": "Field names to include when listing project items (e.g. [\"Status\", \"Priority\"]). Resolved server-side to field IDs — pass this instead of 'fields' when you only know the human-readable names. Names that fail to resolve return a structured error. Mutually exclusive with 'fields' — provide one, not both. Only used for 'list_project_items' method."
+    },
+    {
+     "name": "fields",
+     "type": "array",
+     "required": false,
+     "description": "Field IDs to include when listing project items (e.g. [\"102589\", \"985201\"]). CRITICAL: Always provide to get field values. Without this (and without 'field_names'), only titles returned. Mutually exclusive with 'field_names' — provide one, not both. Only used for 'list_project_items' method."
+    },
+    {
+     "name": "method",
+     "type": "string",
+     "required": true,
+     "description": "The action to perform"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "The owner (user or organization login). The name is not case sensitive."
+    },
+    {
+     "name": "owner_type",
+     "type": "string",
+     "required": false,
+     "description": "Owner type (user or org). If not provided, will automatically try both."
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page (max 50)"
+    },
+    {
+     "name": "project_number",
+     "type": "number",
+     "required": false,
+     "description": "The project's number. Required for 'list_project_fields', 'list_project_items', 'list_project_views', and 'list_project_status_updates' methods."
+    },
+    {
+     "name": "query",
+     "type": "string",
+     "required": false,
+     "description": "Filter/query string. For list_projects: filter by title text and state (e.g. \"roadmap is:open\"). For list_project_items: advanced filtering using GitHub's project filtering syntax."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "projects_list",
+    "description": "Tools for listing GitHub Projects resources.\nUse this tool to list projects for a user or organization, or list project fields, items, views, and status updates for a specific project."
+   }
+  },
+  {
+   "id": "github.add_comment_to_pending_review",
+   "name": "add_comment_to_pending_review",
+   "cluster": "github",
+   "description": "Add review comment to the requester's latest pending pull request review. A pending review needs to already exist to call this (check with the user if not sure).",
+   "side_effects": "write",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "body",
+     "type": "string",
+     "required": true,
+     "description": "The text of the review comment"
+    },
+    {
+     "name": "line",
+     "type": "number",
+     "required": false,
+     "description": "The line of the blob in the pull request diff that the comment applies to. For multi-line comments, the last line of the range"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "path",
+     "type": "string",
+     "required": true,
+     "description": "The relative path to the file that necessitates a comment"
+    },
+    {
+     "name": "pullNumber",
+     "type": "number",
+     "required": true,
+     "description": "Pull request number"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    },
+    {
+     "name": "side",
+     "type": "string",
+     "required": false,
+     "description": "The side of the diff to comment on. LEFT indicates the previous state, RIGHT indicates the new state"
+    },
+    {
+     "name": "startLine",
+     "type": "number",
+     "required": false,
+     "description": "For multi-line comments, the first line of the range that the comment applies to"
+    },
+    {
+     "name": "startSide",
+     "type": "string",
+     "required": false,
+     "description": "For multi-line comments, the starting side of the diff that the comment applies to. LEFT indicates the previous state, RIGHT indicates the new state"
+    },
+    {
+     "name": "subjectType",
+     "type": "string",
+     "required": true,
+     "description": "The level at which the comment is targeted"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "add_comment_to_pending_review",
+    "description": "Add review comment to the requester's latest pending pull request review. A pending review needs to already exist to call this (check with the user if not sure)."
+   }
+  },
+  {
+   "id": "github.add_reply_to_pull_request_comment",
+   "name": "add_reply_to_pull_request_comment",
+   "cluster": "github",
+   "description": "Add a reply and/or reaction to an existing pull request comment. This can create a new comment linked as a reply to the specified comment, add an emoji reaction to the specified comment, or do both. At least one of body or reaction is required.",
+   "side_effects": "write",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "body",
+     "type": "string",
+     "required": false,
+     "description": "The text of the reply. Required unless reaction is provided."
+    },
+    {
+     "name": "commentId",
+     "type": "number",
+     "required": true,
+     "description": "The numeric ID of the pull request review comment to reply or react to. Use the number from a #discussion_r... anchor, not the GraphQL thread node ID (PRRT_...)."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "pullNumber",
+     "type": "number",
+     "required": false,
+     "description": "Pull request number. Required when body is provided."
+    },
+    {
+     "name": "reaction",
+     "type": "string",
+     "required": false,
+     "description": "Emoji reaction to add. Required unless body is provided."
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "add_reply_to_pull_request_comment",
+    "description": "Add a reply and/or reaction to an existing pull request comment. This can create a new comment linked as a reply to the specified comment, add an emoji reaction to the specified comment, or do both. At least one of body or reaction is required."
+   }
+  },
+  {
+   "id": "github.create_pull_request",
+   "name": "create_pull_request",
+   "cluster": "github",
+   "description": "Create a new pull request in a GitHub repository.",
+   "side_effects": "write",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "base",
+     "type": "string",
+     "required": true,
+     "description": "Branch to merge into"
+    },
+    {
+     "name": "body",
+     "type": "string",
+     "required": false,
+     "description": "PR description"
+    },
+    {
+     "name": "draft",
+     "type": "boolean",
+     "required": false,
+     "description": "Create as draft PR"
+    },
+    {
+     "name": "head",
+     "type": "string",
+     "required": true,
+     "description": "Branch containing changes"
+    },
+    {
+     "name": "maintainer_can_modify",
+     "type": "boolean",
+     "required": false,
+     "description": "Allow maintainer edits"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    },
+    {
+     "name": "reviewers",
+     "type": "array",
+     "required": false,
+     "description": "GitHub usernames or ORG/team-slug team reviewers to request reviews from"
+    },
+    {
+     "name": "title",
+     "type": "string",
+     "required": true,
+     "description": "PR title"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "create_pull_request",
+    "description": "Create a new pull request in a GitHub repository."
+   }
+  },
+  {
+   "id": "github.list_pull_requests",
+   "name": "list_pull_requests",
+   "cluster": "github",
+   "description": "List pull requests in a GitHub repository. If the user specifies an author, then DO NOT use this tool and use the search_pull_requests tool instead.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "base",
+     "type": "string",
+     "required": false,
+     "description": "Filter by base branch"
+    },
+    {
+     "name": "direction",
+     "type": "string",
+     "required": false,
+     "description": "Sort direction"
+    },
+    {
+     "name": "fields",
+     "type": "array",
+     "required": false,
+     "description": "Subset of fields to return for each pull request. If omitted, all fields are returned. Use this to reduce response size when you only need specific fields; omitting 'body' in particular drops the largest per-result data."
+    },
+    {
+     "name": "head",
+     "type": "string",
+     "required": false,
+     "description": "Filter by head user/org and branch"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "page",
+     "type": "number",
+     "required": false,
+     "description": "Page number for pagination (min 1)"
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (min 1, max 100)"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    },
+    {
+     "name": "sort",
+     "type": "string",
+     "required": false,
+     "description": "Sort by"
+    },
+    {
+     "name": "state",
+     "type": "string",
+     "required": false,
+     "description": "Filter by state"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "list_pull_requests",
+    "description": "List pull requests in a GitHub repository. If the user specifies an author, then DO NOT use this tool and use the search_pull_requests tool instead."
+   }
+  },
+  {
+   "id": "github.merge_pull_request",
+   "name": "merge_pull_request",
+   "cluster": "github",
+   "description": "Merge a pull request in a GitHub repository.",
+   "side_effects": "write",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "commit_message",
+     "type": "string",
+     "required": false,
+     "description": "Extra detail for merge commit"
+    },
+    {
+     "name": "commit_title",
+     "type": "string",
+     "required": false,
+     "description": "Title for merge commit"
+    },
+    {
+     "name": "expectedHeadSha",
+     "type": "string",
+     "required": false,
+     "description": "The expected SHA of the pull request's HEAD ref"
+    },
+    {
+     "name": "merge_method",
+     "type": "string",
+     "required": false,
+     "description": "Merge method"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "pullNumber",
+     "type": "number",
+     "required": true,
+     "description": "Pull request number"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "merge_pull_request",
+    "description": "Merge a pull request in a GitHub repository."
+   }
+  },
+  {
+   "id": "github.pull_request_read",
+   "name": "pull_request_read",
+   "cluster": "github",
+   "description": "Get information on a specific pull request in GitHub repository.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "after",
+     "type": "string",
+     "required": false,
+     "description": "Cursor for pagination, used only by the get_review_comments method. Pass the endCursor from the previous page's PageInfo to fetch the next page."
+    },
+    {
+     "name": "method",
+     "type": "string",
+     "required": true,
+     "description": "Action to specify what pull request data needs to be retrieved from GitHub. \nPossible options: \n 1. get - Get details of a specific pull request.\n 2. get_diff - Get the diff of a pull request.\n 3. get_status - Get combined commit status of a head commit in a pull request.\n 4. get_files - Get the list of files changed in a pull request. Use with pagination parameters to control the number of results returned.\n 5. get_commits - Get the list of commits on a pull request. Use with pagination parameters to control the number of results returned.\n 6. get_review_comments - Get review threads on a pull request. Each thread contains logically grouped review comments made on the same code location during pull request reviews. Returns thread metadata and comments with nullable current and original line-range coordinates (line, start_line, original_line, original_start_line). Current coordinates are omitted when unavailable, such as for outdated comments. Use cursor-based pagination (perPage, after) to control results.\n 7. get_reviews - Get the reviews on a pull request. When asked for review comments, use get_review_comments method. Use with pagination parameters to control the number of results returned.\n 8. get_comments - Get comments on a pull request. Use this if user doesn't specifically want review comments. Use with pagination parameters to control the number of results returned.\n 9. get_check_runs - Get check runs for the head commit of a pull request. Check runs are the individual CI/CD jobs and checks that run on the PR.\n"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "page",
+     "type": "number",
+     "required": false,
+     "description": "Page number for pagination (min 1)"
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (min 1, max 100)"
+    },
+    {
+     "name": "pullNumber",
+     "type": "number",
+     "required": true,
+     "description": "Pull request number"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "pull_request_read",
+    "description": "Get information on a specific pull request in GitHub repository."
+   }
+  },
+  {
+   "id": "github.pull_request_review_write",
+   "name": "pull_request_review_write",
+   "cluster": "github",
+   "description": "Create and/or submit, delete review of a pull request. Available methods: - create: Create a new review of a pull request. If \"event\" parameter is provided, the review is submitted. If \"event\" is omitted, a pending review is created. - submit_pending: Submit an existing pending review of a pull request. This requires that a pending review exists for the current user on the specified pull request. The \"body\" and \"event\" parameters are used when submitting the review. - delete_pending: Delete an…",
+   "side_effects": "write",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "body",
+     "type": "string",
+     "required": false,
+     "description": "Review comment text"
+    },
+    {
+     "name": "commitID",
+     "type": "string",
+     "required": false,
+     "description": "SHA of commit to review"
+    },
+    {
+     "name": "event",
+     "type": "string",
+     "required": false,
+     "description": "Review action to perform."
+    },
+    {
+     "name": "method",
+     "type": "string",
+     "required": true,
+     "description": "The write operation to perform on pull request review."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "pullNumber",
+     "type": "number",
+     "required": true,
+     "description": "Pull request number"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    },
+    {
+     "name": "resolutionReason",
+     "type": "string",
+     "required": false,
+     "description": "Optional reason for resolving a Copilot code review thread: addressed, wont-fix, or invalid."
+    },
+    {
+     "name": "threadId",
+     "type": "string",
+     "required": false,
+     "description": "The node ID of the review thread (e.g., PRRT_kwDOxxx). Required for resolve_thread and unresolve_thread methods. Get thread IDs from pull_request_read with method get_review_comments."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "pull_request_review_write",
+    "description": "Create and/or submit, delete review of a pull request.\n\nAvailable methods:\n- create: Create a new review of a pull request. If \"event\" parameter is provided, the review is submitted. If \"event\" is omitted, a pending review is created.\n- submit_pending: Submit an existing pending review of a pull request. This requires that a pending review exists for the current user on the specified pull request. The \"body\" and \"event\" parameters are used when submitting the review.\n- delete_pending: Delete an existing pending review of a pull request. This requires that a pending review exists for the current user on the specified pull request.\n- resolve_thread: Resolve a review thread. Requires only \"threadId\" parameter with the thread's node ID (e.g., PRRT_kwDOxxx). The owner, repo, and pullNumber parameters are not used for this method. Resolving an already-resolved thread is a no-op.\n- unresolve_thread: Unresolve a previously resolved review thread. Requires only \"threadId\" parameter. The owner, repo, and pullNumber parameters are not used for this method. Unresolving an already-unresolved thread is a no-op."
+   }
+  },
+  {
+   "id": "github.search_pull_requests",
+   "name": "search_pull_requests",
+   "cluster": "github",
+   "description": "Search for pull requests in GitHub repositories using issues search syntax already scoped to is:pr",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "fields",
+     "type": "array",
+     "required": false,
+     "description": "Subset of fields to return for each pull request result. If omitted, all fields are returned. Use this to reduce response size when you only need specific fields; omitting 'body', 'reactions', and 'labels' in particular drops the largest per-result data."
+    },
+    {
+     "name": "order",
+     "type": "string",
+     "required": false,
+     "description": "Sort order"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": false,
+     "description": "Optional repository owner. If provided with repo, only pull requests for this repository are listed."
+    },
+    {
+     "name": "page",
+     "type": "number",
+     "required": false,
+     "description": "Page number for pagination (min 1)"
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (min 1, max 100)"
+    },
+    {
+     "name": "query",
+     "type": "string",
+     "required": true,
+     "description": "Search query using GitHub pull request search syntax"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": false,
+     "description": "Optional repository name. If provided with owner, only pull requests for this repository are listed."
+    },
+    {
+     "name": "sort",
+     "type": "string",
+     "required": false,
+     "description": "Sort field by number of matches of categories, defaults to best match"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "search_pull_requests",
+    "description": "Search for pull requests in GitHub repositories using issues search syntax already scoped to is:pr"
+   }
+  },
+  {
+   "id": "github.update_pull_request",
+   "name": "update_pull_request",
+   "cluster": "github",
+   "description": "Update an existing pull request in a GitHub repository.",
+   "side_effects": "write",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "base",
+     "type": "string",
+     "required": false,
+     "description": "New base branch name"
+    },
+    {
+     "name": "body",
+     "type": "string",
+     "required": false,
+     "description": "New description"
+    },
+    {
+     "name": "draft",
+     "type": "boolean",
+     "required": false,
+     "description": "Mark pull request as draft (true) or ready for review (false)"
+    },
+    {
+     "name": "maintainer_can_modify",
+     "type": "boolean",
+     "required": false,
+     "description": "Allow maintainer edits"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "pullNumber",
+     "type": "number",
+     "required": true,
+     "description": "Pull request number to update"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    },
+    {
+     "name": "reviewers",
+     "type": "array",
+     "required": false,
+     "description": "GitHub usernames or ORG/team-slug team reviewers to request reviews from"
+    },
+    {
+     "name": "state",
+     "type": "string",
+     "required": false,
+     "description": "New state"
+    },
+    {
+     "name": "title",
+     "type": "string",
+     "required": false,
+     "description": "New title"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "update_pull_request",
+    "description": "Update an existing pull request in a GitHub repository."
+   }
+  },
+  {
+   "id": "github.update_pull_request_branch",
+   "name": "update_pull_request_branch",
+   "cluster": "github",
+   "description": "Update the branch of a pull request with the latest changes from the base branch.",
+   "side_effects": "write",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "expectedHeadSha",
+     "type": "string",
+     "required": false,
+     "description": "The expected SHA of the pull request's HEAD ref"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "pullNumber",
+     "type": "number",
+     "required": true,
+     "description": "Pull request number"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "update_pull_request_branch",
+    "description": "Update the branch of a pull request with the latest changes from the base branch."
+   }
+  },
+  {
+   "id": "github.create_branch",
+   "name": "create_branch",
+   "cluster": "github",
+   "description": "Create a new branch in a GitHub repository",
+   "side_effects": "write",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "branch",
+     "type": "string",
+     "required": true,
+     "description": "Name for new branch"
+    },
+    {
+     "name": "from_branch",
+     "type": "string",
+     "required": false,
+     "description": "Source branch (defaults to repo default)"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "create_branch",
+    "description": "Create a new branch in a GitHub repository"
+   }
+  },
+  {
+   "id": "github.create_or_update_file",
+   "name": "create_or_update_file",
+   "cluster": "github",
+   "description": "Create or update a single file in a GitHub repository. If updating, you should provide the SHA of the file you want to update. Use this tool to create or update a file in a GitHub repository remotely; do not use it for local file operations. To obtain the current blob SHA before updating, call the get_file_contents tool with the same owner, repo, and path, and set its ref parameter to this tool's branch value. The first text result reports the blob SHA for the requested path. SHA MUST be…",
+   "side_effects": "write",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "allow_symlink_write",
+     "type": "boolean",
+     "required": false,
+     "description": "Set true to update a symbolic link itself; content must be its new target path."
+    },
+    {
+     "name": "branch",
+     "type": "string",
+     "required": true,
+     "description": "Branch to create/update the file in"
+    },
+    {
+     "name": "content",
+     "type": "string",
+     "required": true,
+     "description": "Content of the file, exactly as it should appear once written. Do not base64-encode it; this server does that before calling the REST API."
+    },
+    {
+     "name": "message",
+     "type": "string",
+     "required": true,
+     "description": "Commit message"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner (username or organization)"
+    },
+    {
+     "name": "path",
+     "type": "string",
+     "required": true,
+     "description": "Path where to create/update the file"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    },
+    {
+     "name": "sha",
+     "type": "string",
+     "required": false,
+     "description": "The blob SHA of the file being replaced. Required if the file already exists. Retrieve it with get_file_contents using the same owner, repo, and path, with ref set to this tool's branch value."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "create_or_update_file",
+    "description": "Create or update a single file in a GitHub repository. \nIf updating, you should provide the SHA of the file you want to update. Use this tool to create or update a file in a GitHub repository remotely; do not use it for local file operations.\n\nTo obtain the current blob SHA before updating, call the get_file_contents tool with the same owner, repo, and path, and set its ref parameter to this tool's branch value. The first text result reports the blob SHA for the requested path.\n\nSHA MUST be provided for existing file updates."
+   }
+  },
+  {
+   "id": "github.create_repository",
+   "name": "create_repository",
+   "cluster": "github",
+   "description": "Create a new GitHub repository in your account or specified organization",
+   "side_effects": "write",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "autoInit",
+     "type": "boolean",
+     "required": false,
+     "description": "Initialize with README"
+    },
+    {
+     "name": "description",
+     "type": "string",
+     "required": false,
+     "description": "Repository description"
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    },
+    {
+     "name": "organization",
+     "type": "string",
+     "required": false,
+     "description": "Organization to create the repository in (omit to create in your personal account)"
+    },
+    {
+     "name": "private",
+     "type": "boolean",
+     "required": false,
+     "description": "Whether the repository should be private. Defaults to true (private) when omitted."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "create_repository",
+    "description": "Create a new GitHub repository in your account or specified organization"
+   }
+  },
+  {
+   "id": "github.delete_file",
+   "name": "delete_file",
+   "cluster": "github",
+   "description": "Delete a file from a GitHub repository",
+   "side_effects": "destructive",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "branch",
+     "type": "string",
+     "required": true,
+     "description": "Branch to delete the file from"
+    },
+    {
+     "name": "message",
+     "type": "string",
+     "required": true,
+     "description": "Commit message"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner (username or organization)"
+    },
+    {
+     "name": "path",
+     "type": "string",
+     "required": true,
+     "description": "Path to the file to delete"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "delete_file",
+    "description": "Delete a file from a GitHub repository"
+   }
+  },
+  {
+   "id": "github.delete_repository",
+   "name": "delete_repository",
+   "cluster": "github",
+   "description": "Delete a GitHub repository after the user confirms the exact owner/repository name",
+   "side_effects": "destructive",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner (username or organization)"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "delete_repository",
+    "description": "Delete a GitHub repository after the user confirms the exact owner/repository name"
+   }
+  },
+  {
+   "id": "github.fork_repository",
+   "name": "fork_repository",
+   "cluster": "github",
+   "description": "Fork a GitHub repository to your account or specified organization",
+   "side_effects": "write",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "organization",
+     "type": "string",
+     "required": false,
+     "description": "Organization to fork to"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "fork_repository",
+    "description": "Fork a GitHub repository to your account or specified organization"
+   }
+  },
+  {
+   "id": "github.get_commit",
+   "name": "get_commit",
+   "cluster": "github",
+   "description": "Get details for a commit from a GitHub repository",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "detail",
+     "type": "string",
+     "required": false,
+     "description": "Level of detail to include for changed files. \"none\" omits stats and files entirely. \"stats\" (default) includes per-file metadata: filename, status, and lines-of-code counts (additions, deletions, changes), with no patch content. \"full_patch\" additionally includes the unified diff content for each file and can be very large."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "page",
+     "type": "number",
+     "required": false,
+     "description": "Page number for pagination (min 1)"
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (min 1, max 100)"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    },
+    {
+     "name": "sha",
+     "type": "string",
+     "required": true,
+     "description": "Commit SHA, branch name, or tag name"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "get_commit",
+    "description": "Get details for a commit from a GitHub repository"
+   }
+  },
+  {
+   "id": "github.get_file_contents",
+   "name": "get_file_contents",
+   "cluster": "github",
+   "description": "Get the contents of a file or directory from a GitHub repository",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "fields",
+     "type": "array",
+     "required": false,
+     "description": "Subset of fields to return for each entry when the path is a directory. If omitted, all fields are returned. Ignored when the path is a single file. Use this to reduce response size when listing directories and you only need specific fields, e.g. just 'name' and 'type'."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner (username or organization)"
+    },
+    {
+     "name": "path",
+     "type": "string",
+     "required": false,
+     "description": "Path to file/directory"
+    },
+    {
+     "name": "ref",
+     "type": "string",
+     "required": false,
+     "description": "Accepts optional git refs such as `refs/tags/{tag}`, `refs/heads/{branch}` or `refs/pull/{pr_number}/head`"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    },
+    {
+     "name": "sha",
+     "type": "string",
+     "required": false,
+     "description": "Accepts optional commit SHA. If specified, it will be used instead of ref"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "get_file_contents",
+    "description": "Get the contents of a file or directory from a GitHub repository"
+   }
+  },
+  {
+   "id": "github.get_latest_release",
+   "name": "get_latest_release",
+   "cluster": "github",
+   "description": "Get the latest release in a GitHub repository",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "get_latest_release",
+    "description": "Get the latest release in a GitHub repository"
+   }
+  },
+  {
+   "id": "github.get_release_by_tag",
+   "name": "get_release_by_tag",
+   "cluster": "github",
+   "description": "Get a specific release by its tag name in a GitHub repository",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    },
+    {
+     "name": "tag",
+     "type": "string",
+     "required": true,
+     "description": "Tag name (e.g., 'v1.0.0')"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "get_release_by_tag",
+    "description": "Get a specific release by its tag name in a GitHub repository"
+   }
+  },
+  {
+   "id": "github.get_tag",
+   "name": "get_tag",
+   "cluster": "github",
+   "description": "Get details about a specific git tag in a GitHub repository",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    },
+    {
+     "name": "tag",
+     "type": "string",
+     "required": true,
+     "description": "Tag name"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "get_tag",
+    "description": "Get details about a specific git tag in a GitHub repository"
+   }
+  },
+  {
+   "id": "github.list_branches",
+   "name": "list_branches",
+   "cluster": "github",
+   "description": "List branches in a GitHub repository",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "page",
+     "type": "number",
+     "required": false,
+     "description": "Page number for pagination (min 1)"
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (min 1, max 100)"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "list_branches",
+    "description": "List branches in a GitHub repository"
+   }
+  },
+  {
+   "id": "github.list_commits",
+   "name": "list_commits",
+   "cluster": "github",
+   "description": "Get list of commits of a branch in a GitHub repository. Returns at least 30 results per page by default, but can return more if specified using the perPage parameter (up to 100).",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "author",
+     "type": "string",
+     "required": false,
+     "description": "Author username or email address to filter commits by"
+    },
+    {
+     "name": "fields",
+     "type": "array",
+     "required": false,
+     "description": "Subset of fields to return for each commit. If omitted, all fields are returned. Use this to reduce response size when you only need specific fields, e.g. just 'sha' and 'html_url'."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "page",
+     "type": "number",
+     "required": false,
+     "description": "Page number for pagination (min 1)"
+    },
+    {
+     "name": "path",
+     "type": "string",
+     "required": false,
+     "description": "Only commits containing this file path will be returned"
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (min 1, max 100)"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    },
+    {
+     "name": "sha",
+     "type": "string",
+     "required": false,
+     "description": "Commit SHA, branch or tag name to list commits of. If not provided, uses the default branch of the repository. If a commit SHA is provided, will list commits up to that SHA."
+    },
+    {
+     "name": "since",
+     "type": "string",
+     "required": false,
+     "description": "Only commits after this date will be returned (ISO 8601 format: YYYY-MM-DDTHH:MM:SSZ or YYYY-MM-DD)"
+    },
+    {
+     "name": "until",
+     "type": "string",
+     "required": false,
+     "description": "Only commits before this date will be returned (ISO 8601 format: YYYY-MM-DDTHH:MM:SSZ or YYYY-MM-DD)"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "list_commits",
+    "description": "Get list of commits of a branch in a GitHub repository. Returns at least 30 results per page by default, but can return more if specified using the perPage parameter (up to 100)."
+   }
+  },
+  {
+   "id": "github.list_releases",
+   "name": "list_releases",
+   "cluster": "github",
+   "description": "List releases in a GitHub repository",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "fields",
+     "type": "array",
+     "required": false,
+     "description": "Subset of fields to return for each release. If omitted, all fields are returned. Use this to reduce response size when you only need specific fields; omitting 'body' in particular drops the largest per-release data."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "page",
+     "type": "number",
+     "required": false,
+     "description": "Page number for pagination (min 1)"
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (min 1, max 100)"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "list_releases",
+    "description": "List releases in a GitHub repository"
+   }
+  },
+  {
+   "id": "github.list_repository_collaborators",
+   "name": "list_repository_collaborators",
+   "cluster": "github",
+   "description": "List collaborators of a GitHub repository. Results are paginated; the response includes `nextPage`, `prevPage`, `firstPage`, and `lastPage` fields. To get the next page, use the `nextPage` value as the `page` parameter.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "affiliation",
+     "type": "string",
+     "required": false,
+     "description": "Filter by affiliation. Can be one of: 'outside' (outside collaborators), 'direct' (all with permissions regardless of org membership), 'all' (all collaborators). Default: 'all'"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "page",
+     "type": "number",
+     "required": false,
+     "description": "Page number for pagination (default 1, min 1)"
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (default 30, min 1, max 100)"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "list_repository_collaborators",
+    "description": "List collaborators of a GitHub repository. Results are paginated; the response includes `nextPage`, `prevPage`, `firstPage`, and `lastPage` fields. To get the next page, use the `nextPage` value as the `page` parameter."
+   }
+  },
+  {
+   "id": "github.list_tags",
+   "name": "list_tags",
+   "cluster": "github",
+   "description": "List git tags in a GitHub repository",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "page",
+     "type": "number",
+     "required": false,
+     "description": "Page number for pagination (min 1)"
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (min 1, max 100)"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "list_tags",
+    "description": "List git tags in a GitHub repository"
+   }
+  },
+  {
+   "id": "github.push_files",
+   "name": "push_files",
+   "cluster": "github",
+   "description": "Push multiple files to a GitHub repository in a single commit",
+   "side_effects": "write",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "branch",
+     "type": "string",
+     "required": true,
+     "description": "Branch to push to"
+    },
+    {
+     "name": "files",
+     "type": "array",
+     "required": true,
+     "description": "Array of file objects to push, each object with path (string) and content (string)"
+    },
+    {
+     "name": "message",
+     "type": "string",
+     "required": true,
+     "description": "Commit message"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "push_files",
+    "description": "Push multiple files to a GitHub repository in a single commit"
+   }
+  },
+  {
+   "id": "github.search_code",
+   "name": "search_code",
+   "cluster": "github",
+   "description": "Fast and precise code search across ALL GitHub repositories using GitHub's native search engine. Best for finding exact symbols, functions, classes, or specific code patterns.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "fields",
+     "type": "array",
+     "required": false,
+     "description": "Subset of fields to return for each code search result. If omitted, all fields are returned. Use this to reduce response size when you only need specific fields; omitting 'repository' and 'text_matches' in particular drops the largest per-result data."
+    },
+    {
+     "name": "order",
+     "type": "string",
+     "required": false,
+     "description": "Sort order for results"
+    },
+    {
+     "name": "page",
+     "type": "number",
+     "required": false,
+     "description": "Page number for pagination (min 1)"
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (min 1, max 100)"
+    },
+    {
+     "name": "query",
+     "type": "string",
+     "required": true,
+     "description": "Search query (GitHub code search REST). Implicit AND between terms; supports `OR`, `NOT`, and `\"quoted phrase\"` for exact match. Qualifiers: `repo:owner/repo`, `org:`, `user:`, `language:`, `path:dir` (prefix match), `filename:exact.ext`, `extension:`, `in:file`, `in:path`, `size:`, `is:archived`, `is:fork`. Max 256 chars. Examples: `WithContext language:go org:github`; `\"package main\" repo:o/r`; `func extension:go path:cmd repo:o/r`; `NOT TODO language:go repo:o/r`."
+    },
+    {
+     "name": "sort",
+     "type": "string",
+     "required": false,
+     "description": "Sort field ('indexed' only)"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "search_code",
+    "description": "Fast and precise code search across ALL GitHub repositories using GitHub's native search engine. Best for finding exact symbols, functions, classes, or specific code patterns."
+   }
+  },
+  {
+   "id": "github.search_commits",
+   "name": "search_commits",
+   "cluster": "github",
+   "description": "Search for commits across GitHub repositories using GitHub's commit search syntax. Useful for finding specific changes, authors, or messages across one or many repositories. Searches the default branch only.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "order",
+     "type": "string",
+     "required": false,
+     "description": "Sort order"
+    },
+    {
+     "name": "page",
+     "type": "number",
+     "required": false,
+     "description": "Page number for pagination (min 1)"
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (min 1, max 100)"
+    },
+    {
+     "name": "query",
+     "type": "string",
+     "required": true,
+     "description": "Commit search query (GitHub commit search REST). Searches commit messages on the default branch only. Scope the search with `repo:owner/repo`, `org:`, or `user:` (queries without a scope qualifier match across all of GitHub and are usually not what you want). Other qualifiers: `author:`, `committer:`, `author-name:`, `committer-name:`, `author-email:`, `committer-email:`, `author-date:`, `committer-date:` (supports `>`, `<`, `>=`, `<=`, and `YYYY-MM-DD..YYYY-MM-DD` ranges), `merge:true|false`, `hash:`, `tree:`, `parent:`, `is:public`. Examples: `repo:owner/repo fix panic`; `org:github author:defunkt committer-date:>=2024-01-01`; `\"refactor cache\" repo:o/r`; `hash:abc1234 repo:o/r`."
+    },
+    {
+     "name": "sort",
+     "type": "string",
+     "required": false,
+     "description": "Sort by author or committer date (defaults to best match)"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "search_commits",
+    "description": "Search for commits across GitHub repositories using GitHub's commit search syntax. Useful for finding specific changes, authors, or messages across one or many repositories. Searches the default branch only."
+   }
+  },
+  {
+   "id": "github.search_repositories",
+   "name": "search_repositories",
+   "cluster": "github",
+   "description": "Find GitHub repositories by name, description, readme, topics, or other metadata. Perfect for discovering projects, finding examples, or locating specific repositories across GitHub.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "minimal_output",
+     "type": "boolean",
+     "required": false,
+     "description": "Return minimal repository information (default: true). When false, modern clients receive additional curated repository details, not the complete GitHub API object. Legacy clients retain full GitHub API repository objects."
+    },
+    {
+     "name": "order",
+     "type": "string",
+     "required": false,
+     "description": "Sort order"
+    },
+    {
+     "name": "page",
+     "type": "number",
+     "required": false,
+     "description": "Page number for pagination (min 1)"
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (min 1, max 100)"
+    },
+    {
+     "name": "query",
+     "type": "string",
+     "required": true,
+     "description": "Repository search query. Examples: 'machine learning in:name stars:>1000 language:python', 'topic:react', 'user:facebook'. Supports advanced search syntax for precise filtering."
+    },
+    {
+     "name": "sort",
+     "type": "string",
+     "required": false,
+     "description": "Sort repositories by field, defaults to best match"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "search_repositories",
+    "description": "Find GitHub repositories by name, description, readme, topics, or other metadata. Perfect for discovering projects, finding examples, or locating specific repositories across GitHub."
+   }
+  },
+  {
+   "id": "github.get_secret_scanning_alert",
+   "name": "get_secret_scanning_alert",
+   "cluster": "github",
+   "description": "Get details of a specific secret scanning alert in a GitHub repository.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "alertNumber",
+     "type": "number",
+     "required": true,
+     "description": "The number of the alert."
+    },
+    {
+     "name": "hide_secret",
+     "type": "boolean",
+     "required": false,
+     "description": "Whether to exclude the secret value from the response. Defaults to false."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "The owner of the repository."
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "The name of the repository."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "get_secret_scanning_alert",
+    "description": "Get details of a specific secret scanning alert in a GitHub repository."
+   }
+  },
+  {
+   "id": "github.list_secret_scanning_alerts",
+   "name": "list_secret_scanning_alerts",
+   "cluster": "github",
+   "description": "List secret scanning alerts in a GitHub repository.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "hide_secret",
+     "type": "boolean",
+     "required": false,
+     "description": "Whether to exclude secret values from the response. Defaults to false."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "The owner of the repository."
+    },
+    {
+     "name": "page",
+     "type": "number",
+     "required": false,
+     "description": "Page number for pagination (min 1)"
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (min 1, max 100)"
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "The name of the repository."
+    },
+    {
+     "name": "resolution",
+     "type": "string",
+     "required": false,
+     "description": "Filter by resolution"
+    },
+    {
+     "name": "secret_type",
+     "type": "string",
+     "required": false,
+     "description": "A comma-separated list of secret types to return. All default secret patterns are returned. To return generic patterns, pass the token name(s) in the parameter."
+    },
+    {
+     "name": "state",
+     "type": "string",
+     "required": false,
+     "description": "Filter by state"
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "list_secret_scanning_alerts",
+    "description": "List secret scanning alerts in a GitHub repository."
+   }
+  },
+  {
+   "id": "github.update_secret_scanning_alert",
+   "name": "update_secret_scanning_alert",
+   "cluster": "github",
+   "description": "Update a secret scanning alert's state, assignee, or validity override. Provide at least one of state, assignee, or validity. Resolving requires a non-null resolution. Omitted fields are unchanged; null unassigns the assignee or clears the validity override. Resolution comments accompany closing or reopening and cannot later be edited or deleted. Resolution revoked does not revoke credentials; validity is a manual override for custom-pattern alerts only, not a validation request.…",
+   "side_effects": "destructive",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "alertNumber",
+     "type": "integer",
+     "required": true,
+     "description": "Secret scanning alert number."
+    },
+    {
+     "name": "assignee",
+     "type": "string",
+     "required": false,
+     "description": "Username with repository write access; null unassigns."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "Repository owner."
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "Repository name."
+    },
+    {
+     "name": "resolution",
+     "type": "string",
+     "required": false,
+     "description": "Reason for resolving. Non-null when state is resolved."
+    },
+    {
+     "name": "resolution_comment",
+     "type": "string",
+     "required": false,
+     "description": "Optional comment when closing or reopening; cannot later be updated or deleted."
+    },
+    {
+     "name": "state",
+     "type": "string",
+     "required": false,
+     "description": "Reopen or resolve the alert."
+    },
+    {
+     "name": "validity",
+     "type": "string",
+     "required": false,
+     "description": "Manual validity override for custom-pattern alerts only; null clears the override. GitHub-supported patterns retain validator-managed validity."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "update_secret_scanning_alert",
+    "description": "Update a secret scanning alert's state, assignee, or validity override. Provide at least one of state, assignee, or validity. Resolving requires a non-null resolution. Omitted fields are unchanged; null unassigns the assignee or clears the validity override. Resolution comments accompany closing or reopening and cannot later be edited or deleted. Resolution revoked does not revoke credentials; validity is a manual override for custom-pattern alerts only, not a validation request. GitHub-supported patterns retain validator-managed validity and cannot be overridden through this endpoint. Requires repository secret scanning write access. Delegated dismissal may require Secret scanning alert dismissal requests write permission and an authorized reviewer; API policy failures are returned without bypass."
+   }
+  },
+  {
+   "id": "github.list_global_security_advisories",
+   "name": "list_global_security_advisories",
+   "cluster": "github",
+   "description": "List global security advisories from GitHub.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "affects",
+     "type": "string",
+     "required": false,
+     "description": "Filter advisories by affected package or version (e.g. \"package1,package2@1.0.0\")."
+    },
+    {
+     "name": "cveId",
+     "type": "string",
+     "required": false,
+     "description": "Filter by CVE ID."
+    },
+    {
+     "name": "cwes",
+     "type": "array",
+     "required": false,
+     "description": "Filter by Common Weakness Enumeration IDs (e.g. [\"79\", \"284\", \"22\"])."
+    },
+    {
+     "name": "ecosystem",
+     "type": "string",
+     "required": false,
+     "description": "Filter by package ecosystem."
+    },
+    {
+     "name": "ghsaId",
+     "type": "string",
+     "required": false,
+     "description": "Filter by GitHub Security Advisory ID (format: GHSA-xxxx-xxxx-xxxx)."
+    },
+    {
+     "name": "isWithdrawn",
+     "type": "boolean",
+     "required": false,
+     "description": "Whether to only return withdrawn advisories."
+    },
+    {
+     "name": "modified",
+     "type": "string",
+     "required": false,
+     "description": "Filter by publish or update date or date range (ISO 8601 date or range)."
+    },
+    {
+     "name": "published",
+     "type": "string",
+     "required": false,
+     "description": "Filter by publish date or date range (ISO 8601 date or range)."
+    },
+    {
+     "name": "severity",
+     "type": "string",
+     "required": false,
+     "description": "Filter by severity."
+    },
+    {
+     "name": "type",
+     "type": "string",
+     "required": false,
+     "description": "Advisory type."
+    },
+    {
+     "name": "updated",
+     "type": "string",
+     "required": false,
+     "description": "Filter by update date or date range (ISO 8601 date or range)."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "list_global_security_advisories",
+    "description": "List global security advisories from GitHub."
+   }
+  },
+  {
+   "id": "github.list_org_repository_security_advisories",
+   "name": "list_org_repository_security_advisories",
+   "cluster": "github",
+   "description": "List repository security advisories for a GitHub organization.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "direction",
+     "type": "string",
+     "required": false,
+     "description": "Sort direction."
+    },
+    {
+     "name": "org",
+     "type": "string",
+     "required": true,
+     "description": "The organization login."
+    },
+    {
+     "name": "sort",
+     "type": "string",
+     "required": false,
+     "description": "Sort field."
+    },
+    {
+     "name": "state",
+     "type": "string",
+     "required": false,
+     "description": "Filter by advisory state."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "list_org_repository_security_advisories",
+    "description": "List repository security advisories for a GitHub organization."
+   }
+  },
+  {
+   "id": "github.list_repository_security_advisories",
+   "name": "list_repository_security_advisories",
+   "cluster": "github",
+   "description": "List repository security advisories for a GitHub repository.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "direction",
+     "type": "string",
+     "required": false,
+     "description": "Sort direction."
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "required": true,
+     "description": "The owner of the repository."
+    },
+    {
+     "name": "repo",
+     "type": "string",
+     "required": true,
+     "description": "The name of the repository."
+    },
+    {
+     "name": "sort",
+     "type": "string",
+     "required": false,
+     "description": "Sort field."
+    },
+    {
+     "name": "state",
+     "type": "string",
+     "required": false,
+     "description": "Filter by advisory state."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "list_repository_security_advisories",
+    "description": "List repository security advisories for a GitHub repository."
+   }
+  },
+  {
+   "id": "github.search_users",
+   "name": "search_users",
+   "cluster": "github",
+   "description": "Find GitHub users by username, real name, or other profile information. Useful for locating developers, contributors, or team members.",
+   "side_effects": "read",
+   "tags": [
+    "github",
+    "mcp-import"
+   ],
+   "parameters": [
+    {
+     "name": "order",
+     "type": "string",
+     "required": false,
+     "description": "Sort order"
+    },
+    {
+     "name": "page",
+     "type": "number",
+     "required": false,
+     "description": "Page number for pagination (min 1)"
+    },
+    {
+     "name": "perPage",
+     "type": "number",
+     "required": false,
+     "description": "Results per page for pagination (min 1, max 100)"
+    },
+    {
+     "name": "query",
+     "type": "string",
+     "required": true,
+     "description": "User search query. Examples: 'john smith', 'location:seattle', 'followers:>100'. Search is automatically scoped to type:user."
+    },
+    {
+     "name": "sort",
+     "type": "string",
+     "required": false,
+     "description": "Sort users by number of followers or repositories, or when the person joined GitHub."
+    }
+   ],
+   "source": {
+    "type": "mcp",
+    "name": "search_users",
+    "description": "Find GitHub users by username, real name, or other profile information. Useful for locating developers, contributors, or team members."
+   }
+  }
+ ]
+}

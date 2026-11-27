@@ -12,6 +12,7 @@ dist/
 
 # Local data / index artifacts (project marker file + any local data)
 .tool-router/
+.eval-cache/
 /data/
 
 # Editors / OS

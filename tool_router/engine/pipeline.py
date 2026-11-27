@@ -604,7 +604,7 @@ class RoutingEngine:
             "hyde": hyde_info,
             "top_candidates": [
                 {"tool": c.tool_id, "fused": round(c.fused, 4), "dense": round(c.dense, 4),
-                 "bm25": round(c.bm25, 4), "param_match": round(c.param_match, 4)}
+                 "bm25": round(c.bm25, 4)}
                 for c in candidates[:8]
             ],
             "dropped": dropped,

@@ -111,7 +111,7 @@ def _cmd_init(_: argparse.Namespace) -> int:
     provider = input("Generation LLM provider (gemini / none) [gemini]: ").strip() or "gemini"
     values = {"llm_provider": provider}
     if provider == "gemini":
-        model = input("Model id [gemini-2.5-flash]: ").strip()
+        model = input("Model id [gemini-3.5-flash-lite]: ").strip()
         if model:
             values["llm_model"] = model
         key = getpass.getpass("Gemini API key (input hidden, Enter to skip): ").strip()

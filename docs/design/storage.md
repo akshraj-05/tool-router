@@ -75,7 +75,7 @@ continues its numbering.
 
 ```bash
 tool-router init                              # provider, key, model
-tool-router config set llm_model gemini-2.5-flash
+tool-router config set llm_model gemini-3.5-flash-lite
 tool-router config show                       # the key is shown only as present or absent
 ```
 
