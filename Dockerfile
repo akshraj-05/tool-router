@@ -15,7 +15,7 @@ WORKDIR /app
 # Install the package first for layer caching, then the source.
 COPY pyproject.toml README.md ./
 COPY tool_router ./tool_router
-RUN pip install --no-cache-dir ".[api]"
+RUN pip install --no-cache-dir ".[api,mcp]"
 
 # Non-root user (production hygiene).
 RUN useradd --create-home router && chown -R router /app

@@ -41,7 +41,7 @@ def create_mcp_server(
         from mcp.server.fastmcp import FastMCP
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError(
-            "The MCP SDK is missing or incompatible. tool-router supports mcp>=1.0,<2 — "
+            "The MCP SDK is missing or incompatible. tool-router supports mcp>=1.30,<2 — "
             "in the project folder run: pip install -e \".[mcp]\" (mcp 2.x renamed FastMCP and is not supported yet)."
         ) from exc
 
