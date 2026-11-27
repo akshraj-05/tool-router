@@ -49,6 +49,7 @@ from tool_router.engine.derive import (
     derive_maps,
     duplicate_fingerprint,
     find_duplicate_pairs,
+    unchanged_for_duplicates,
 )
 from tool_router.engine.guardrail import validate_catalog, validate_submission
 from tool_router.engine.ingest import ingest_tools
@@ -86,6 +87,8 @@ class _Index:
     # Local TF-IDF (provider, entries) used if a hosted embedding provider fails
     # during a query. None when the primary provider is already local.
     fallback: Optional[tuple[Any, list[IndexedTool]]] = None
+    # Kept so that the next rebuild compares only new and changed tools.
+    duplicate_pairs: Optional[Pairs] = None
 
 
 def _is_number(value: Any) -> bool:
@@ -273,10 +276,11 @@ class RoutingEngine:
         bm25 = BM25Index([[t for t in e.tokens if t not in STOPWORDS] for e in entries])
 
         # --- derive registry maps ------------------------------------------
+        duplicate_pairs = self._duplicate_pairs(provider, entries)
         maps: DerivedMaps = derive_maps(
             entries, catalog_meta=self._catalog_meta,
             thresholds=self._settings.confidence,
-            duplicate_pairs=self._duplicate_pairs(provider, entries),
+            duplicate_pairs=duplicate_pairs,
         )
 
         # Planner verb lexicon: leading verbs of tool names (catalog-derived).
@@ -304,6 +308,7 @@ class RoutingEngine:
             full_catalog_tokens=_approx_tokens(raw_tools),
             raw_by_id={e.tool.id: e.raw for e in entries},
             fallback=fallback,
+            duplicate_pairs=duplicate_pairs,
         )
 
     def _embed_entries(self, provider: Any, entries: list[IndexedTool]) -> None:
@@ -337,7 +342,7 @@ class RoutingEngine:
         path = self._database_for(provider)
         thresholds = self._settings.confidence
         if path is None:
-            return find_duplicate_pairs(entries, thresholds)
+            return self._find_pairs(entries)
         fingerprint = duplicate_fingerprint(entries, thresholds, getattr(provider, "stamp", "unknown"))
         if not self._settings.rebuild:
             saved = load_result(path, "duplicate_pairs", fingerprint)
@@ -348,9 +353,21 @@ class RoutingEngine:
             ):
                 logger.info("reused %d saved duplicate pairs", len(saved))
                 return [(a, b) for a, b in saved]
-        pairs = find_duplicate_pairs(entries, thresholds)
+        pairs = self._find_pairs(entries)
         save_result(path, "duplicate_pairs", fingerprint, pairs)
         return pairs
+
+    def _find_pairs(self, entries: list[IndexedTool]) -> Pairs:
+        """Compare tools, reusing the live index's pairs for tools that did not change."""
+        previous: Optional[_Index] = getattr(self, "_index", None)
+        thresholds = self._settings.confidence
+        if previous is None or previous.duplicate_pairs is None or self._settings.rebuild:
+            return find_duplicate_pairs(entries, thresholds)
+        return find_duplicate_pairs(
+            entries, thresholds,
+            unchanged=unchanged_for_duplicates(entries, previous.entries),
+            known=previous.duplicate_pairs,
+        )
 
     # ------------------------------------------------------------------ API
 

@@ -10,9 +10,10 @@ LocalPlanner strategy (general mechanisms, all catalog-derived — nothing is
 fitted to specific test queries):
 
 1. **Segmentation** — multi-step queries are split into clause segments at
-   sequence connectors ("then", ";") and at "and/,"-boundaries ONLY when the
+   sequence connectors ("then", ";"), and at "and/,"-boundaries when either the
    next word is a *tool verb* (the set of leading verbs of tool names in the
-   registry — derived from the catalog, not hardcoded English).
+   registry — derived from the catalog, not hardcoded English) or both sides
+   clearly match a different tool.
 2. **Per-segment retrieval** — each segment is scored independently through
    the same fused pipeline; its top tool anchors that step. Weak segments are
    merged back into their predecessor; adjacent duplicate steps collapse.
@@ -48,6 +49,9 @@ _SEGMENT_FLOOR = 0.12        # a segment whose top tool scores below this is mer
 _HELPER_MIN_RATIO = 0.5      # helper must score at least this fraction of the anchor
 _GAIN_IDF_UNITS = 1.5        # required coverage gain, in multiples of the corpus mean IDF
 _MAX_STEP_TOOLS = 3          # per-step cap: anchor + at most 2 helpers
+_SPLIT_FLOOR = 0.18          # both sides of a match-based split must reach this score
+_SPLIT_MIN_WORDS = 2         # ...and carry this many content words (a lone name is not a task)
+_CONJUNCTION = re.compile(r"(\s*,\s*and\s+|\s*,\s*|\s+and\s+)")
 _CONNECTOR_SPLIT = re.compile(r"\s*(?:;|\bthen\b|\bafter that\b)\s*", re.IGNORECASE)
 
 
@@ -98,7 +102,11 @@ class LocalPlanner:
         shortlist: list[Candidate],
         score_segment: SegmentScorer,
     ) -> PlanOutcome:
-        segments = self._segment(query)
+        segments = [
+            part
+            for segment in self._segment(query)
+            for part in self._split_where_tools_differ(segment, score_segment)
+        ]
         outcome = PlanOutcome()
 
         if len(segments) == 1:
@@ -203,7 +211,7 @@ class LocalPlanner:
 
     def _split_on_verb_boundaries(self, text: str) -> list[str]:
         """Split on ', <verb>' / ' and <verb>' where <verb> starts a tool name."""
-        tokens = re.split(r"(\s*,\s*and\s+|\s*,\s*|\s+and\s+)", text)
+        tokens = _CONJUNCTION.split(text)
         segments: list[str] = []
         current = tokens[0] if tokens else ""
         i = 1
@@ -220,6 +228,36 @@ class LocalPlanner:
         if current.strip():
             segments.append(current.strip())
         return segments
+
+    def _split_where_tools_differ(self, text: str, score_segment: SegmentScorer) -> list[str]:
+        """Split at "and" or a comma where each side is a task for a different tool.
+
+        This needs no word list, so it catches steps such as "... and email it"
+        that do not start with a tool verb. A side that would select a destructive
+        tool is never split off on this evidence alone.
+        """
+        pieces = _CONJUNCTION.split(text)
+        parts = [pieces[0]]
+        for separator, following in zip(pieces[1::2], pieces[2::2]):
+            if self._different_tasks(parts[-1], following, score_segment):
+                parts.append(following)
+            else:
+                parts[-1] = f"{parts[-1]}{separator}{following}"
+        return [p.strip() for p in parts if p.strip()] or [text]
+
+    @staticmethod
+    def _different_tasks(left: str, right: str, score_segment: SegmentScorer) -> bool:
+        tops = []
+        for side in (left, right):
+            if len(analyze_query(side).content) < _SPLIT_MIN_WORDS:
+                return False
+            ranked = score_segment(side)
+            if not ranked or ranked[0].fused < _SPLIT_FLOOR:
+                return False
+            if ranked[0].entry.tool.side_effects == "destructive":
+                return False
+            tops.append(ranked[0].tool_id)
+        return tops[0] != tops[1]
 
     @staticmethod
     def _repeat_count(signals: QuerySignals) -> int:

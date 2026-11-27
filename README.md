@@ -21,13 +21,13 @@ See [sources and licences](eval/SOURCES.md). Each set is split into a tuning hal
 | Setup | `github` (40) | `playwright` (10) | `custom` (60) | All (110) |
 |---|---:|---:|---:|---:|
 | Keyword search baseline | 18 (45%) | 6 (60%) | 20 (33%) | 44 (40%) |
-| Local mode (no LLM, no key) | 25 (62%) | 8 (80%) | 38 (63%) | **71 (65%)** |
+| Local mode (no LLM, no key) | 25 (62%) | 8 (80%) | 39 (65%) | **72 (65%)** |
 
 | Request type, all sets | Local mode |
 |---|---:|
-| One tool | 26/38 |
+| One tool | 25/38 |
 | Choosing between similar tools | 15/24 |
-| Several tools in order | 10/20 |
+| Several tools in order | 12/20 |
 | Current or old tool version (`custom` only) | 3/6 |
 | Unclear request: should ask a question | 9/11 |
 | No suitable tool: should return nothing | 8/11 |
@@ -52,7 +52,7 @@ These numbers are **not** from the current code or layout. Since then, a paramet
   | | `github` | `playwright` | `custom` |
   |---|---:|---:|---:|
   | Keyword search | 18/26 | 6/6 | 20/36 |
-  | Local mode | 18/26 | 5/6 | 21/36 |
+  | Local mode | 17/26 | 5/6 | 21/36 |
 
   Local mode's advantage is asking questions, rejecting unrelated requests and planning several steps, which the baseline cannot do.
 - **Speed and cost:** local mode answers in milliseconds. With Gemini a request took roughly 1 to 2 seconds and needs an API key.
@@ -85,7 +85,7 @@ TOOL_ROUTER_LLM_PROVIDER=gemini TOOL_ROUTER_LLM_MODEL=gemini-3.5-flash-lite \
 **Known causes of local-mode failures** (seen in the tuning halves)
 
 - Local retrieval matches words, not meaning: "is web-01 up" finds no tool.
-- The local planner splits a request into steps only before a verb that starts a tool name, so "...and email it" loses the second step when the tool is `send_email`.
+- The local planner finds steps at words such as "then", before a verb that starts a tool name, or where both sides of "and" clearly match different tools. It still loses steps when one side matches poorly.
 - Similar tools are confused, for example reading an invoice instead of creating one.
 
 Earlier development results came from a different 29-query suite on older code that is not in this repository, and are not comparable. See [the earlier evaluation report](docs/eval_report.md).

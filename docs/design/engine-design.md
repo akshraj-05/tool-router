@@ -40,7 +40,10 @@ A failed build or catalog save leaves the previous snapshot in place.
   cluster, `side_effects`, parameter-name overlap (Jaccard ≥ 0.34) and vector similarity
   (cosine ≥ 0.60). Pairs are joined into groups.
 
-Finding pairs is the slowest step. The pairs are saved with a fingerprint of the tools, vector
+Finding pairs is the slowest step. Only tools with the same cluster and side effects that share
+a parameter name are compared. On a change, pairs between tools whose cluster, side effects,
+parameters and vector did not change are reused, and only the others are compared; the result is
+the same as comparing everything. The pairs are saved with a fingerprint of the tools, vector
 method, thresholds and `DUPLICATE_RULES_VERSION`, and reused only if all are unchanged. **Raise
 that version when changing `find_duplicate_pairs`.**
 
@@ -107,7 +110,9 @@ destructive wording, the local plan is used instead (`TOOL_ROUTER_ARBITRATE_MIN`
 ### Local planner (`planner.py`)
 
 1. Split at `;`, "then", "after that", and at "and" or a comma followed by a verb that starts a
-   tool name.
+   tool name. Then split a part at "and" or a comma if each side has two or more content words,
+   scores at least `0.18`, and picks a different tool. A side that picks a destructive tool is
+   not split off this way.
 2. Score each part. A weak part (below `0.12`) is merged; neighbours choosing the same tool are
    joined.
 3. Take the best tool for each part. Add up to two helpers that score at least half as much,

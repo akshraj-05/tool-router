@@ -48,31 +48,85 @@ def duplicate_fingerprint(
     return hashlib.sha256(json.dumps(facts).encode("utf-8")).hexdigest()
 
 
-def find_duplicate_pairs(entries: list[IndexedTool], thresholds: ConfidenceThresholds) -> Pairs:
-    """Pairs of tools that look like they do the same job.
+def find_duplicate_pairs(
+    entries: list[IndexedTool],
+    thresholds: ConfidenceThresholds,
+    unchanged: frozenset[str] = frozenset(),
+    known: Optional[Pairs] = None,
+) -> Pairs:
+    """Pairs of tools that look like they do the same job, sorted by id.
 
-    This compares tools in pairs, so it is the slowest part of building an index.
+    Two tools are compared only if they share a cluster and side effects and, unless
+    the overlap threshold is zero, at least one parameter name. Those are the only
+    pairs that can qualify, so most pairs are never looked at.
+
+    For an incremental update, ``unchanged`` names tools whose cluster, side effects,
+    parameters and vector are the same as when ``known`` was computed. Pairs between
+    two such tools are taken from ``known``; only pairs involving a new or changed
+    tool are compared again.
     """
-    pairs: Pairs = []
     ordered = sorted(entries, key=lambda e: e.tool.id)
-    # Computed once per tool: this loop visits every pair.
+    present = {e.tool.id for e in ordered}
+    pairs: Pairs = [
+        (a, b) for a, b in known or []
+        if a in unchanged and b in unchanged and a in present and b in present
+    ]
+    # Computed once per tool.
     param_names = [{p.name for p in e.tool.parameters} for e in ordered]
-    lengths = [norm(e.embedding) for e in ordered]
-    for i, a in enumerate(ordered):
-        for j in range(i + 1, len(ordered)):
-            b = ordered[j]
-            if a.tool.cluster != b.tool.cluster:
-                continue  # near-dups live in the same capability cluster
-            if a.tool.side_effects != b.tool.side_effects:
-                continue  # a read tool and a write tool are never near-duplicates
-                          # (similar params ≠ same action: get_object vs upload_to_s3)
-            # Parameter names first: far cheaper than comparing vectors.
-            if jaccard(param_names[i], param_names[j]) < thresholds.dup_param_overlap:
+    lengths: dict[int, float] = {}
+
+    def length(i: int) -> float:
+        if i not in lengths:
+            lengths[i] = norm(ordered[i].embedding)
+        return lengths[i]
+
+    groups: dict[tuple[str, str], list[int]] = defaultdict(list)
+    for i, e in enumerate(ordered):
+        # Near-dups live in the same capability cluster, and a read tool and a write
+        # tool are never near-duplicates (similar params ≠ same action).
+        groups[(e.tool.cluster, e.tool.side_effects)].append(i)
+
+    share_required = thresholds.dup_param_overlap > 0
+    for members in groups.values():
+        having: dict[str, set[int]] = defaultdict(set)     # parameter name -> tools
+        if share_required:
+            for i in members:
+                for name in param_names[i]:
+                    having[name].add(i)
+        for i in members:
+            a = ordered[i]
+            if a.tool.id in unchanged:       # its pairs are reused, or found from the other side
                 continue
-            similarity = cosine(a.embedding, b.embedding, lengths[i], lengths[j])
-            if similarity >= thresholds.dup_similarity:
-                pairs.append((a.tool.id, b.tool.id))
-    return pairs
+            candidates = (
+                set().union(*(having[n] for n in param_names[i])) if share_required else set(members)
+            )
+            for j in candidates:
+                b = ordered[j]
+                # Visit each pair once; two changed tools are compared from the earlier one.
+                if j == i or (j < i and b.tool.id not in unchanged):
+                    continue
+                if jaccard(param_names[i], param_names[j]) < thresholds.dup_param_overlap:
+                    continue
+                if cosine(a.embedding, b.embedding, length(i), length(j)) >= thresholds.dup_similarity:
+                    first, second = (i, j) if i < j else (j, i)
+                    pairs.append((ordered[first].tool.id, ordered[second].tool.id))
+    return sorted(pairs)
+
+
+def unchanged_for_duplicates(
+    entries: list[IndexedTool], previous: list[IndexedTool]
+) -> frozenset[str]:
+    """Ids whose duplicate-relevant facts and vector are exactly as before."""
+    before = {e.tool.id: e for e in previous}
+
+    def facts(e: IndexedTool) -> tuple:
+        return (e.tool.cluster, e.tool.side_effects, {p.name for p in e.tool.parameters})
+
+    return frozenset(
+        e.tool.id for e in entries
+        if (old := before.get(e.tool.id)) is not None
+        and facts(e) == facts(old) and e.embedding == old.embedding
+    )
 
 
 class _UnionFind:

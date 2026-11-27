@@ -108,7 +108,8 @@ See [engine design](engine-design.md) for the rules in each step.
 ## 9. Known limits
 
 - Local retrieval matches words, not meaning, and handles English only.
-- Every change rebuilds the whole index. Duplicate detection compares tools in pairs, so a
-  change takes about a second at 1,000 tools and tens of seconds at 5,000.
+- Every change builds a new index. Only new and changed tools are compared again for
+  duplicates; on generated catalogs one update took about 0.3 s at 1,000 tools and 2 to 4 s at
+  5,000. The first build compares all candidate pairs and takes longer.
 - One router per state folder; there is no locking between processes.
 - Accuracy on the repository's test set is limited; see the README for current scores.
