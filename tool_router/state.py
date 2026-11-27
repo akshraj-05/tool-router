@@ -3,7 +3,7 @@
     .tool-router/
         .gitignore        "*", so nothing in here is committed by accident
         catalog.json      current tools plus the history of older definitions
-        embeddings.json   cached vectors
+        vectors.db        saved vectors and duplicate pairs (see index_db.py)
 
 ``catalog.json`` is also a valid catalog file (its extra keys are ignored when
 loaded with ``--catalog``).
@@ -62,8 +62,9 @@ class StateStore:
         self.directory = Path(directory)
         self.catalog_path = self.directory / "catalog.json"
 
-    def cache_path(self, name: str) -> Path:
-        return self.directory / f"{name}.json"
+    @property
+    def database_path(self) -> Path:
+        return self.directory / "vectors.db"
 
     def prepare(self) -> None:
         """Create the folder if needed. Raises ``StateError`` if that is impossible."""

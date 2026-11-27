@@ -95,10 +95,10 @@ The default local path works without an LLM API key. Gemini was used for the rep
 
 ## Quick start
 
-Create an environment and install the API and MCP extras:
+With Python 3.11 or newer, create an environment and install the API and MCP extras:
 
 ```bash
-python3.11 -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[api,mcp]"
 ```
@@ -112,7 +112,7 @@ tool-router init
 Run the service with a tool catalog:
 
 ```bash
-tool-router serve --catalog path/to/tools_catalog.json
+tool-router serve --catalog tests/data/catalog.json   # a sample catalog; use your own file
 ```
 
 The REST API documentation is available at `http://localhost:8080/docs` when the service is running.
@@ -120,7 +120,7 @@ The REST API documentation is available at `http://localhost:8080/docs` when the
 To run the MCP server instead:
 
 ```bash
-tool-router mcp --catalog path/to/tools_catalog.json
+tool-router mcp --catalog tests/data/catalog.json
 ```
 
 ### Load tools straight from an MCP server
@@ -263,7 +263,7 @@ docker run -p 127.0.0.1:8080:8080 tool-router serve --host 0.0.0.0 --port 8080 -
 .tool-router/
 ├── .gitignore         ignores everything in the folder
 ├── catalog.json       current tools, and the history of older definitions
-└── embeddings.json    cached vectors
+└── vectors.db         saved vectors and duplicate groups (SQLite, built into Python)
 ```
 
 ```bash
@@ -282,6 +282,8 @@ tool-router serve                                      # later: loads the saved 
 | Name changed; parameter removed, renamed, retyped or made required | first number |
 
   A higher `version` that you supply is used instead.
+- **Vectors.** `vectors.db` can be deleted at any time; its contents are computed again. It holds the vectors of one method, and changing `TOOL_ROUTER_EMBEDDING_PROVIDER` replaces them. While Gemini is unavailable nothing is written, so its saved vectors survive an outage. An `embeddings.json` left by an earlier version is no longer used and can be deleted.
+- **Faster restarts.** Near-duplicate tools are found once and reused until a tool, a threshold or the vector method changes. `serve --rebuild` recomputes everything.
 - **Safety.** Changes are written before they take effect; if saving fails, nothing changes. A damaged `catalog.json` stops startup and is left untouched. Settings and API keys are never written here, and the files are readable only by you.
 - **Options.** `--state-dir PATH` uses another folder (useful when an MCP host starts the router from an unexpected directory). `--no-persist` keeps everything in memory.
 - **Limit.** Run one router per folder; two would overwrite each other's changes.

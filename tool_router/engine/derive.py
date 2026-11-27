@@ -15,7 +15,11 @@ Derives, per registry:
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections import defaultdict
+from dataclasses import asdict
+from typing import Optional
 
 from tool_router.config import ConfidenceThresholds
 from tool_router.domain.models import DerivedMaps, IndexedTool
@@ -24,6 +28,51 @@ from tool_router.engine.text import cosine, jaccard, norm
 from tool_router.log import get_logger
 
 logger = get_logger("derive")
+
+# Saved duplicate pairs are reused only while this number is unchanged: raise it
+# whenever find_duplicate_pairs() could give a different answer for the same input.
+DUPLICATE_RULES_VERSION = 1
+Pairs = list[tuple[str, str]]
+
+
+def duplicate_fingerprint(
+    entries: list[IndexedTool], thresholds: ConfidenceThresholds, model_stamp: str
+) -> str:
+    """Identifies everything find_duplicate_pairs() depends on."""
+    tools = sorted(
+        (e.tool.id, e.tool.cluster, e.tool.side_effects,
+         sorted(p.name for p in e.tool.parameters), e.search_text)
+        for e in entries
+    )
+    facts = [DUPLICATE_RULES_VERSION, model_stamp, asdict(thresholds), tools]
+    return hashlib.sha256(json.dumps(facts).encode("utf-8")).hexdigest()
+
+
+def find_duplicate_pairs(entries: list[IndexedTool], thresholds: ConfidenceThresholds) -> Pairs:
+    """Pairs of tools that look like they do the same job.
+
+    This compares tools in pairs, so it is the slowest part of building an index.
+    """
+    pairs: Pairs = []
+    ordered = sorted(entries, key=lambda e: e.tool.id)
+    # Computed once per tool: this loop visits every pair.
+    param_names = [{p.name for p in e.tool.parameters} for e in ordered]
+    lengths = [norm(e.embedding) for e in ordered]
+    for i, a in enumerate(ordered):
+        for j in range(i + 1, len(ordered)):
+            b = ordered[j]
+            if a.tool.cluster != b.tool.cluster:
+                continue  # near-dups live in the same capability cluster
+            if a.tool.side_effects != b.tool.side_effects:
+                continue  # a read tool and a write tool are never near-duplicates
+                          # (similar params ≠ same action: get_object vs upload_to_s3)
+            # Parameter names first: far cheaper than comparing vectors.
+            if jaccard(param_names[i], param_names[j]) < thresholds.dup_param_overlap:
+                continue
+            similarity = cosine(a.embedding, b.embedding, lengths[i], lengths[j])
+            if similarity >= thresholds.dup_similarity:
+                pairs.append((a.tool.id, b.tool.id))
+    return pairs
 
 
 class _UnionFind:
@@ -53,8 +102,12 @@ def derive_maps(
     entries: list[IndexedTool],
     catalog_meta: dict,
     thresholds: ConfidenceThresholds,
+    duplicate_pairs: Optional[Pairs] = None,
 ) -> DerivedMaps:
-    """Build clusters, version families, and near-duplicate groups; annotate entries."""
+    """Build clusters, version families, and near-duplicate groups; annotate entries.
+
+    ``duplicate_pairs`` takes an earlier result of find_duplicate_pairs(); without
+    it the pairs are computed here."""
     by_id = {e.tool.id: e for e in entries}
 
     # --- clusters --------------------------------------------------------
@@ -91,25 +144,10 @@ def derive_maps(
         for a, b in zip(ids, ids[1:]):
             uf.union(a, b)
     # (b) auto-detection for catalogs without the metadata (generalization).
-    ordered = sorted(entries, key=lambda e: e.tool.id)
-    # Computed once per tool: this loop visits every pair, so it dominates the
-    # cost of a rebuild on large catalogs.
-    param_names = [{p.name for p in e.tool.parameters} for e in ordered]
-    lengths = [norm(e.embedding) for e in ordered]
-    for i, a in enumerate(ordered):
-        for j in range(i + 1, len(ordered)):
-            b = ordered[j]
-            if a.tool.cluster != b.tool.cluster:
-                continue  # near-dups live in the same capability cluster
-            if a.tool.side_effects != b.tool.side_effects:
-                continue  # a read tool and a write tool are never near-duplicates
-                          # (similar params ≠ same action: get_object vs upload_to_s3)
-            # Parameter names first: far cheaper than comparing vectors.
-            if jaccard(param_names[i], param_names[j]) < thresholds.dup_param_overlap:
-                continue
-            similarity = cosine(a.embedding, b.embedding, lengths[i], lengths[j])
-            if similarity >= thresholds.dup_similarity:
-                uf.union(a.tool.id, b.tool.id)
+    if duplicate_pairs is None:
+        duplicate_pairs = find_duplicate_pairs(entries, thresholds)
+    for a, b in duplicate_pairs:
+        uf.union(a, b)
     dup_groups = uf.groups()
 
     logger.info(

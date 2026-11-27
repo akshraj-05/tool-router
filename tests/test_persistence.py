@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import contextlib
 import copy
 import json
 import os
 import socket
+import sqlite3
 import stat
 import subprocess
 import sys
@@ -180,12 +182,16 @@ def test_unusable_folder():
 # ------------------------------------------------------------------ engine
 
 
+def vector_count() -> int:
+    with contextlib.closing(sqlite3.connect(STATE / "vectors.db")) as db:
+        return db.execute("SELECT COUNT(*) FROM vectors").fetchone()[0]
+
+
 def test_registry_and_vectors_are_saved(catalog):
     build(catalog, StateStore(STATE))
     data = saved()
     assert data["format_version"] == 1 and len(data["tools"]) == 13
-    vectors = json.loads((STATE / "embeddings.json").read_text())
-    assert len(vectors["entries"]) == 13
+    assert vector_count() == 13
 
 
 def test_every_change_is_saved_and_survives_a_restart(catalog):
@@ -248,7 +254,7 @@ def test_a_rejected_change_is_not_saved(catalog):
 def test_vectors_of_removed_tools_are_dropped(catalog):
     engine = build(catalog, StateStore(STATE))
     engine.delete_tool("comm.send_email")
-    assert len(json.loads((STATE / "embeddings.json").read_text())["entries"]) == 12
+    assert vector_count() == 12
 
 
 def test_deleting_a_grouped_tool_still_allows_a_restart(catalog):
@@ -271,7 +277,7 @@ def test_no_secret_is_written_to_the_folder(catalog, monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "SECRET-KEY-123")
     build(catalog, StateStore(STATE))
     for path in STATE.iterdir():
-        assert "SECRET-KEY-123" not in path.read_text()
+        assert b"SECRET-KEY-123" not in path.read_bytes()
 
 
 # ------------------------------------------------------------------ upsert

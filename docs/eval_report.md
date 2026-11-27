@@ -1,5 +1,11 @@
 # Evaluation Report — Iterated Design with Measured Results
 
+> **Historical record.** These results come from a 29-case suite and a 64-tool catalog that are
+> not in this repository, measured on much older code. Some features mentioned here (LLM ingest
+> enrichment among them) have since been removed, and names and storage have changed. For results
+> you can reproduce, see [Evaluation in the README](../README.md#evaluation) and run
+> `python eval/run.py`.
+
 All numbers below (unless noted) were produced by an internal 29-case evaluation harness and
 64-tool catalog used during development — not bundled with this repo, since it was a private
 test suite rather than something meant to ship.

@@ -1,14 +1,11 @@
-"""Vector cache, settings and secrets.
+"""Settings, secrets and the content hash.
 
-- **Cache** (``JsonCache``): ``{content hash: value}`` bound to a model stamp. It is
-  kept in the state folder (see ``state.py``) or, without one, only in memory. A
-  value is reused only when both the tool's text hash and the model stamp match;
-  the local TF-IDF stamp includes a corpus hash, so a catalog change invalidates
-  its vectors. A cache can always be rebuilt, so anything in it that cannot be
-  used is dropped with a warning and computed again.
-- **Settings and secrets** live in the per-user config folder, never in a project:
+Both live in the per-user config folder, never in a project:
+
       config.json   non-secret settings written by `tool-router init` / /setup
       secrets.json  0600-permission fallback when the OS keyring is unavailable
+
+Saved vectors are in the state folder instead: see ``index_db.py``.
 """
 
 from __future__ import annotations
@@ -17,12 +14,11 @@ import hashlib
 import json
 import os
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 from platformdirs import user_config_dir
 
 from tool_router.log import get_logger
-from tool_router.state import write_atomic
 
 logger = get_logger("store")
 
@@ -36,77 +32,6 @@ def content_hash(text: str) -> str:
 
 def config_dir() -> Path:
     return Path(user_config_dir(_APP, _AUTHOR))
-
-
-class JsonCache:
-    """A small persisted {key: value} cache bound to a model stamp."""
-
-    def __init__(
-        self,
-        path: Optional[Path],
-        model_stamp: str,
-        rebuild: bool = False,
-        valid: Optional[Callable[[Any], bool]] = None,
-    ) -> None:
-        """``path=None`` keeps the cache in memory only. Saved entries that fail
-        ``valid`` are dropped on loading."""
-        self._path = path
-        self._stamp = model_stamp
-        self._data: dict[str, Any] = {}
-        if path is None:
-            return
-        if rebuild:
-            logger.info("cache rebuild requested — starting fresh: %s", path.name)
-            return
-        try:
-            if not path.exists():
-                return
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError) as exc:
-            logger.warning("could not read cache %s (%s) — starting fresh", path, exc)
-            return
-        if not (isinstance(payload, dict) and isinstance(payload.get("entries"), dict)):
-            logger.warning("cache %s has an unexpected format — starting fresh", path)
-            return
-        if payload.get("model_stamp") != model_stamp:  # stored values are incompatible
-            logger.info(
-                "model stamp changed (%s -> %s) — invalidating %s",
-                payload.get("model_stamp"), model_stamp, path.name,
-            )
-            return
-        entries = payload["entries"]
-        self._data = {k: v for k, v in entries.items() if valid is None or valid(v)}
-        if len(self._data) < len(entries):
-            logger.warning(
-                "dropped %d unusable entries from %s — they will be computed again",
-                len(entries) - len(self._data), path.name,
-            )
-
-    def get(self, key: str) -> Any:
-        return self._data.get(key)
-
-    def put(self, key: str, value: Any) -> None:
-        self._data[key] = value
-
-    def keep(self, keys: set[str]) -> bool:
-        """Drop every other entry. Returns True if anything was dropped."""
-        stale = self._data.keys() - keys
-        for key in stale:
-            del self._data[key]
-        return bool(stale)
-
-    def save(self) -> None:
-        if self._path is None:
-            return
-        try:
-            self._path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-            write_atomic(self._path, json.dumps({"model_stamp": self._stamp, "entries": self._data}))
-        except OSError as exc:
-            logger.warning("could not persist cache %s (%s) — continuing in-memory", self._path, exc)
-
-    @property
-    def size(self) -> int:
-        return len(self._data)
 
 
 # --------------------------- config + secrets -------------------------------

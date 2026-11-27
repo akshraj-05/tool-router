@@ -25,6 +25,7 @@ import functools
 import json
 import threading
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable, Optional
 
 from tool_router.config import Settings
@@ -43,7 +44,12 @@ from tool_router.domain.versioning import apply_versions
 from tool_router.engine.bm25 import BM25Index
 from tool_router.engine.confidence import decide
 from tool_router.engine.dedup import collapse
-from tool_router.engine.derive import derive_maps
+from tool_router.engine.derive import (
+    Pairs,
+    derive_maps,
+    duplicate_fingerprint,
+    find_duplicate_pairs,
+)
 from tool_router.engine.guardrail import validate_catalog, validate_submission
 from tool_router.engine.ingest import ingest_tools
 from tool_router.engine.planner import LocalPlanner, PlanOutcome
@@ -54,7 +60,8 @@ from tool_router.providers import make_embedding_provider
 from tool_router.providers.base import ChatClient
 from tool_router.providers.local_tfidf import LocalTfidfEmbedding
 from tool_router.state import SavedState, StateStore
-from tool_router.store import JsonCache, content_hash
+from tool_router.index_db import VectorCache, load_result, save_result
+from tool_router.store import content_hash
 
 logger = get_logger("pipeline")
 
@@ -141,11 +148,17 @@ class RoutingEngine:
         self._save(self._raw_tools, self._history)
         self._log_summary()
 
-    def _cache(
-        self, name: str, stamp: str, valid: Callable[[Any], bool]
-    ) -> JsonCache:
-        path = self._store.cache_path(name) if self._store else None
-        return JsonCache(path, stamp, rebuild=self._settings.rebuild, valid=valid)
+    def _database_for(self, provider: Any) -> Optional[Path]:
+        """Where results made with ``provider`` are saved, or None for memory only.
+
+        The saved file is replaced only when the *setting* changes. While the
+        configured provider is unavailable and local vectors stand in for it,
+        nothing is written, so its saved vectors survive an outage.
+        """
+        is_local = isinstance(provider, LocalTfidfEmbedding)
+        if self._store is None or is_local != (self._settings.embedding_provider == "local"):
+            return None
+        return self._store.database_path
 
     def _state(self, tools: list[dict[str, Any]], history: dict[str, Any]) -> SavedState:
         present = {t["id"] for t in tools}
@@ -243,7 +256,7 @@ class RoutingEngine:
             # The whole index must live in one vector space, so use local for all of it.
             logger.warning(
                 "embedding provider failed while indexing (%s) — this index uses local "
-                "TF-IDF until the next successful rebuild", exc,
+                "TF-IDF until the next successful rebuild; saved vectors are kept", exc,
             )
             provider = LocalTfidfEmbedding()
             self._embed_entries(provider, entries)
@@ -263,6 +276,7 @@ class RoutingEngine:
         maps: DerivedMaps = derive_maps(
             entries, catalog_meta=self._catalog_meta,
             thresholds=self._settings.confidence,
+            duplicate_pairs=self._duplicate_pairs(provider, entries),
         )
 
         # Planner verb lexicon: leading verbs of tool names (catalog-derived).
@@ -299,7 +313,10 @@ class RoutingEngine:
         usable = (
             _is_sparse_vector if isinstance(provider, LocalTfidfEmbedding) else _is_dense_vector
         )
-        cache = self._cache("embeddings", getattr(provider, "stamp", "unknown"), usable)
+        cache = VectorCache(
+            self._database_for(provider), getattr(provider, "stamp", "unknown"),
+            rebuild=self._settings.rebuild, valid=usable,
+        )
         hashes = [content_hash(t) for t in texts]
         missing = [i for i, h in enumerate(hashes) if cache.get(h) is None]
         if missing:
@@ -314,6 +331,26 @@ class RoutingEngine:
             )
         for entry, h in zip(entries, hashes):
             entry.embedding = cache.get(h)
+
+    def _duplicate_pairs(self, provider: Any, entries: list[IndexedTool]) -> Pairs:
+        """The near-duplicate pairs, reused from the last run if nothing relevant changed."""
+        path = self._database_for(provider)
+        thresholds = self._settings.confidence
+        if path is None:
+            return find_duplicate_pairs(entries, thresholds)
+        fingerprint = duplicate_fingerprint(entries, thresholds, getattr(provider, "stamp", "unknown"))
+        if not self._settings.rebuild:
+            saved = load_result(path, "duplicate_pairs", fingerprint)
+            ids = {e.tool.id for e in entries}
+            if isinstance(saved, list) and all(
+                isinstance(p, list) and len(p) == 2 and all(isinstance(i, str) and i in ids for i in p)
+                for p in saved
+            ):
+                logger.info("reused %d saved duplicate pairs", len(saved))
+                return [(a, b) for a, b in saved]
+        pairs = find_duplicate_pairs(entries, thresholds)
+        save_result(path, "duplicate_pairs", fingerprint, pairs)
+        return pairs
 
     # ------------------------------------------------------------------ API
 
