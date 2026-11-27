@@ -303,6 +303,27 @@ Inside the container the service must listen on `0.0.0.0` (the image does this),
 docker run -p 127.0.0.1:8080:8080 tool-router serve --host 0.0.0.0 --port 8080 --allow-host localhost
 ```
 
+To keep registered tools when the container is replaced, mount a folder. **Create it first:** if it does not exist, Docker creates it as root and the router stops with `Permission denied`.
+
+```bash
+mkdir -p .tool-router
+docker run -p 127.0.0.1:8080:8080 \
+  -v "$PWD/.tool-router:/app/.tool-router" \
+  -v "$PWD/tests/data/catalog.json:/app/catalog.json:ro" \
+  tool-router serve --host 0.0.0.0 --port 8080 --allow-host localhost --catalog /app/catalog.json
+```
+
+- The container runs as user 1000. If your user id is different, add `--user "$(id -u):$(id -g)"`. Use it only together with the mounted folder.
+- To use Gemini, add `-e GEMINI_API_KEY -e TOOL_ROUTER_LLM_PROVIDER=gemini`. The key is passed at run time and is not stored in the image.
+
+For the MCP server, keep standard input open with `-i`. An MCP host can start it with:
+
+```bash
+docker run -i --rm -v "/path/to/catalog.json:/app/catalog.json:ro" tool-router mcp --catalog /app/catalog.json --no-persist
+```
+
+A local MCP server given to `--import-mcp` runs inside the container, so its code and dependencies must be there.
+
 ## Saved registry (`.tool-router/`)
 
 `serve` and `mcp` save registered tools and cached vectors in a `.tool-router` folder in the directory you start them from, and load them again on the next start.
@@ -335,7 +356,7 @@ tool-router serve                                      # later: loads the saved 
 - **Safety.** Changes are written before they take effect; if saving fails, nothing changes. A damaged `catalog.json` stops startup and is left untouched. Settings and API keys are never written here, and the files are readable only by you.
 - **Options.** `--state-dir PATH` uses another folder (useful when an MCP host starts the router from an unexpected directory). `--no-persist` keeps everything in memory.
 - **Limit.** Run one router per folder; two would overwrite each other's changes.
-- **Docker.** Mount the folder to keep it: `-v "$PWD/.tool-router:/app/.tool-router"` (the folder must be writable by the container user).
+- **Docker.** Mount the folder to keep it, and create it first: see [Network access](#network-access).
 
 ## Running the tests
 
