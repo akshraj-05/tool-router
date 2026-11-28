@@ -1,4 +1,4 @@
-"""The .tool-router folder: saving, restarting, upserting and versioning."""
+"""The .toolspotter folder: saving, restarting, upserting and versioning."""
 
 from __future__ import annotations
 
@@ -17,16 +17,16 @@ from pathlib import Path
 
 import pytest
 
-from tool_router import state as state_module
-from tool_router.catalog_loader import merge_with_saved
-from tool_router.cli import main
-from tool_router.config import Settings
-from tool_router.domain.errors import InvalidToolError, StateError
-from tool_router.domain.versioning import apply_versions, bump, change_level
-from tool_router.engine.pipeline import RoutingEngine
-from tool_router.state import SavedState, StateStore
+from toolspotter import state as state_module
+from toolspotter.catalog_loader import merge_with_saved
+from toolspotter.cli import main
+from toolspotter.config import Settings
+from toolspotter.domain.errors import InvalidToolError, StateError
+from toolspotter.domain.versioning import apply_versions, bump, change_level
+from toolspotter.engine.pipeline import RoutingEngine
+from toolspotter.state import SavedState, StateStore
 
-STATE = Path(".tool-router")
+STATE = Path(".toolspotter")
 EMPLOYEE = "hr.get_employee"
 
 
@@ -338,7 +338,7 @@ def test_merge_keeps_declared_side_effects_when_the_input_omits_them():
 
 @pytest.fixture
 def serve(monkeypatch, capsys):
-    """Run `tool-router serve ...` without opening a port; return (code, app, stderr)."""
+    """Run `toolspotter serve ...` without opening a port; return (code, app, stderr)."""
     uvicorn = pytest.importorskip("uvicorn")
 
     def run(*args):
@@ -515,7 +515,7 @@ def test_changes_survive_killing_the_real_server():
 
     def start(*args):
         process = subprocess.Popen(
-            [sys.executable, "-m", "tool_router.cli", "serve", "--host", "127.0.0.1",
+            [sys.executable, "-m", "toolspotter.cli", "serve", "--host", "127.0.0.1",
              "--port", str(port), *args],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=os.getcwd())
         deadline = time.monotonic() + 40

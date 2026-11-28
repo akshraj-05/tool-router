@@ -7,7 +7,7 @@ import json
 
 import pytest
 
-from tool_router.engine.guardrail import validate_submission
+from toolspotter.engine.guardrail import validate_submission
 
 VALID = {
     "id": "demo.fetch_widget", "name": "fetch_widget", "cluster": "demo",

@@ -1,8 +1,8 @@
 """Shared fixtures.
 
 Every test runs in an isolated sandbox: its own working directory (the CLI saves
-a .tool-router folder into it), its own config directory, and
-no TOOL_ROUTER_* / provider key variables leaking in from the developer's shell.
+a .toolspotter folder into it), its own config directory, and
+no TOOLSPOTTER_* / provider key variables leaking in from the developer's shell.
 """
 
 from __future__ import annotations
@@ -14,8 +14,8 @@ from pathlib import Path
 
 import pytest
 
-from tool_router.config import Settings
-from tool_router.engine.pipeline import RoutingEngine
+from toolspotter.config import Settings
+from toolspotter.engine.pipeline import RoutingEngine
 
 DATA = Path(__file__).parent / "data"
 
@@ -25,7 +25,7 @@ _SCRUBBED_ENV = ("GEMINI_API_KEY",)
 @pytest.fixture(autouse=True)
 def sandbox(tmp_path, monkeypatch):
     for name in list(os.environ):
-        if name.startswith("TOOL_ROUTER_") or name in _SCRUBBED_ENV:
+        if name.startswith("TOOLSPOTTER_") or name in _SCRUBBED_ENV:
             monkeypatch.delenv(name, raising=False)
     work = tmp_path / "work"
     work.mkdir()

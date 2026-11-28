@@ -6,9 +6,9 @@ Goals: survive restarts, need no database server, keep secrets out of projects.
 
 | Data | Where |
 |---|---|
-| Registered tools, their history and declared duplicate groups | `.tool-router/router.db` |
-| Vectors and near-duplicate pairs | `.tool-router/router.db` |
-| Recent requests | `.tool-router/router.db` |
+| Registered tools, their history and declared duplicate groups | `.toolspotter/router.db` |
+| Vectors and near-duplicate pairs | `.toolspotter/router.db` |
+| Recent requests | `.toolspotter/router.db` |
 | Settings | `config.json` in the per-user config folder |
 | API key | OS keyring, or a `0600` file in the config folder |
 
@@ -17,7 +17,7 @@ held in memory. Queries are answered from that memory, never from the database.
 
 ## The state folder
 
-`serve` and `mcp` use `./.tool-router` (`--state-dir` to change it, `--no-persist` to disable).
+`serve` and `mcp` use `./.toolspotter` (`--state-dir` to change it, `--no-persist` to disable).
 A `RoutingEngine` built without a `StateStore` keeps everything in memory. The folder contains a
 `.gitignore` of `*`. Use one router per folder: two would overwrite each other's changes.
 
@@ -46,7 +46,7 @@ Because the registry is in this file, **the router never deletes or replaces it*
 - Saved **before** the new index goes live. If saving fails, nothing changes.
 - A damaged, empty or unreadable file stops startup and is left as it is. Move it aside to start
   fresh.
-- `tool-router export -o tools.json` writes the saved tools as a `--catalog` file. Use it to read
+- `toolspotter export -o tools.json` writes the saved tools as a `--catalog` file. Use it to read
   them or to keep a copy.
 
 ## Vectors and cached results
@@ -54,13 +54,13 @@ Because the registry is in this file, **the router never deletes or replaces it*
 - `vectors`: the key is a hash of the tool's search text. Local vectors are JSON text; Gemini
   vectors are 64-bit floats in a BLOB.
 - `cache`: `model_stamp`, and `duplicate_pairs` with its fingerprint.
-- The tables hold **one** method's vectors. Changing `TOOL_ROUTER_EMBEDDING_PROVIDER` replaces
+- The tables hold **one** method's vectors. Changing `TOOLSPOTTER_EMBEDDING_PROVIDER` replaces
   them.
 - While Gemini is unavailable (an outage or a missing key) nothing is written, so its saved
   vectors survive.
 - Each save is one transaction and writes only what changed.
 - Unusable rows are computed again; a failed write is logged and the router carries on.
-- `serve --rebuild` or `TOOL_ROUTER_REBUILD=1` recomputes everything.
+- `serve --rebuild` or `TOOLSPOTTER_REBUILD=1` recomputes everything.
 
 ## Request history
 
@@ -108,9 +108,9 @@ continues its numbering.
 ## Configuration
 
 ```bash
-tool-router init                              # provider, key, model
-tool-router config set llm_model gemini-3.5-flash-lite
-tool-router config show                       # the key is shown only as present or absent
+toolspotter init                              # provider, key, model
+toolspotter config set llm_model gemini-3.5-flash-lite
+toolspotter config show                       # the key is shown only as present or absent
 ```
 
 The REST service also offers `/setup`. Precedence: environment variable, then stored config,
@@ -118,4 +118,4 @@ then default.
 
 ## Docker
 
-Mount `/app/.tool-router` to keep the registry between containers.
+Mount `/app/.toolspotter` to keep the registry between containers.

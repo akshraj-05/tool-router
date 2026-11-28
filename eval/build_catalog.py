@@ -19,8 +19,8 @@ from types import SimpleNamespace
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
-from tool_router.catalog_loader import split_valid  # noqa: E402
-from tool_router.importers.mcp_importer import _convert  # noqa: E402
+from toolspotter.catalog_loader import split_valid  # noqa: E402
+from toolspotter.importers.mcp_importer import _convert  # noqa: E402
 
 DEFAULT_GROUPS = ("Core automation", "Tab management")
 

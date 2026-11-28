@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from tool_router.config import ConfidenceThresholds
-from tool_router.engine.derive import derive_maps
-from tool_router.engine.ingest import ingest_tools
-from tool_router.engine.text import cosine, norm
+from toolspotter.config import ConfidenceThresholds
+from toolspotter.engine.derive import derive_maps
+from toolspotter.engine.ingest import ingest_tools
+from toolspotter.engine.text import cosine, norm
 
 # Different sizes, so cosine() swaps its arguments in one of the two orders.
 SPARSE = ({"a": 1.0, "b": 2.0, "c": 3.0}, {"b": 5.0})

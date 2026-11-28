@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from tool_router.domain.errors import ProviderError
-from tool_router.providers import gemini
+from toolspotter.domain.errors import ProviderError
+from toolspotter.providers import gemini
 
 
 @pytest.fixture

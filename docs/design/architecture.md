@@ -1,6 +1,6 @@
 # Architecture
 
-Tool Router takes a natural-language request and returns the few tools an agent needs, with a
+ToolSpotter takes a natural-language request and returns the few tools an agent needs, with a
 suggested call order. It **selects** tools; it never runs them.
 
 Detail documents: [engine design](engine-design.md) · [onboarding](onboarding.md) ·
@@ -17,9 +17,9 @@ flowchart TB
     M[MCP server: local command or URL]
     R[REST: register and CRUD]
   end
-  subgraph Process["tool-router (one process)"]
+  subgraph Process["toolspotter (one process)"]
     G[Guardrail: validate] --> I[Build index snapshot]
-    I --> S[(.tool-router/<br/>router.db)]
+    I --> S[(.toolspotter/<br/>router.db)]
     I --> Q[Route a query]
   end
   F --> G
@@ -34,9 +34,9 @@ flowchart TB
 
 | Interface | Command | Can change the registry |
 |---|---|---|
-| REST | `tool-router serve` | Yes |
-| Website (`/ui`), calls the REST API | `tool-router serve` | Yes |
-| MCP over stdio (`find_tools`, `registry_status`) | `tool-router mcp` | No |
+| REST | `toolspotter serve` | Yes |
+| Website (`/ui`), calls the REST API | `toolspotter serve` | Yes |
+| MCP over stdio (`find_tools`, `registry_status`) | `toolspotter mcp` | No |
 
 Other commands: `import-mcp` (scan an MCP server into a JSON file), `export` (saved tools to a
 JSON file), `validate`, `init`, `config`, `version`.
@@ -54,7 +54,7 @@ JSON file), `validate`, `init`, `config`, `version`.
 Install from the repository (`pip install -e ".[api,mcp]"`) or build the Docker image. The
 package is not published to PyPI.
 
-Settings come from environment variables, then the stored config (`tool-router init`,
+Settings come from environment variables, then the stored config (`toolspotter init`,
 `config set`, `/setup`), then built-in defaults. The default is fully local and needs no key.
 `/setup` is served by the REST API and is covered by the same network rules as the rest of it.
 
@@ -102,17 +102,17 @@ See [engine design](engine-design.md) for the rules in each step.
 
 | Path | Contents |
 |---|---|
-| `tool_router/engine/` | `pipeline` (orchestrator), `guardrail`, `ingest`, `derive`, `retrieval`, `bm25`, `dedup`, `confidence`, `planner`, `llm_planner`, `hyde`, `text` |
-| `tool_router/domain/` | Models, errors, naming, versioning |
-| `tool_router/providers/` | Local TF-IDF and Gemini |
-| `tool_router/importers/` | Local and remote MCP scanning |
-| `tool_router/database.py` | The one database file and its tables |
-| `tool_router/state.py`, `index_db.py`, `history.py` | Saved registry; saved vectors and duplicate pairs; request history |
-| `tool_router/api.py`, `mcp_server.py`, `cli.py` | Interfaces |
-| `tool_router/web.py`, `ui/` | Website: four static files (page, style, behaviour, animation), no build step, and the endpoints made for it |
-| `tool_router/catalog_changes.py`, `postman.py` | What an upload would change; Postman collection |
-| `tool_router/catalog_loader.py` | Startup sources and merging with saved tools |
-| `tool_router/store.py`, `config.py`, `limits.py`, `netutil.py`, `log.py` | Settings, secrets, limits, network checks, logging |
+| `toolspotter/engine/` | `pipeline` (orchestrator), `guardrail`, `ingest`, `derive`, `retrieval`, `bm25`, `dedup`, `confidence`, `planner`, `llm_planner`, `hyde`, `text` |
+| `toolspotter/domain/` | Models, errors, naming, versioning |
+| `toolspotter/providers/` | Local TF-IDF and Gemini |
+| `toolspotter/importers/` | Local and remote MCP scanning |
+| `toolspotter/database.py` | The one database file and its tables |
+| `toolspotter/state.py`, `index_db.py`, `history.py` | Saved registry; saved vectors and duplicate pairs; request history |
+| `toolspotter/api.py`, `mcp_server.py`, `cli.py` | Interfaces |
+| `toolspotter/web.py`, `ui/` | Website: four static files (page, style, behaviour, animation), no build step, and the endpoints made for it |
+| `toolspotter/catalog_changes.py`, `postman.py` | What an upload would change; Postman collection |
+| `toolspotter/catalog_loader.py` | Startup sources and merging with saved tools |
+| `toolspotter/store.py`, `config.py`, `limits.py`, `netutil.py`, `log.py` | Settings, secrets, limits, network checks, logging |
 | `eval/` | Test catalog, requests and scoring command |
 
 ## 9. Known limits

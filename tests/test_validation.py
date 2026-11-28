@@ -6,11 +6,11 @@ import json
 
 import pytest
 
-from tool_router.cli import main
-from tool_router.config import Settings
-from tool_router.domain.errors import CatalogError, InvalidCatalogError, ToolInUseError
-from tool_router.engine.guardrail import validate_submission
-from tool_router.engine.pipeline import RoutingEngine
+from toolspotter.cli import main
+from toolspotter.config import Settings
+from toolspotter.domain.errors import CatalogError, InvalidCatalogError, ToolInUseError
+from toolspotter.engine.guardrail import validate_submission
+from toolspotter.engine.pipeline import RoutingEngine
 
 GOOD = {
     "name": "get_weather",
@@ -172,7 +172,7 @@ def test_missing_file_and_oversized_file(tmp_path, capsys, monkeypatch):
     assert serve(tmp_path / "nope.json", capsys, monkeypatch)[0] == 1
     path = tmp_path / "big.json"
     path.write_text(json.dumps({"tools": [GOOD]}))
-    monkeypatch.setenv("TOOL_ROUTER_MAX_BYTES", "20")
+    monkeypatch.setenv("TOOLSPOTTER_MAX_BYTES", "20")
     code, err = serve(path, capsys, monkeypatch)
     assert code == 1 and "larger than 20 bytes" in err
 
@@ -191,7 +191,7 @@ def client(catalog):
     pytest.importorskip("fastapi")
     from starlette.testclient import TestClient
 
-    from tool_router.api import create_app
+    from toolspotter.api import create_app
 
     return TestClient(create_app(catalog))
 
@@ -234,9 +234,9 @@ def test_oversized_request_is_refused(catalog, monkeypatch):
     pytest.importorskip("fastapi")
     from starlette.testclient import TestClient
 
-    from tool_router.api import create_app
+    from toolspotter.api import create_app
 
-    monkeypatch.setenv("TOOL_ROUTER_MAX_BYTES", "500")
+    monkeypatch.setenv("TOOLSPOTTER_MAX_BYTES", "500")
     small = TestClient(create_app(catalog))
     big = {"tools": [tool(description="word " * 300)]}
     assert small.post("/registry", json=big).status_code == 413

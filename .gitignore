@@ -11,7 +11,7 @@ build/
 dist/
 
 # Local data / index artifacts (project marker file + any local data)
-.tool-router/
+.toolspotter/
 .eval-cache/
 /data/
 

@@ -3,7 +3,7 @@ requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "tool-router"
+name = "toolspotter"
 version = "0.1.0"
 description = "Intelligent tool router: filters a large enterprise tool catalog down to a small, high-precision, ordered tool plan per query (routing-as-a-service)."
 readme = "README.md"
@@ -25,13 +25,13 @@ test = ["pytest>=8", "httpx>=0.27"]                 # run the test suite: pip in
 keyring = ["keyring>=24"]                           # OS keyring for secrets — used opportunistically if installed; falls back to a 0600 file otherwise (this is the tested path)
 
 [project.scripts]
-tool-router = "tool_router.cli:main"
+toolspotter = "toolspotter.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["tool_router*"]
+include = ["toolspotter*"]
 
 [tool.setuptools.package-data]
-tool_router = ["ui/*"]                               # the website
+toolspotter = ["ui/*"]                               # the website
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

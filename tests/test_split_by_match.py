@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from tool_router.config import Settings
-from tool_router.engine.pipeline import RoutingEngine
+from toolspotter.config import Settings
+from toolspotter.engine.pipeline import RoutingEngine
 
 
 def _tool(name, description, effect="read", cluster="general"):

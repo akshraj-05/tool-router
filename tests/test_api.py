@@ -7,8 +7,8 @@ import pytest
 pytest.importorskip("fastapi")
 from starlette.testclient import TestClient  # noqa: E402
 
-from tool_router.api import create_app  # noqa: E402
-from tool_router.store import load_secret, save_stored_config  # noqa: E402
+from toolspotter.api import create_app  # noqa: E402
+from toolspotter.store import load_secret, save_stored_config  # noqa: E402
 
 QUERY = {"query": "Check the health status of the production server"}
 LOOPBACK = ("127.0.0.1", 50000)

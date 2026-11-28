@@ -10,13 +10,13 @@ from dataclasses import replace
 
 import pytest
 
-from tool_router.config import ConfidenceThresholds, Settings
-from tool_router.engine import derive, pipeline
-from tool_router.engine.derive import find_duplicate_pairs, unchanged_for_duplicates
-from tool_router.engine.ingest import ingest_tools
-from tool_router.engine.pipeline import RoutingEngine
-from tool_router.engine.text import cosine, jaccard
-from tool_router.providers.local_tfidf import LocalTfidfEmbedding
+from toolspotter.config import ConfidenceThresholds, Settings
+from toolspotter.engine import derive, pipeline
+from toolspotter.engine.derive import find_duplicate_pairs, unchanged_for_duplicates
+from toolspotter.engine.ingest import ingest_tools
+from toolspotter.engine.pipeline import RoutingEngine
+from toolspotter.engine.text import cosine, jaccard
+from toolspotter.providers.local_tfidf import LocalTfidfEmbedding
 
 PARAMS = ["id", "name", "query", "limit", "date", "user"]
 

@@ -9,7 +9,7 @@ import pytest
 
 pytest.importorskip("mcp.server.fastmcp")
 
-from tool_router.mcp_server import create_mcp_server  # noqa: E402
+from toolspotter.mcp_server import create_mcp_server  # noqa: E402
 
 
 def call(server, name: str, arguments: dict) -> dict:

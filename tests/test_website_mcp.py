@@ -11,8 +11,8 @@ pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient  # noqa: E402
 from test_mcp_remote import TOKEN, free_port, remote  # noqa: E402
 
-from tool_router.api import create_app  # noqa: E402
-from tool_router.importers.mcp_remote import MCPImportError, auth_header  # noqa: E402
+from toolspotter.api import create_app  # noqa: E402
+from toolspotter.importers.mcp_remote import MCPImportError, auth_header  # noqa: E402
 
 
 def make(**options) -> TestClient:
@@ -61,7 +61,7 @@ def test_a_refused_scan_explains_without_the_secret(token_server, token, caplog,
 
 
 def test_the_token_is_not_logged_or_saved(token_server, caplog, capfd, tmp_path):
-    from tool_router.state import StateStore
+    from toolspotter.state import StateStore
     caplog.set_level(logging.DEBUG)
     client = make(store=StateStore(tmp_path / "state"))
     found = client.post("/mcp/scan", json={"url": token_server, "token": TOKEN}).json()

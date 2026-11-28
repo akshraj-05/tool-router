@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from tool_router import __version__
-from tool_router.cli import main
+from toolspotter import __version__
+from toolspotter.cli import main
 
 DATA = Path(__file__).parent / "data"
 
@@ -48,7 +48,7 @@ def test_config_set_show_reset(capsys):
 
 
 def test_init_offers_gemini_and_stores_its_key(monkeypatch):
-    from tool_router.store import load_secret, load_stored_config
+    from toolspotter.store import load_secret, load_stored_config
 
     answers = iter(["gemini", "gemini-test-model", "local"])
     monkeypatch.setattr("builtins.input", lambda _prompt="": next(answers))

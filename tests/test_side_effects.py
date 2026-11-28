@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from tool_router.config import Settings
-from tool_router.domain.errors import CatalogError, InvalidToolError
-from tool_router.domain.naming import infer_side_effects, prepare_tool
-from tool_router.engine.pipeline import RoutingEngine
+from toolspotter.config import Settings
+from toolspotter.domain.errors import CatalogError, InvalidToolError
+from toolspotter.domain.naming import infer_side_effects, prepare_tool
+from toolspotter.engine.pipeline import RoutingEngine
 
 
 def tool(name: str, **extra) -> dict:

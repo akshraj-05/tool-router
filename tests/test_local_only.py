@@ -10,9 +10,9 @@ pytest.importorskip("fastapi")
 uvicorn = pytest.importorskip("uvicorn")
 from starlette.testclient import TestClient  # noqa: E402
 
-from tool_router.api import create_app  # noqa: E402
-from tool_router.cli import build_parser, main  # noqa: E402
-from tool_router.netutil import host_name, is_loopback  # noqa: E402
+from toolspotter.api import create_app  # noqa: E402
+from toolspotter.cli import build_parser, main  # noqa: E402
+from toolspotter.netutil import host_name, is_loopback  # noqa: E402
 
 CATALOG = Path(__file__).parent / "data" / "catalog.json"
 WARNING = "reachable from other machines"

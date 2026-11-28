@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from tool_router.config import Settings
-from tool_router.engine.pipeline import RoutingEngine
-from tool_router.store import load_secret, save_secret, save_stored_config
+from toolspotter.config import Settings
+from toolspotter.engine.pipeline import RoutingEngine
+from toolspotter.store import load_secret, save_secret, save_stored_config
 
 
 def test_defaults_are_offline():
@@ -23,24 +23,24 @@ def test_stored_config_is_used_when_no_env():
 
 def test_environment_beats_stored_config(monkeypatch):
     save_stored_config({"llm_provider": "gemini", "llm_model": "stored-model"})
-    monkeypatch.setenv("TOOL_ROUTER_LLM_PROVIDER", "none")
-    monkeypatch.setenv("TOOL_ROUTER_LLM_MODEL", "env-model")
+    monkeypatch.setenv("TOOLSPOTTER_LLM_PROVIDER", "none")
+    monkeypatch.setenv("TOOLSPOTTER_LLM_MODEL", "env-model")
     settings = Settings.from_env()
     assert settings.llm_provider == "none"
     assert settings.llm_model == "env-model"
 
 
 def test_thresholds_can_be_set_from_the_environment(monkeypatch):
-    monkeypatch.setenv("TOOL_ROUTER_FLOOR", "0.25")
-    monkeypatch.setenv("TOOL_ROUTER_HYDE_MAX", "0.5")
-    monkeypatch.setenv("TOOL_ROUTER_ARBITRATE_MIN", "0.6")
+    monkeypatch.setenv("TOOLSPOTTER_FLOOR", "0.25")
+    monkeypatch.setenv("TOOLSPOTTER_HYDE_MAX", "0.5")
+    monkeypatch.setenv("TOOLSPOTTER_ARBITRATE_MIN", "0.6")
     confidence = Settings.from_env().confidence
     assert (confidence.out_of_scope_floor, confidence.hyde_max,
             confidence.arbitration_min_fused) == (0.25, 0.5, 0.6)
 
 
 def test_bad_numeric_env_falls_back_to_default(monkeypatch):
-    monkeypatch.setenv("TOOL_ROUTER_FLOOR", "not-a-number")
+    monkeypatch.setenv("TOOLSPOTTER_FLOOR", "not-a-number")
     assert Settings.from_env().confidence.out_of_scope_floor == 0.18
 
 
@@ -54,7 +54,7 @@ def test_configured_model_reaches_the_chat_client(catalog, monkeypatch):
         def complete(self, system, user, max_tokens=700):
             return "{}"
 
-    monkeypatch.setattr("tool_router.providers.gemini.GeminiChat", RecordingChat)
+    monkeypatch.setattr("toolspotter.providers.gemini.GeminiChat", RecordingChat)
     RoutingEngine(catalog, settings=Settings(llm_provider="gemini", llm_model="my-model"))
     assert seen["model_id"] == "my-model"
 
@@ -69,7 +69,7 @@ def test_unset_model_lets_the_provider_choose_its_default(catalog, monkeypatch):
         def complete(self, system, user, max_tokens=700):
             return "{}"
 
-    monkeypatch.setattr("tool_router.providers.gemini.GeminiChat", RecordingChat)
+    monkeypatch.setattr("toolspotter.providers.gemini.GeminiChat", RecordingChat)
     RoutingEngine(catalog, settings=Settings(llm_provider="gemini"))
     assert seen["model_id"] is None
 

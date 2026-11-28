@@ -12,13 +12,13 @@ import pytest
 pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient  # noqa: E402
 
-from tool_router.api import create_app  # noqa: E402
-from tool_router.catalog_changes import plan_change  # noqa: E402
-from tool_router.cli import main  # noqa: E402
-from tool_router.domain.errors import CatalogError  # noqa: E402
-from tool_router.postman import EXAMPLES, SCHEMA  # noqa: E402
-from tool_router.state import StateStore  # noqa: E402
-from tool_router.web import UI_FOLDER  # noqa: E402
+from toolspotter.api import create_app  # noqa: E402
+from toolspotter.catalog_changes import plan_change  # noqa: E402
+from toolspotter.cli import main  # noqa: E402
+from toolspotter.domain.errors import CatalogError  # noqa: E402
+from toolspotter.postman import EXAMPLES, SCHEMA  # noqa: E402
+from toolspotter.state import StateStore  # noqa: E402
+from toolspotter.web import UI_FOLDER  # noqa: E402
 
 BASE = "http://127.0.0.1:8080"
 WEATHER = {"name": "get_current_weather",
@@ -49,7 +49,7 @@ def test_the_home_page_leads_to_the_website(client):
     reply = client.get("/", follow_redirects=False)
     assert reply.status_code in (302, 307) and reply.headers["location"] == "/ui/"
     page = client.get("/ui/")
-    assert page.status_code == 200 and "Tool Router" in page.text
+    assert page.status_code == 200 and "ToolSpotter" in page.text
 
 
 def test_pages_have_security_headers(client):
@@ -91,6 +91,8 @@ def test_the_icon_is_served(client):
     assert 'href="favicon.svg"' in client.get("/ui/").text
     icon = client.get("/ui/favicon.svg")
     assert icon.status_code == 200 and icon.headers["content-type"].startswith("image/svg+xml")
+    assert 'url("mark-dark.svg")' in client.get("/ui/style.css").text
+    assert client.get("/ui/mark-dark.svg").status_code == 200
 
 
 # ----------------------------------------------------------------- summary
@@ -256,13 +258,13 @@ def test_bad_upload_requests(client, body, status):
 
 
 def test_the_tool_limit_still_applies(client, monkeypatch):
-    monkeypatch.setenv("TOOL_ROUTER_MAX_TOOLS", "13")
+    monkeypatch.setenv("TOOLSPOTTER_MAX_TOOLS", "13")
     reply = client.post("/registry/apply", json={"tools": [WEATHER]})
     assert reply.status_code == 400 and "exceeds the limit" in reply.json()["detail"]
 
 
 def test_a_failed_save_is_reported(client, monkeypatch):
-    from tool_router.domain.errors import StateError
+    from toolspotter.domain.errors import StateError
     monkeypatch.setattr(StateStore, "save",
                         lambda self, state: (_ for _ in ()).throw(StateError("full")))
     reply = client.post("/registry/apply", json={"tools": [WEATHER]})

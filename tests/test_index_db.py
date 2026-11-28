@@ -9,12 +9,12 @@ from pathlib import Path
 
 import pytest
 
-from tool_router.config import ConfidenceThresholds, Settings
-from tool_router.domain.errors import ProviderError
-from tool_router.engine import derive, pipeline
-from tool_router.engine.pipeline import RoutingEngine
-from tool_router.providers.local_tfidf import LocalTfidfEmbedding
-from tool_router.state import StateStore
+from toolspotter.config import ConfidenceThresholds, Settings
+from toolspotter.domain.errors import ProviderError
+from toolspotter.engine import derive, pipeline
+from toolspotter.engine.pipeline import RoutingEngine
+from toolspotter.providers.local_tfidf import LocalTfidfEmbedding
+from toolspotter.state import StateStore
 
 DATABASE = Path("state/router.db")
 NEW = {"name": "get_current_weather",

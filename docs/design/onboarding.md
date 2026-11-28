@@ -13,7 +13,7 @@ tool → guardrail (validate or reject) → version → index → save
 | Several changes at once | `PATCH /registry/mutate` with `add` and `remove` |
 | Local MCP server | `--import-mcp "<command>"` |
 | Remote MCP server | `--import-mcp https://…` (Streamable HTTP) |
-| MCP server to a file, for review | `tool-router import-mcp --command …` or `--url …` |
+| MCP server to a file, for review | `toolspotter import-mcp --command …` or `--url …` |
 
 ## Tool format
 
@@ -50,7 +50,7 @@ tools that change or delete data.
 
 Also: a tool that another points to cannot be removed, `near_duplicate_groups` must name
 existing tools, a registry cannot be empty, input is limited to 5 MB
-(`TOOL_ROUTER_MAX_BYTES`) and 5,000 tools (`TOOL_ROUTER_MAX_TOOLS`).
+(`TOOLSPOTTER_MAX_BYTES`) and 5,000 tools (`TOOLSPOTTER_MAX_TOOLS`).
 
 ## How strict each path is
 

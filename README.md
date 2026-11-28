@@ -1,8 +1,13 @@
-# Tool Router
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="brand/logo-dark.svg">
+    <img src="brand/logo.svg" alt="ToolSpotter" width="330">
+  </picture>
+</h1>
 
 **Find the right tools for an AI agent without sending the entire tool catalog into every prompt.**
 
-Tool Router is a Python routing service for large tool catalogs. Register tools once, then submit a natural-language request to receive a small, ordered tool plan. It combines local retrieval and deterministic safeguards with an optional LLM planner.
+ToolSpotter is a Python routing service for large tool catalogs. Register tools once, then submit a natural-language request to receive a small, ordered tool plan. It combines local retrieval and deterministic safeguards with an optional LLM planner.
 
 ## Evaluation
 
@@ -67,7 +72,7 @@ python eval/run.py --set custom --split final
 python eval/run.py --set github --split final --baseline
 
 export GEMINI_API_KEY=your-key
-TOOL_ROUTER_LLM_PROVIDER=gemini TOOL_ROUTER_LLM_MODEL=gemini-3.5-flash-lite \
+TOOLSPOTTER_LLM_PROVIDER=gemini TOOLSPOTTER_LLM_MODEL=gemini-3.5-flash-lite \
   python eval/run.py --split final --from-env --delay 4.5
 ```
 
@@ -90,11 +95,11 @@ Earlier development results came from a different 29-query suite on older code t
 5. **Build a compact plan** locally or with an optional LLM.
 6. **Return ordered tool selections** to the calling agent.
 
-Tool Router selects tools; it does **not** execute them.
+ToolSpotter selects tools; it does **not** execute them.
 
 ## Website
 
-`tool-router serve` also serves a website at http://127.0.0.1:8080/ui/.
+`toolspotter serve` also serves a website at http://127.0.0.1:8080/ui/.
 
 | Section | What you can do |
 |---|---|
@@ -164,13 +169,13 @@ pip install -e ".[api,mcp]"
 Initialize configuration (optional for local-only routing):
 
 ```bash
-tool-router init
+toolspotter init
 ```
 
 Run the service with a tool catalog:
 
 ```bash
-tool-router serve --catalog tests/data/catalog.json   # a sample catalog; use your own file
+toolspotter serve --catalog tests/data/catalog.json   # a sample catalog; use your own file
 ```
 
 The REST API documentation is available at `http://localhost:8080/docs` when the service is running.
@@ -178,7 +183,7 @@ The REST API documentation is available at `http://localhost:8080/docs` when the
 To run the MCP server instead:
 
 ```bash
-tool-router mcp --catalog tests/data/catalog.json
+toolspotter mcp --catalog tests/data/catalog.json
 ```
 
 ### Load tools straight from an MCP server
@@ -186,8 +191,8 @@ tool-router mcp --catalog tests/data/catalog.json
 Point the router at an MCP server and it scans the server's tools at startup:
 
 ```bash
-tool-router serve --host 127.0.0.1 --import-mcp "python my_server.py"
-tool-router mcp --import-mcp "python my_server.py"
+toolspotter serve --host 127.0.0.1 --import-mcp "python my_server.py"
+toolspotter mcp --import-mcp "python my_server.py"
 ```
 
 - Quote the whole command. Repeat `--import-mcp` for several servers, and add `--catalog file.json` to combine them with a file.
@@ -209,7 +214,7 @@ Authentication is by HTTP header. `--mcp-header-env HEADER=NAME` sends `HEADER` 
 ```bash
 read -rs TOKEN                                  # paste the token; it stays out of shell history
 export SHOP_AUTH="Bearer $TOKEN"; unset TOKEN
-tool-router serve --host 127.0.0.1 \
+toolspotter serve --host 127.0.0.1 \
     --import-mcp "https://shop.example.com/mcp" --mcp-header-env Authorization=SHOP_AUTH
 ```
 
@@ -232,9 +237,9 @@ tool-router serve --host 127.0.0.1 \
 To review the tools before loading them, write them to a file instead:
 
 ```bash
-tool-router import-mcp --command python --args my_server.py -o tools.json
-# remote: tool-router import-mcp --url https://shop.example.com/mcp --header-env Authorization=SHOP_AUTH -o tools.json
-tool-router serve --catalog tools.json
+toolspotter import-mcp --command python --args my_server.py -o tools.json
+# remote: toolspotter import-mcp --url https://shop.example.com/mcp --header-env Authorization=SHOP_AUTH -o tools.json
+toolspotter serve --catalog tools.json
 ```
 
 ### Tool format
@@ -268,10 +273,10 @@ A catalog file, an API upload, single-tool requests and MCP scans all apply the 
 | `description` | 6 words to 500 characters |
 | `parameters` | Up to 12 objects, each with a unique `name`; `type` is `string`, `number`, `integer`, `boolean`, `array` or `object` |
 | `replaced_by` | Must name an existing tool, with no cycle; that tool cannot be deleted while referenced |
-| Catalog file or request body | Up to 5 MB (`TOOL_ROUTER_MAX_BYTES`) |
-| Tools in a registry | Up to 5,000 (`TOOL_ROUTER_MAX_TOOLS`) |
+| Catalog file or request body | Up to 5 MB (`TOOLSPOTTER_MAX_BYTES`) |
+| Tools in a registry | Up to 5,000 (`TOOLSPOTTER_MAX_TOOLS`) |
 
-If a catalog has invalid tools, **nothing is loaded** and every problem is listed (over REST: status 422 with a `rejected` list). Check a file beforehand with `tool-router validate tools.json`, which accepts a list of tools or a `{"tools": [...]}` object. An MCP scan skips invalid tools and lists them.
+If a catalog has invalid tools, **nothing is loaded** and every problem is listed (over REST: status 422 with a `rejected` list). Check a file beforehand with `toolspotter validate tools.json`, which accepts a list of tools or a `{"tools": [...]}` object. An MCP scan skips invalid tools and lists them.
 
 ### Manage tools over REST
 
@@ -293,7 +298,7 @@ If a catalog has invalid tools, **nothing is loaded** and every problem is liste
 | `POST /mcp/scan` | List the tools of a remote MCP server |
 | `GET /postman.json` | Download a Postman collection |
 
-A rejected create or update changes nothing. Changes are saved to the `.tool-router` folder (see below).
+A rejected create or update changes nothing. Changes are saved to the `.toolspotter` folder (see below).
 
 ### Network access
 
@@ -311,51 +316,51 @@ A rejected create or update changes nothing. Changes are saved to the `.tool-rou
 For Docker:
 
 ```bash
-docker build -t tool-router .
-docker run -p 127.0.0.1:8080:8080 tool-router
+docker build -t toolspotter .
+docker run -p 127.0.0.1:8080:8080 toolspotter
 ```
 
 Inside the container the service must listen on `0.0.0.0` (the image does this), so publish the port on `127.0.0.1` as above to keep it local. To also check the `Host` header there:
 
 ```bash
-docker run -p 127.0.0.1:8080:8080 tool-router serve --host 0.0.0.0 --port 8080 --allow-host localhost
+docker run -p 127.0.0.1:8080:8080 toolspotter serve --host 0.0.0.0 --port 8080 --allow-host localhost
 ```
 
 To keep registered tools when the container is replaced, mount a folder. **Create it first:** if it does not exist, Docker creates it as root and the router stops with `Permission denied`.
 
 ```bash
-mkdir -p .tool-router
+mkdir -p .toolspotter
 docker run -p 127.0.0.1:8080:8080 \
-  -v "$PWD/.tool-router:/app/.tool-router" \
+  -v "$PWD/.toolspotter:/app/.toolspotter" \
   -v "$PWD/tests/data/catalog.json:/app/catalog.json:ro" \
-  tool-router serve --host 0.0.0.0 --port 8080 --allow-host localhost --catalog /app/catalog.json
+  toolspotter serve --host 0.0.0.0 --port 8080 --allow-host localhost --catalog /app/catalog.json
 ```
 
 - The container runs as user 1000. If your user id is different, add `--user "$(id -u):$(id -g)"`. Use it only together with the mounted folder.
-- To use Gemini, add `-e GEMINI_API_KEY -e TOOL_ROUTER_LLM_PROVIDER=gemini`. The key is passed at run time and is not stored in the image.
+- To use Gemini, add `-e GEMINI_API_KEY -e TOOLSPOTTER_LLM_PROVIDER=gemini`. The key is passed at run time and is not stored in the image.
 
 For the MCP server, keep standard input open with `-i`. An MCP host can start it with:
 
 ```bash
-docker run -i --rm -v "/path/to/catalog.json:/app/catalog.json:ro" tool-router mcp --catalog /app/catalog.json --no-persist
+docker run -i --rm -v "/path/to/catalog.json:/app/catalog.json:ro" toolspotter mcp --catalog /app/catalog.json --no-persist
 ```
 
 A local MCP server given to `--import-mcp` runs inside the container, so its code and dependencies must be there.
 
-## Saved registry (`.tool-router/`)
+## Saved registry (`.toolspotter/`)
 
-`serve` and `mcp` keep everything they save in one SQLite file, in a `.tool-router` folder in the directory you start them from, and load it again on the next start.
+`serve` and `mcp` keep everything they save in one SQLite file, in a `.toolspotter` folder in the directory you start them from, and load it again on the next start.
 
 ```
-.tool-router/
+.toolspotter/
 ├── .gitignore         ignores everything in the folder
 └── router.db          tools and their history, saved vectors, recent requests
 ```
 
 ```bash
-tool-router serve --catalog tests/data/catalog.json   # first start: loads and saves
-tool-router serve                                      # later: loads the saved tools
-tool-router export -o tools.json                       # saved tools as a catalog file
+toolspotter serve --catalog tests/data/catalog.json   # first start: loads and saves
+toolspotter serve                                      # later: loads the saved tools
+toolspotter export -o tools.json                       # saved tools as a catalog file
 ```
 
 - **Upsert.** With `--catalog` or `--import-mcp`, tools are matched by `id`: new ones are added and existing ones take the incoming definition. Saved tools missing from the input are **kept**; add `--prune` to remove them. The incoming definition wins over an earlier API edit.
@@ -369,7 +374,7 @@ tool-router export -o tools.json                       # saved tools as a catalo
 | Name changed; parameter removed, renamed, retyped or made required | first number |
 
   A higher `version` that you supply is used instead.
-- **Vectors.** Saved vectors are computed again whenever they cannot be used. One method's vectors are held at a time, and changing `TOOL_ROUTER_EMBEDDING_PROVIDER` replaces them. While Gemini is unavailable nothing is written, so its saved vectors survive an outage.
+- **Vectors.** Saved vectors are computed again whenever they cannot be used. One method's vectors are held at a time, and changing `TOOLSPOTTER_EMBEDDING_PROVIDER` replaces them. While Gemini is unavailable nothing is written, so its saved vectors survive an outage.
 - **Faster restarts.** Near-duplicate tools are found once and reused until a tool, a threshold or the vector method changes. `serve --rebuild` recomputes everything.
 - **Safety.** A change is saved in one transaction before it takes effect; if saving fails, nothing changes. The router never deletes `router.db`: a damaged file stops startup and is left as it is. Settings and API keys are never written here, and the file is readable only by you.
 - **Request history.** The last 1,000 requests to `POST /route` are saved with the first 500 characters of each query, **as plain text**. `DELETE /history` removes them. Saving happens in the background; `--no-persist` turns it off. MCP requests are not recorded.
@@ -402,15 +407,15 @@ The local planner is deterministic and works offline. LLM-assisted features depe
 
 | Path | Purpose |
 |---|---|
-| `tool_router/engine/` | Retrieval, confidence, planning and routing pipeline |
-| `tool_router/importers/` | MCP catalog importer |
-| `tool_router/providers/` | Local and hosted model providers |
-| `tool_router/api.py` | REST API |
-| `tool_router/web.py`, `tool_router/ui/` | Website and its endpoints |
-| `tool_router/catalog_changes.py`, `postman.py` | Upload preview; Postman collection |
-| `tool_router/mcp_server.py` | MCP server |
-| `tool_router/cli.py` | Command-line interface |
-| `tool_router/database.py`, `state.py`, `history.py` | The database, the saved registry and request history |
+| `toolspotter/engine/` | Retrieval, confidence, planning and routing pipeline |
+| `toolspotter/importers/` | MCP catalog importer |
+| `toolspotter/providers/` | Local and hosted model providers |
+| `toolspotter/api.py` | REST API |
+| `toolspotter/web.py`, `toolspotter/ui/` | Website and its endpoints |
+| `toolspotter/catalog_changes.py`, `postman.py` | Upload preview; Postman collection |
+| `toolspotter/mcp_server.py` | MCP server |
+| `toolspotter/cli.py` | Command-line interface |
+| `toolspotter/database.py`, `state.py`, `history.py` | The database, the saved registry and request history |
 | `eval/` | Test catalogs, requests, scoring command and keyword baseline |
 | `docs/eval_report.md` | Earlier development results |
 | `docs/design/` | Architecture and design decisions |

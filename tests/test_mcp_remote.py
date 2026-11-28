@@ -16,10 +16,10 @@ import pytest
 pytest.importorskip("mcp.server.fastmcp")
 pytest.importorskip("uvicorn")
 
-from tool_router.catalog_loader import build_catalog  # noqa: E402
-from tool_router.cli import main  # noqa: E402
-from tool_router.importers.mcp_importer import import_from_mcp_url  # noqa: E402
-from tool_router.importers.mcp_remote import (  # noqa: E402
+from toolspotter.catalog_loader import build_catalog  # noqa: E402
+from toolspotter.cli import main  # noqa: E402
+from toolspotter.importers.mcp_importer import import_from_mcp_url  # noqa: E402
+from toolspotter.importers.mcp_remote import (  # noqa: E402
     MCPImportError,
     build_headers,
     check_url,
@@ -123,7 +123,7 @@ def test_import_command_with_url(token_server, monkeypatch, tmp_path, capsys):
 def test_rest_server_loads_a_remote_catalog(token_server, monkeypatch, capsys):
     import uvicorn
 
-    from tool_router import api
+    from toolspotter import api
 
     seen = {}
     real = api.create_app

@@ -1,6 +1,6 @@
 # Routing engine design
 
-The engine (`tool_router/engine/`) works in two phases: **build an index** when the registry
+The engine (`toolspotter/engine/`) works in two phases: **build an index** when the registry
 changes, then **route** each query against it.
 
 ## Building the index (`pipeline.py::_build_index`)
@@ -67,7 +67,7 @@ fused = 0.50 · vector similarity
 
 BM25 (`k1 = 1.5`, `b = 0.75`) is normalised as `score / (score + 3)`, so a weak match stays
 weak. Weights can be changed with
-`TOOL_ROUTER_W_DENSE`, `_BM25`, `_SIDE_EFFECT` and `_DEPRECATED`.
+`TOOLSPOTTER_W_DENSE`, `_BM25`, `_SIDE_EFFECT` and `_DEPRECATED`.
 
 ## 3. HyDE (`hyde.py`, LLM only)
 
@@ -105,7 +105,7 @@ One call with the query and the shortlist (id, description, parameters, side eff
 flags). It returns a plan or one of: clarify, insufficient, out of scope. Ids outside the
 shortlist are dropped. An empty plan without a reason, or any provider failure, uses the local
 planner. If it asks to clarify while the best local score is at least `0.45` and there is no
-destructive wording, the local plan is used instead (`TOOL_ROUTER_ARBITRATE_MIN`).
+destructive wording, the local plan is used instead (`TOOLSPOTTER_ARBITRATE_MIN`).
 
 ### Local planner (`planner.py`)
 
@@ -123,7 +123,7 @@ destructive wording, the local plan is used instead (`TOOL_ROUTER_ARBITRATE_MIN`
 ## 7. Widening
 
 If the LLM planner reports a missing ability, matching tools and the next best candidates are
-added and it plans again, at most `TOOL_ROUTER_MAX_WIDEN_ROUNDS` times (default 1).
+added and it plans again, at most `TOOLSPOTTER_MAX_WIDEN_ROUNDS` times (default 1).
 
 ## 8. Result
 

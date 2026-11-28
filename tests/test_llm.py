@@ -6,10 +6,10 @@ import json
 
 import pytest
 
-from tool_router.config import ConfidenceThresholds, Settings
-from tool_router.domain.errors import ProviderError
-from tool_router.engine.pipeline import RoutingEngine
-from tool_router.providers.base import extract_json_object
+from toolspotter.config import ConfidenceThresholds, Settings
+from toolspotter.domain.errors import ProviderError
+from toolspotter.engine.pipeline import RoutingEngine
+from toolspotter.providers.base import extract_json_object
 
 QUERY = "Check the health status of the production server"
 VAGUE = "is everything okay over there right now"

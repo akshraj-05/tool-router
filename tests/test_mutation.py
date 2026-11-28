@@ -49,7 +49,7 @@ def test_duplicate_id_is_rejected(engine):
 
 
 def test_malformed_delta_raises(engine):
-    from tool_router.domain.errors import CatalogError
+    from toolspotter.domain.errors import CatalogError
 
     with pytest.raises(CatalogError):
         engine.apply_mutation("not a dict")
@@ -63,7 +63,7 @@ def test_new_state_is_invisible_until_the_rebuild_finishes(engine, monkeypatch):
     The rebuild is paused part-way through. While paused, the engine must still
     answer from the old index; once released, it must switch to the new one.
     """
-    from tool_router.engine import pipeline
+    from toolspotter.engine import pipeline
 
     started, release = threading.Event(), threading.Event()
     real_derive = pipeline.derive_maps

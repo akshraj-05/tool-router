@@ -4,7 +4,7 @@
     python eval/run.py --split final    # final-score half: totals only
     python eval/run.py --set playwright # or: github (default), custom
     python eval/run.py --baseline       # plain keyword search instead of the router
-    python eval/run.py --from-env       # use TOOL_ROUTER_* settings (e.g. Gemini)
+    python eval/run.py --from-env       # use TOOLSPOTTER_* settings (e.g. Gemini)
     python eval/run.py --from-env --cache .eval-cache --delay 4   # reuse vectors, go slowly
 
 A request passes only if the answer is exactly right:
@@ -40,14 +40,14 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
-from tool_router.config import Settings  # noqa: E402
-from tool_router.domain.models import RouteResult  # noqa: E402
-from tool_router.engine.bm25 import BM25Index  # noqa: E402
-from tool_router.engine.llm_planner import LLMPlanner  # noqa: E402
-from tool_router.engine.pipeline import RoutingEngine  # noqa: E402
-from tool_router.providers.gemini import GeminiChat, GeminiEmbedding  # noqa: E402
-from tool_router.providers.local_tfidf import LocalTfidfEmbedding  # noqa: E402
-from tool_router.state import StateStore  # noqa: E402
+from toolspotter.config import Settings  # noqa: E402
+from toolspotter.domain.models import RouteResult  # noqa: E402
+from toolspotter.engine.bm25 import BM25Index  # noqa: E402
+from toolspotter.engine.llm_planner import LLMPlanner  # noqa: E402
+from toolspotter.engine.pipeline import RoutingEngine  # noqa: E402
+from toolspotter.providers.gemini import GeminiChat, GeminiEmbedding  # noqa: E402
+from toolspotter.providers.local_tfidf import LocalTfidfEmbedding  # noqa: E402
+from toolspotter.state import StateStore  # noqa: E402
 
 SPLITS = ("dev", "final")
 # GitHub and Playwright MCP tool definitions (see SOURCES.md) and a custom catalog.
