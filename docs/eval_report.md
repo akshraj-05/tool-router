@@ -3,7 +3,7 @@
 > **Historical record.** These results come from a 29-case suite and a 64-tool catalog that are
 > not in this repository, measured on much older code. Some features mentioned here (LLM ingest
 > enrichment among them) have since been removed, and names and storage have changed. For results
-> you can reproduce, see [Evaluation in the README](../README.md#evaluation) and run
+> you can reproduce, see [Evaluation](evaluation.md) and run
 > `python eval/run.py`.
 
 All numbers below (unless noted) were produced by an internal 29-case evaluation harness and

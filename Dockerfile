@@ -13,7 +13,7 @@ FROM python:3.13-slim
 WORKDIR /app
 
 # Install the package first for layer caching, then the source.
-COPY pyproject.toml README.md ./
+COPY pyproject.toml README.md LICENSE ./
 COPY toolspotter ./toolspotter
 RUN pip install --no-cache-dir ".[api,mcp]"
 

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=69"]
+requires = ["setuptools>=77"]           # 77: the license = "MIT" form below
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +8,9 @@ version = "0.1.0"
 description = "Intelligent tool router: filters a large enterprise tool catalog down to a small, high-precision, ordered tool plan per query (routing-as-a-service)."
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "Proprietary" }
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Akshraj Chavda" }]
 
 # Core stays deliberately lean: the engine must install fast and run anywhere
 # (CI, offline, resource-constrained hosts). Heavy/optional capabilities live

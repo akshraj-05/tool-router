@@ -122,4 +122,4 @@ See [engine design](engine-design.md) for the rules in each step.
   duplicates; on generated catalogs one update took about 0.3 s at 1,000 tools and 2 to 4 s at
   5,000. The first build compares all candidate pairs and takes longer.
 - One router per state folder; there is no locking between processes.
-- Accuracy on the repository's test set is limited; see the README for current scores.
+- Accuracy on the repository's test set is limited; see [evaluation](../evaluation.md) for current scores.
