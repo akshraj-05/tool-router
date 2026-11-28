@@ -13,9 +13,9 @@
 [![MCP server](https://img.shields.io/badge/MCP-server-5b5bf0)](#use-it-from-an-agent)
 
 <a href="#quick-start">Quick start</a> ·
+<a href="#adding-tools">Adding tools</a> ·
 <a href="#use-it-from-an-agent">Agents</a> ·
 <a href="#evaluation">Evaluation</a> ·
-<a href="#how-it-works">How it works</a> ·
 <a href="#documentation">Documentation</a>
 
 </div>
@@ -82,6 +82,58 @@ The full response also holds the selected tool definitions and a trace of the sc
 
 <img src="docs/images/try-it.png" alt="The Try it page: two planned steps and the scores of the best matching tools">
 
+## Adding tools
+
+Add tools on the website, from a file, from an MCP server or over REST. Every route applies the same checks.
+
+### Upload a catalog file
+
+Choose a file under **Add tools**. The preview shows what is new, changed or rejected, and why, before anything is saved.
+
+<img src="docs/images/add-upload.png" alt="Upload preview listing new tools and one rejected tool with the reason">
+
+```json
+{
+  "tools": [
+    {
+      "name": "send_email",
+      "description": "Send an email message to a recipient with a subject and body",
+      "parameters": [{"name": "to", "type": "string", "required": true}],
+      "side_effects": "write"
+    }
+  ]
+}
+```
+
+`name`, `description` (at least 6 words) and `parameters` are required. Set `side_effects` to `read`, `write` or `destructive` for any tool that changes data. See the [tool format and limits](docs/usage.md#tool-format).
+
+From the command line:
+
+```bash
+toolspotter validate catalog.json                      # check a file first
+toolspotter serve --catalog catalog.json
+```
+
+### Scan an MCP server
+
+Enter the server's URL and a token if it needs one, then pick the tools to add. The token is used once and never saved.
+
+<img src="docs/images/add-mcp.png" alt="Result of scanning an MCP server, with a checkbox for each tool">
+
+A local MCP server is loaded from the command line:
+
+```bash
+toolspotter serve --import-mcp "python my_server.py"
+```
+
+### Create or edit one tool
+
+Press **New tool**, or select any tool in the list to change or delete it.
+
+<img src="docs/images/add-editor.png" alt="Editor with a tool definition as JSON">
+
+The same actions are available over [REST](docs/usage.md#manage-tools-over-rest).
+
 ## Use it from an agent
 
 Call `POST /route` before your model call, or add ToolSpotter to an MCP host. It offers `find_tools` and `registry_status`, and cannot change your tools.
@@ -97,24 +149,22 @@ Call `POST /route` before your model call, or add ToolSpotter to an MCP host. It
 }
 ```
 
-To load tools straight from another MCP server:
-
-```bash
-toolspotter serve --import-mcp "python my_server.py"
-```
-
 ## Configuration
 
-The defaults need no setup. Run `toolspotter init`, or set environment variables:
+ToolSpotter works without any setup. To use the Gemini planner, you need an API key and, optionally, a model:
 
-| Variable | Default | Purpose |
+| Setting | Variable | Default |
 |---|---|---|
-| `TOOLSPOTTER_LLM_PROVIDER` | `none` | `gemini` turns on the LLM planner |
-| `GEMINI_API_KEY` | | Your key, needed for Gemini |
-| `TOOLSPOTTER_LLM_MODEL` | `gemini-3.5-flash-lite` | Planner model |
-| `TOOLSPOTTER_EMBEDDING_PROVIDER` | `local` | `local` or `gemini` vectors |
-| `TOOLSPOTTER_MAX_TOOLS` | `5000` | Largest registry |
-| `TOOLSPOTTER_LOG_LEVEL` | `INFO` | Log detail |
+| API key | `GEMINI_API_KEY` | |
+| Model | `TOOLSPOTTER_LLM_MODEL` | `gemini-3.5-flash-lite` |
+
+Run `toolspotter init` and enter both, or set them in your shell and switch Gemini on:
+
+```bash
+export GEMINI_API_KEY=your-key
+export TOOLSPOTTER_LLM_MODEL=gemini-3.5-flash-lite
+export TOOLSPOTTER_LLM_PROVIDER=gemini
+```
 
 ## Evaluation
 
@@ -133,28 +183,6 @@ Read these with care:
 - The Gemini run used `gemini-3.5-flash-lite` on 2026-11-28: 125 calls, none failed.
 
 [Full results, limits and how to run it](docs/evaluation.md)
-
-## How it works
-
-```mermaid
-flowchart LR
-  A[JSON / MCP] --> B[Validate]
-  B --> C[Local index]
-  Q[Request] --> D[Keyword and vector search]
-  C --> D
-  D --> E[Safety, version and duplicate checks]
-  E --> F[Planner: local rules or Gemini]
-  F --> I[Ordered tool plan]
-```
-
-Built with Python, Pydantic, TF-IDF and BM25, SQLite, FastAPI, the MCP SDK and plain JavaScript.
-
-## Limitations
-
-- **No login, TLS or rate limiting.** It listens on this machine only unless you change that.
-- **English only**, including the confirmation check for destructive requests.
-- Local search matches words, not meaning.
-- Recent requests are saved as plain text; `--no-persist` turns saving off.
 
 ## Documentation
 
