@@ -12,8 +12,8 @@ from pathlib import Path
 
 import pytest
 
-from tool_router.database import open_database
-from tool_router.state import SavedState, StateStore
+from toolspotter.database import open_database
+from toolspotter.state import SavedState, StateStore
 
 TABLES = {"tools", "tool_history", "duplicate_groups", "vectors", "cache", "requests"}
 
@@ -79,7 +79,7 @@ import sys
 sys.path.insert(0, sys.argv[1])
 sys.path.insert(0, sys.argv[2])
 from test_database import registry
-from tool_router.state import StateStore
+from toolspotter.state import StateStore
 store = StateStore("state")
 n = 0
 while True:

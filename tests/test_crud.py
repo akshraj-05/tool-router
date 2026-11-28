@@ -6,15 +6,15 @@ import copy
 
 import pytest
 
-from tool_router.config import Settings
-from tool_router.domain.errors import (
+from toolspotter.config import Settings
+from toolspotter.domain.errors import (
     CatalogError,
     DuplicateToolError,
     InvalidToolError,
     ToolNotFoundError,
 )
-from tool_router.domain.naming import build_id, prepare_tool
-from tool_router.engine.pipeline import RoutingEngine
+from toolspotter.domain.naming import build_id, prepare_tool
+from toolspotter.engine.pipeline import RoutingEngine
 
 # no id, no cluster: both are optional
 MINIMAL = {
@@ -146,7 +146,7 @@ def client(catalog):
     pytest.importorskip("fastapi")
     from starlette.testclient import TestClient
 
-    from tool_router.api import create_app
+    from toolspotter.api import create_app
 
     return TestClient(create_app(catalog))
 
@@ -180,7 +180,7 @@ def test_rest_crud_needs_a_registry():
     pytest.importorskip("fastapi")
     from starlette.testclient import TestClient
 
-    from tool_router.api import create_app
+    from toolspotter.api import create_app
 
     empty = TestClient(create_app(None))
     assert empty.get("/registry/tools").status_code == 409

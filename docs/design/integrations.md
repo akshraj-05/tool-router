@@ -38,8 +38,8 @@ Convert each definition to your model provider's tool format.
 ## MCP: the router as a tool
 
 ```json
-{"mcpServers": {"tool-router": {
-  "command": "tool-router",
+{"mcpServers": {"toolspotter": {
+  "command": "toolspotter",
   "args": ["mcp", "--catalog", "/path/catalog.json"]}}}
 ```
 

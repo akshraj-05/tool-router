@@ -12,10 +12,10 @@ from pathlib import Path
 
 import pytest
 
-from tool_router.config import Settings
-from tool_router.domain.errors import StateError
-from tool_router.engine.pipeline import RoutingEngine
-from tool_router.state import StateStore
+from toolspotter.config import Settings
+from toolspotter.domain.errors import StateError
+from toolspotter.engine.pipeline import RoutingEngine
+from toolspotter.state import StateStore
 
 DATABASE = Path("state/router.db")
 

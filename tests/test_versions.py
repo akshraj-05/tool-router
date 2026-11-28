@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from tool_router.config import Settings
-from tool_router.engine.pipeline import RoutingEngine
+from toolspotter.config import Settings
+from toolspotter.engine.pipeline import RoutingEngine
 
 
 def tool(tool_id: str, name: str, **extra) -> dict:

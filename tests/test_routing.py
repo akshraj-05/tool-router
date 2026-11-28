@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from tool_router.config import Settings
-from tool_router.engine.pipeline import RoutingEngine
+from toolspotter.config import Settings
+from toolspotter.engine.pipeline import RoutingEngine
 
 
 def test_single_tool_is_selected(engine):
@@ -89,8 +89,8 @@ def test_result_reports_token_savings_and_trace(engine):
 
 def test_routing_ignores_catalog_order(catalog):
     """Positional bias: shuffling the catalog must not change the answer."""
-    from tool_router.config import Settings
-    from tool_router.engine.pipeline import RoutingEngine
+    from toolspotter.config import Settings
+    from toolspotter.engine.pipeline import RoutingEngine
 
     query = "Check the health status of the production server"
     forward = RoutingEngine(catalog, settings=Settings()).route(query).selected_tools
@@ -106,8 +106,8 @@ def test_original_schema_is_returned_untouched(engine, catalog):
 
 def test_catalog_without_tools_list_is_rejected():
     import pytest
-    from tool_router.domain.errors import CatalogError
-    from tool_router.engine.pipeline import RoutingEngine
+    from toolspotter.domain.errors import CatalogError
+    from toolspotter.engine.pipeline import RoutingEngine
 
     with pytest.raises(CatalogError):
         RoutingEngine({"tools": "nope"})

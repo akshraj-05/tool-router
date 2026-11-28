@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from tool_router.config import Settings
-from tool_router.domain.errors import ProviderError
-from tool_router.engine import pipeline
-from tool_router.engine.pipeline import RoutingEngine
-from tool_router.providers import gemini
+from toolspotter.config import Settings
+from toolspotter.domain.errors import ProviderError
+from toolspotter.engine import pipeline
+from toolspotter.engine.pipeline import RoutingEngine
+from toolspotter.providers import gemini
 
 QUERY = "Check the health status of the production server"
 NEW = {"name": "get_current_weather",

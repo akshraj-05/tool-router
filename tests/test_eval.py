@@ -11,10 +11,10 @@ from pathlib import Path
 
 import pytest
 
-from tool_router.domain.errors import ProviderError
-from tool_router.domain.models import RouteResult
-from tool_router.engine.guardrail import validate_catalog
-from tool_router.providers import gemini
+from toolspotter.domain.errors import ProviderError
+from toolspotter.domain.models import RouteResult
+from toolspotter.engine.guardrail import validate_catalog
+from toolspotter.providers import gemini
 
 _spec = importlib.util.spec_from_file_location(
     "eval_run", Path(__file__).parent.parent / "eval" / "run.py"
@@ -96,7 +96,7 @@ def test_the_baseline_picks_one_tool_or_none():
 def _gemini(monkeypatch, reply):
     """Real Gemini classes with a scripted network layer and settings from the environment."""
     monkeypatch.setenv("GEMINI_API_KEY", "fake")
-    monkeypatch.setenv("TOOL_ROUTER_LLM_PROVIDER", "gemini")
+    monkeypatch.setenv("TOOLSPOTTER_LLM_PROVIDER", "gemini")
     monkeypatch.setattr(gemini, "_post", reply)
 
 
@@ -131,7 +131,7 @@ def test_a_run_stops_when_calls_keep_failing(monkeypatch):
 
 
 def test_a_run_stops_if_a_requested_provider_is_missing(monkeypatch):
-    monkeypatch.setenv("TOOL_ROUTER_EMBEDDING_PROVIDER", "gemini")      # and no key
+    monkeypatch.setenv("TOOLSPOTTER_EMBEDDING_PROVIDER", "gemini")      # and no key
 
     with pytest.raises(SystemExit, match="local ones are in use"):
         run.main(["--split", "final", "--from-env"])

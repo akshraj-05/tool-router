@@ -134,7 +134,7 @@ but it is not a free win, so it is not the default.
 
 ## Auto-ingestion (MCP importer) — verified end-to-end
 
-- **MCP importer** (`tool-router import-mcp`): connected to a sample third-party MCP server,
+- **MCP importer** (`toolspotter import-mcp`): connected to a sample third-party MCP server,
   pulled 3 self-described tools, converted to registry schema — 3/3 passed the guardrail,
   registered live, and "What's the weather in Berlin right
   now?" routed to the imported `weather.get_current_weather`.

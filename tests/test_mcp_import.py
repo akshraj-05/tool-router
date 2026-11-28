@@ -20,10 +20,10 @@ pytest.importorskip("mcp.server.fastmcp")
 from mcp import ClientSession, StdioServerParameters  # noqa: E402
 from mcp.client.stdio import get_default_environment, stdio_client  # noqa: E402
 
-from tool_router.catalog_loader import build_catalog  # noqa: E402
-from tool_router.cli import main  # noqa: E402
-from tool_router.domain.errors import CatalogError  # noqa: E402
-from tool_router.importers.mcp_importer import (  # noqa: E402
+from toolspotter.catalog_loader import build_catalog  # noqa: E402
+from toolspotter.cli import main  # noqa: E402
+from toolspotter.domain.errors import CatalogError  # noqa: E402
+from toolspotter.importers.mcp_importer import (  # noqa: E402
     MCPImportError,
     cluster_name,
     import_from_mcp,
@@ -204,7 +204,7 @@ def test_end_to_end_mcp_scan_route_then_call_the_real_tool(sandbox):
             k: os.environ[k] for k in ("XDG_CONFIG_HOME", "HOME")}}
         router = StdioServerParameters(
             command=sys.executable,
-            args=["-m", "tool_router.cli", "mcp", "--import-mcp", command(SHOP)], env=env,
+            args=["-m", "toolspotter.cli", "mcp", "--import-mcp", command(SHOP)], env=env,
             cwd=str(Path.cwd()))
         async with stdio_client(router) as (read, write):
             async with ClientSession(read, write) as session:
@@ -227,7 +227,7 @@ def test_end_to_end_rest_server_scans_at_startup(sandbox):
         probe.bind(("127.0.0.1", 0))
         port = probe.getsockname()[1]
     server = subprocess.Popen(
-        [sys.executable, "-m", "tool_router.cli", "serve", "--host", "127.0.0.1",
+        [sys.executable, "-m", "toolspotter.cli", "serve", "--host", "127.0.0.1",
          "--port", str(port), "--import-mcp", command(SHOP)],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:

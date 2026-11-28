@@ -15,11 +15,11 @@ from pathlib import Path
 
 import pytest
 
-from tool_router import history as history_module
-from tool_router.domain.errors import StateError
-from tool_router.domain.models import RouteResult
-from tool_router.history import MAX_QUERY_CHARS, MAX_ROWS, RequestHistory
-from tool_router.state import StateStore
+from toolspotter import history as history_module
+from toolspotter.domain.errors import StateError
+from toolspotter.domain.models import RouteResult
+from toolspotter.history import MAX_QUERY_CHARS, MAX_ROWS, RequestHistory
+from toolspotter.state import StateStore
 
 DATABASE = Path("state/router.db")
 PLAN = RouteResult(selected_tools=["a.b"], plan=["a.b", "a.b"], tokens_saved_pct=0.9)
@@ -194,8 +194,8 @@ def test_empty_summary_creates_no_file(history):
 
 
 def test_clear_removes_the_text_from_the_file_and_nothing_else(history, catalog):
-    from tool_router.engine.pipeline import RoutingEngine
-    from tool_router.config import Settings
+    from toolspotter.engine.pipeline import RoutingEngine
+    from toolspotter.config import Settings
 
     RoutingEngine(catalog, settings=Settings(), store=StateStore(Path("state")))
     for n in range(30):
@@ -286,7 +286,7 @@ def test_without_a_file_nothing_is_saved():
 
 @pytest.fixture
 def client(catalog):
-    from tool_router.api import create_app
+    from toolspotter.api import create_app
     testclient = pytest.importorskip("fastapi.testclient")
     app = create_app(catalog, store=StateStore(Path("state")))
     with testclient.TestClient(app) as made:
@@ -334,7 +334,7 @@ def test_routing_works_when_history_cannot_be_saved(client):
 
 def test_shutdown_waits_for_requests_still_being_written(catalog, monkeypatch):
     testclient = pytest.importorskip("fastapi.testclient")
-    from tool_router.api import create_app
+    from toolspotter.api import create_app
     insert = RequestHistory._insert
 
     def slow(self, rows):
@@ -351,7 +351,7 @@ def test_shutdown_waits_for_requests_still_being_written(catalog, monkeypatch):
 
 def test_history_is_off_without_a_store(catalog):
     testclient = pytest.importorskip("fastapi.testclient")
-    from tool_router.api import create_app
+    from toolspotter.api import create_app
     with testclient.TestClient(create_app(catalog)) as client:
         client.post("/route", json={"query": HEALTH})
         data = client.get("/history").json()
@@ -379,7 +379,7 @@ def test_a_running_server_saves_history_and_keeps_it_after_a_restart():
     @contextlib.contextmanager
     def server(*args):
         code = (f"import sys; sys.path.insert(0, {str(root)!r}); "
-                "from tool_router.cli import main; sys.exit(main(sys.argv[1:]))")
+                "from toolspotter.cli import main; sys.exit(main(sys.argv[1:]))")
         process = subprocess.Popen(
             [sys.executable, "-c", code, "serve", "--port", str(port), *args],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
