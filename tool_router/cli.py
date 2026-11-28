@@ -1,8 +1,8 @@
 """tool-router CLI.
 
 Subcommands: `version`, `validate` (guardrail over a submissions file), `serve`
-(REST API), `mcp` (MCP server), `init`/`config` (configuration), and
-`import-mcp` (auto-import tool definitions).
+(REST API), `mcp` (MCP server), `export` (saved tools to a JSON file),
+`init`/`config` (configuration), and `import-mcp` (auto-import tool definitions).
 """
 
 from __future__ import annotations
@@ -98,6 +98,35 @@ def _cmd_serve(args: argparse.Namespace) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 1
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+    return 0
+
+
+def _cmd_export(args: argparse.Namespace) -> int:
+    """Write the saved tools as a catalog file that --catalog can load."""
+    from pathlib import Path
+
+    from tool_router.state import StateStore
+
+    store = StateStore(args.state_dir)
+    try:
+        saved = store.load()
+        if saved is None:
+            print(f"error: no saved tools in {store.directory}", file=sys.stderr)
+            return 1
+        text = json.dumps(
+            {"tools": saved.tools, "near_duplicate_groups": saved.near_duplicate_groups}, indent=1)
+        if args.output is None:
+            print(text)
+            return 0
+        output = Path(args.output)
+        if output.resolve() == store.database_path.resolve():
+            print("error: the output cannot be the database itself", file=sys.stderr)
+            return 1
+        output.write_text(text + "\n", encoding="utf-8")
+    except (ToolRouterError, OSError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    print(f"{len(saved.tools)} tools written to {output}", file=sys.stderr)
     return 0
 
 
@@ -207,6 +236,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_serve.add_argument("--rebuild", action="store_true",
                          help="wipe caches and re-derive the index (escape hatch)")
 
+    p_export = sub.add_parser("export", help="write the saved tools as a catalog JSON file")
+    p_export.add_argument("--state-dir", default=".tool-router", metavar="PATH",
+                          help="the state folder to read (default: ./.tool-router)")
+    p_export.add_argument("-o", "--output", default=None, help="write here (default: stdout)")
+
     sub.add_parser("init", help="interactive setup wizard (provider, key, model)")
 
     p_config = sub.add_parser("config", help="show / set / reset stored configuration")
@@ -246,6 +280,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_validate(args)
     if args.command == "serve":
         return _cmd_serve(args)
+    if args.command == "export":
+        return _cmd_export(args)
     if args.command == "init":
         return _cmd_init(args)
     if args.command == "config":

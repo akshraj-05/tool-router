@@ -11,6 +11,8 @@ JSON endpoints (no auth — a documented, deliberate omission for this scope):
 - PATCH /registry/mutate   apply a PARTIAL catalog update: {"add": [...], "remove": [...]}
                            (PATCH, not PUT/POST: this is a partial update of the registry
                            resource, not a full replace and not a bare action)
+- GET   /history           recent requests and their totals
+- DELETE /history          delete the saved requests
 - POST  /setup             save config (provider/model/key) — JSON, same as the others
 - GET   /health            liveness + engine facts (always open, for probes)
 
@@ -32,8 +34,10 @@ Requires the `api` extra: pip install .[api]
 
 from __future__ import annotations
 
+import contextlib
 import json
 import threading
+import time
 from html import escape as _escape
 from typing import Any, Optional
 
@@ -52,6 +56,7 @@ from tool_router.domain.errors import (
 )
 from tool_router.domain.versioning import inherit_side_effects
 from tool_router.engine.pipeline import RoutingEngine
+from tool_router.history import MAX_ROWS, RequestHistory
 from tool_router.limits import max_input_bytes
 from tool_router.log import get_logger
 from tool_router.netutil import host_name, is_loopback
@@ -164,13 +169,21 @@ def create_app(
     """App factory. Import of FastAPI is deferred so the core package works
     without the `api` extra installed."""
     try:
-        from fastapi import FastAPI, HTTPException
+        from fastapi import FastAPI, HTTPException, Query
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError(
             "FastAPI is not installed — install the service extra: pip install .[api]"
         ) from exc
 
+    history = RequestHistory(store.database_path if store else None)
+
+    @contextlib.asynccontextmanager
+    async def lifespan(_app):
+        yield
+        history.close()                     # write what is still queued
+
     app = FastAPI(
+        lifespan=lifespan,
         title="tool-router",
         version=__version__,
         description="Intelligent tool routing: large catalog in, minimal ordered tool plan out.",
@@ -223,7 +236,9 @@ def create_app(
     @app.post("/route")
     def route(req: RouteRequest) -> dict[str, Any]:
         engine = _engine_or_400()
+        started = time.perf_counter()
         result = engine.route(req.query, context=req.context)
+        history.record(req.query, result, (time.perf_counter() - started) * 1000)
         payload = result.to_response_dict()
         payload["selected_tool_schemas"] = [
             engine.raw_tool(tid) for tid in result.selected_tools
@@ -294,6 +309,25 @@ def create_app(
         _engine_or_400()
         _change(lambda: state["engine"].delete_tool(tool_id))
         return {"deleted": tool_id, "tool_count": state["engine"].tool_count}
+
+    def _history(action):
+        try:
+            return action()
+        except StateError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    @app.get("/history")
+    def read_history(limit: int = Query(20, ge=0, le=MAX_ROWS)) -> dict[str, Any]:
+        """Totals over the saved requests, and the newest ``limit`` of them."""
+        return _history(lambda: {
+            "enabled": history.enabled,
+            "summary": history.summary(),
+            "requests": history.recent(limit),
+        })
+
+    @app.delete("/history")
+    def clear_history() -> dict[str, Any]:
+        return {"cleared": _history(history.clear)}
 
     def _secret_slot(provider: str) -> Optional[str]:
         """Secret name for a provider, or None if that provider takes no key.

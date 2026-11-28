@@ -1,37 +1,34 @@
-"""The ``.tool-router`` folder: the saved registry and the vector cache.
+"""The ``.tool-router`` folder and the registry saved in it.
 
     .tool-router/
-        .gitignore        "*", so nothing in here is committed by accident
-        catalog.json      current tools plus the history of older definitions
-        vectors.db        saved vectors and duplicate pairs (see index_db.py)
-
-``catalog.json`` is also a valid catalog file (its extra keys are ignored when
-loaded with ``--catalog``).
+        .gitignore   "*", so nothing in here is committed by accident
+        router.db    tools, their history, saved vectors and recent requests
+                     (see database.py)
 
 Rules
 - Settings and API keys are never written here; they stay in the user's config
   folder or keyring.
 - Files are readable by their owner only.
-- Every write replaces the whole file in one step, so a crash cannot leave half a
-  file behind.
-- A damaged saved catalog stops startup. It is never silently replaced.
-- One running router per folder: there is no cross-process locking.
+- Tools, history and groups are saved in one transaction, so a crash cannot leave
+  half a change behind.
+- A damaged saved registry stops startup. It is never silently replaced.
+- One running router per folder: two would overwrite each other's changes.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import sqlite3
 import tempfile
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+from tool_router.database import FILE_NAME, open_database
 from tool_router.domain.errors import StateError
 
 DEFAULT_STATE_DIR = ".tool-router"
-FORMAT_VERSION = 1
 
 
 def write_atomic(path: Path, text: str) -> None:
@@ -56,15 +53,11 @@ class SavedState:
 
 
 class StateStore:
-    """Reads and writes one state folder."""
+    """Reads and writes the registry in one state folder."""
 
     def __init__(self, directory: Path | str = DEFAULT_STATE_DIR) -> None:
         self.directory = Path(directory)
-        self.catalog_path = self.directory / "catalog.json"
-
-    @property
-    def database_path(self) -> Path:
-        return self.directory / "vectors.db"
+        self.database_path = self.directory / FILE_NAME
 
     def prepare(self) -> None:
         """Create the folder if needed. Raises ``StateError`` if that is impossible."""
@@ -82,46 +75,57 @@ class StateStore:
     def load(self) -> Optional[SavedState]:
         """The saved registry, or None if nothing has been saved yet."""
         try:
-            text = self.catalog_path.read_text(encoding="utf-8")
-        except FileNotFoundError:
-            return None
-        except (OSError, UnicodeDecodeError) as exc:
+            if not self.database_path.exists():
+                return None
+            if self.database_path.stat().st_size == 0:
+                raise self._damaged("the file is empty")
+            with open_database(self.database_path) as db:
+                db.execute("BEGIN")                  # all three reads see the same version
+                tool_rows = db.execute(
+                    "SELECT id, definition FROM tools ORDER BY position").fetchall()
+                history_rows = db.execute(
+                    "SELECT tool_id, definition FROM tool_history ORDER BY position").fetchall()
+                group_rows = db.execute(
+                    "SELECT tool_ids FROM duplicate_groups ORDER BY position").fetchall()
+            tools = [json.loads(definition) for _, definition in tool_rows]
+            history: dict[str, list[dict[str, Any]]] = {}
+            for tool_id, definition in history_rows:
+                history.setdefault(tool_id, []).append(json.loads(definition))
+            groups = [json.loads(ids) for (ids,) in group_rows]
+        except (sqlite3.Error, OSError, ValueError, TypeError, RecursionError) as exc:
             raise self._damaged(str(exc)) from exc
-        try:
-            data = json.loads(text)
-        except ValueError as exc:
-            raise self._damaged(f"not valid JSON ({exc})") from exc
-        if not isinstance(data, dict) or data.get("format_version") != FORMAT_VERSION:
-            raise self._damaged(f"expected format_version {FORMAT_VERSION}")
-        tools = data.get("tools")
-        history = data.get("history", {})
-        groups = data.get("near_duplicate_groups", [])
-        if not (isinstance(tools, list) and tools
-                and all(isinstance(t, dict) and isinstance(t.get("id"), str) for t in tools)):
-            raise self._damaged("'tools' must be a non-empty list of tools with ids")
-        if not (isinstance(history, dict) and all(
-                isinstance(v, list) and all(isinstance(t, dict) for t in v) for v in history.values())):
-            raise self._damaged("'history' must map tool ids to lists of tools")
-        if not isinstance(groups, list):
-            raise self._damaged("'near_duplicate_groups' must be a list")
+        if not tools:
+            return None
+        if not all(isinstance(tool, dict) and tool.get("id") == tool_id
+                   for (tool_id, _), tool in zip(tool_rows, tools)):
+            raise self._damaged("a saved tool does not match its id")
+        if not all(isinstance(old, dict) for versions in history.values() for old in versions):
+            raise self._damaged("the tool history holds something that is not a tool")
+        if not all(isinstance(group, list) for group in groups):
+            raise self._damaged("a saved duplicate group is not a list")
         return SavedState(tools, history, groups)
 
     def save(self, state: SavedState) -> None:
+        """Replace the saved registry in one transaction: all of it, or nothing."""
         self.prepare()
-        payload = {
-            "format_version": FORMAT_VERSION,
-            "saved_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "near_duplicate_groups": state.near_duplicate_groups,
-            "tools": state.tools,
-            "history": state.history,
-        }
         try:
-            write_atomic(self.catalog_path, json.dumps(payload, indent=1) + "\n")
-        except (OSError, TypeError, ValueError) as exc:
-            raise StateError(f"could not save {self.catalog_path}: {exc}") from exc
+            tools = [(i, t["id"], json.dumps(t)) for i, t in enumerate(state.tools)]
+            history = [(tool_id, json.dumps(old))
+                       for tool_id, versions in state.history.items() for old in versions]
+            groups = [(json.dumps(group),) for group in state.near_duplicate_groups]
+            with open_database(self.database_path) as db:
+                for table in ("tools", "tool_history", "duplicate_groups"):
+                    db.execute(f"DELETE FROM {table}")
+                db.executemany(
+                    "INSERT INTO tools (position, id, definition) VALUES (?, ?, ?)", tools)
+                db.executemany(
+                    "INSERT INTO tool_history (tool_id, definition) VALUES (?, ?)", history)
+                db.executemany("INSERT INTO duplicate_groups (tool_ids) VALUES (?)", groups)
+        except (sqlite3.Error, OSError, TypeError, ValueError) as exc:
+            raise StateError(f"could not save {self.database_path}: {exc}") from exc
 
     def _damaged(self, why: str) -> StateError:
         return StateError(
-            f"the saved catalog {self.catalog_path} cannot be read: {why}. "
-            "Fix the file, or move it aside to start fresh."
+            f"the saved registry {self.database_path} cannot be read: {why}. "
+            "It has not been changed. Move it aside to start fresh."
         )

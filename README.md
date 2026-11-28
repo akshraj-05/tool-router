@@ -274,6 +274,8 @@ If a catalog has invalid tools, **nothing is loaded** and every problem is liste
 | `PUT /registry/tools/{id}` | Replace one tool (its id cannot change) |
 | `DELETE /registry/tools/{id}` | Delete one tool |
 | `PATCH /registry/mutate` | Add and remove several tools at once |
+| `GET /history` | Totals and the most recent requests (`?limit=20`) |
+| `DELETE /history` | Delete the saved requests |
 
 A rejected create or update changes nothing. Changes are saved to the `.tool-router` folder (see below).
 
@@ -326,18 +328,18 @@ A local MCP server given to `--import-mcp` runs inside the container, so its cod
 
 ## Saved registry (`.tool-router/`)
 
-`serve` and `mcp` save registered tools and cached vectors in a `.tool-router` folder in the directory you start them from, and load them again on the next start.
+`serve` and `mcp` keep everything they save in one SQLite file, in a `.tool-router` folder in the directory you start them from, and load it again on the next start.
 
 ```
 .tool-router/
 ├── .gitignore         ignores everything in the folder
-├── catalog.json       current tools, and the history of older definitions
-└── vectors.db         saved vectors and duplicate groups (SQLite, built into Python)
+└── router.db          tools and their history, saved vectors, recent requests
 ```
 
 ```bash
 tool-router serve --catalog tests/data/catalog.json   # first start: loads and saves
 tool-router serve                                      # later: loads the saved tools
+tool-router export -o tools.json                       # saved tools as a catalog file
 ```
 
 - **Upsert.** With `--catalog` or `--import-mcp`, tools are matched by `id`: new ones are added and existing ones take the incoming definition. Saved tools missing from the input are **kept**; add `--prune` to remove them. The incoming definition wins over an earlier API edit.
@@ -351,9 +353,10 @@ tool-router serve                                      # later: loads the saved 
 | Name changed; parameter removed, renamed, retyped or made required | first number |
 
   A higher `version` that you supply is used instead.
-- **Vectors.** `vectors.db` can be deleted at any time; its contents are computed again. It holds the vectors of one method, and changing `TOOL_ROUTER_EMBEDDING_PROVIDER` replaces them. While Gemini is unavailable nothing is written, so its saved vectors survive an outage. An `embeddings.json` left by an earlier version is no longer used and can be deleted.
+- **Vectors.** Saved vectors are computed again whenever they cannot be used. One method's vectors are held at a time, and changing `TOOL_ROUTER_EMBEDDING_PROVIDER` replaces them. While Gemini is unavailable nothing is written, so its saved vectors survive an outage.
 - **Faster restarts.** Near-duplicate tools are found once and reused until a tool, a threshold or the vector method changes. `serve --rebuild` recomputes everything.
-- **Safety.** Changes are written before they take effect; if saving fails, nothing changes. A damaged `catalog.json` stops startup and is left untouched. Settings and API keys are never written here, and the files are readable only by you.
+- **Safety.** A change is saved in one transaction before it takes effect; if saving fails, nothing changes. The router never deletes `router.db`: a damaged file stops startup and is left as it is. Settings and API keys are never written here, and the file is readable only by you.
+- **Request history.** The last 1,000 requests to `POST /route` are saved with the first 500 characters of each query, **as plain text**. `DELETE /history` removes them. Saving happens in the background; `--no-persist` turns it off. MCP requests are not recorded.
 - **Options.** `--state-dir PATH` uses another folder (useful when an MCP host starts the router from an unexpected directory). `--no-persist` keeps everything in memory.
 - **Limit.** Run one router per folder; two would overwrite each other's changes.
 - **Docker.** Mount the folder to keep it, and create it first: see [Network access](#network-access).
@@ -389,6 +392,7 @@ The local planner is deterministic and works offline. LLM-assisted features depe
 | `tool_router/api.py` | REST API |
 | `tool_router/mcp_server.py` | MCP server |
 | `tool_router/cli.py` | Command-line interface |
+| `tool_router/database.py`, `state.py`, `history.py` | The database, the saved registry and request history |
 | `eval/` | Test catalogs, requests, scoring command and keyword baseline |
 | `docs/eval_report.md` | Earlier development results |
 | `docs/design/` | Architecture and design decisions |

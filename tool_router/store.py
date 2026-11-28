@@ -5,7 +5,7 @@ Both live in the per-user config folder, never in a project:
       config.json   non-secret settings written by `tool-router init` / /setup
       secrets.json  0600-permission fallback when the OS keyring is unavailable
 
-Saved vectors are in the state folder instead: see ``index_db.py``.
+Tools, vectors and request history are in the state folder instead: see ``database.py``.
 """
 
 from __future__ import annotations

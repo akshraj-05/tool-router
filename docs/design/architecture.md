@@ -19,7 +19,7 @@ flowchart TB
   end
   subgraph Process["tool-router (one process)"]
     G[Guardrail: validate] --> I[Build index snapshot]
-    I --> S[(.tool-router/<br/>catalog.json, vectors.db)]
+    I --> S[(.tool-router/<br/>router.db)]
     I --> Q[Route a query]
   end
   F --> G
@@ -37,8 +37,8 @@ flowchart TB
 | REST | `tool-router serve` | Yes |
 | MCP over stdio (`find_tools`, `registry_status`) | `tool-router mcp` | No |
 
-Other commands: `import-mcp` (scan an MCP server into a JSON file), `validate`, `init`,
-`config`, `version`.
+Other commands: `import-mcp` (scan an MCP server into a JSON file), `export` (saved tools to a
+JSON file), `validate`, `init`, `config`, `version`.
 
 ## 3. Lifecycle
 
@@ -46,7 +46,7 @@ Other commands: `import-mcp` (scan an MCP server into a JSON file), `validate`, 
 |---|---|---|
 | Register | `--catalog`, `--import-mcp`, `POST /registry` | Validate, index, save |
 | Change | `/registry/tools`, `PATCH /registry/mutate` | Validate, version, rebuild the index, save |
-| Route | `POST /route`, `find_tools` | Answer from the current snapshot |
+| Route | `POST /route`, `find_tools` | Answer from the current snapshot (`/route` also records history) |
 
 ## 4. Packaging and configuration
 
@@ -74,6 +74,7 @@ If Gemini fails, the router falls back to the local implementation and keeps run
 - Input is limited in size (5 MB) and tool count (5,000).
 - Tool descriptions come from whoever registers them. A misleading description can influence
   which tool is chosen.
+- Recent queries are saved as plain text in `router.db` (see [storage](storage.md)).
 - API keys stay in the OS keyring or a `0600` file in the user's config folder.
 - Remote MCP scanning is `https` only (plain `http` for loopback), sends headers only to the
   named server and reads secrets from environment variables.
@@ -99,7 +100,8 @@ See [engine design](engine-design.md) for the rules in each step.
 | `tool_router/domain/` | Models, errors, naming, versioning |
 | `tool_router/providers/` | Local TF-IDF and Gemini |
 | `tool_router/importers/` | Local and remote MCP scanning |
-| `tool_router/state.py`, `index_db.py` | Saved registry; saved vectors and duplicate pairs |
+| `tool_router/database.py` | The one database file and its tables |
+| `tool_router/state.py`, `index_db.py`, `history.py` | Saved registry; saved vectors and duplicate pairs; request history |
 | `tool_router/api.py`, `mcp_server.py`, `cli.py` | Interfaces |
 | `tool_router/catalog_loader.py` | Startup sources and merging with saved tools |
 | `tool_router/store.py`, `config.py`, `limits.py`, `netutil.py`, `log.py` | Settings, secrets, limits, network checks, logging |

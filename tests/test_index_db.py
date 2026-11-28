@@ -1,4 +1,4 @@
-"""What ``vectors.db`` keeps: across outages, setting changes and restarts."""
+"""What the saved vectors in ``router.db`` keep: across outages, setting changes and restarts."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from tool_router.engine.pipeline import RoutingEngine
 from tool_router.providers.local_tfidf import LocalTfidfEmbedding
 from tool_router.state import StateStore
 
-DATABASE = Path("state/vectors.db")
+DATABASE = Path("state/router.db")
 NEW = {"name": "get_current_weather",
        "description": "Get the current weather conditions for a named city",
        "parameters": [{"name": "city"}]}
@@ -83,7 +83,7 @@ def build(catalog, settings=LOCAL, previous=False):
 def contents():
     with contextlib.closing(sqlite3.connect(DATABASE)) as db:
         return (sorted(db.execute("SELECT hash, vector FROM vectors").fetchall()),
-                dict(db.execute("SELECT name, value FROM meta").fetchall()))
+                dict(db.execute("SELECT name, value FROM cache").fetchall()))
 
 
 def test_hosted_vectors_are_reused_after_a_restart(catalog, hosted):
@@ -206,4 +206,4 @@ def test_rebuild_recomputes_everything(catalog, hosted, pair_runs):
 def test_nothing_is_written_without_a_store(catalog):
     RoutingEngine(catalog, settings=LOCAL)
 
-    assert not list(Path.cwd().rglob("vectors.db"))
+    assert not list(Path.cwd().rglob("router.db"))

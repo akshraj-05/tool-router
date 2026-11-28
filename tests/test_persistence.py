@@ -43,8 +43,18 @@ def params(*extra, **first):
     return [{"name": "to", "type": "string", "required": True, "description": "Address", **first}, *extra]
 
 
+DATABASE = STATE / "router.db"
+
+
 def saved() -> dict:
-    return json.loads((STATE / "catalog.json").read_text())
+    state = StateStore(STATE).load()
+    return {"tools": state.tools, "history": state.history}
+
+
+def sql(statement: str, *values) -> list:
+    with contextlib.closing(sqlite3.connect(DATABASE)) as db:
+        with db:
+            return db.execute(statement, values).fetchall()
 
 
 def by_id(data: dict) -> dict:
@@ -135,42 +145,65 @@ def test_bump():
 
 def test_round_trip_permissions_and_gitignore():
     store = StateStore(STATE)
-    store.save(SavedState([tool()], {"a.b": [tool()]}, []))
-    assert store.load() == SavedState([tool()], {"a.b": [tool()]}, [])
+    state = SavedState([tool("b_tool"), tool("a_tool")], {"a.b": [tool(), tool("older")]},
+                       [["general.a_tool", "general.b_tool"]])
+    store.save(state)
+    assert store.load() == state                     # order included
     assert (STATE / ".gitignore").read_text() == "*\n"
-    assert stat.S_IMODE((STATE / "catalog.json").stat().st_mode) == 0o600
+    assert stat.S_IMODE(DATABASE.stat().st_mode) == 0o600
+    assert sorted(p.name for p in STATE.iterdir()) == [".gitignore", "router.db"]
 
 
 def test_nothing_saved_yet():
     assert StateStore(STATE).load() is None
 
 
-def test_an_interrupted_write_keeps_the_old_file(monkeypatch):
+def test_a_save_that_fails_part_way_keeps_the_old_registry():
+    store = StateStore(STATE)
+    before = SavedState([tool()], {"a.b": [tool()]}, [])
+    store.save(before)
+    sql("CREATE TRIGGER fail BEFORE INSERT ON tools WHEN NEW.id = 'general.other' "
+        "BEGIN SELECT RAISE(ABORT, 'disk full'); END")
+    with pytest.raises(StateError, match="could not save"):
+        store.save(SavedState([tool("first"), tool("other")]))
+    assert store.load() == before                    # the earlier deletes were undone too
+
+
+def test_a_tool_that_cannot_be_written_keeps_the_old_registry():
     store = StateStore(STATE)
     store.save(SavedState([tool()]))
-    before = (STATE / "catalog.json").read_bytes()
-
-    def fail(*args):
-        raise OSError("disk full")
-
-    monkeypatch.setattr(state_module.os, "replace", fail)
     with pytest.raises(StateError, match="could not save"):
-        store.save(SavedState([tool("other")]))
-    assert (STATE / "catalog.json").read_bytes() == before
-    assert sorted(p.name for p in STATE.iterdir()) == [".gitignore", "catalog.json"]
+        store.save(SavedState([tool(tags={"not", "json"})]))
+    assert store.load() == SavedState([tool()])
 
 
-@pytest.mark.parametrize("content", [
-    "", "{not json", "[]", '{"tools": []}', '{"format_version": 2, "tools": [{"id": "a.b"}]}',
-    '{"format_version": 1, "tools": []}', '{"format_version": 1, "tools": ["x"]}',
-    '{"format_version": 1, "tools": [{"id": "a.b"}], "history": []}',
-])
-def test_damaged_file_is_reported_and_left_alone(content):
+@pytest.mark.parametrize("content", [b"", b"{not a database", b"\xff" * 4096])
+def test_a_damaged_file_is_reported_and_left_alone(content):
     STATE.mkdir()
-    (STATE / "catalog.json").write_text(content)
+    DATABASE.write_bytes(content)
     with pytest.raises(StateError, match="cannot be read"):
         StateStore(STATE).load()
-    assert (STATE / "catalog.json").read_text() == content
+    assert DATABASE.read_bytes() == content
+
+
+@pytest.mark.parametrize("statement", [
+    "DROP TABLE tools",
+    "DROP TABLE tool_history",
+    "DROP TABLE duplicate_groups",
+    "PRAGMA user_version = 2",
+    "UPDATE tools SET definition = 'junk'",
+    "UPDATE tools SET definition = '[]'",
+    "UPDATE tools SET id = 'general.renamed'",
+    "UPDATE tool_history SET definition = '5'",
+    "INSERT INTO duplicate_groups (tool_ids) VALUES ('5')",
+])
+def test_damaged_contents_are_reported_and_left_alone(statement):
+    StateStore(STATE).save(SavedState([tool()], {"a.b": [tool()]}, []))
+    sql(statement)
+    before = DATABASE.read_bytes()
+    with pytest.raises(StateError, match="cannot be read"):
+        StateStore(STATE).load()
+    assert DATABASE.read_bytes() == before
 
 
 def test_unusable_folder():
@@ -183,14 +216,13 @@ def test_unusable_folder():
 
 
 def vector_count() -> int:
-    with contextlib.closing(sqlite3.connect(STATE / "vectors.db")) as db:
+    with contextlib.closing(sqlite3.connect(DATABASE)) as db:
         return db.execute("SELECT COUNT(*) FROM vectors").fetchone()[0]
 
 
 def test_registry_and_vectors_are_saved(catalog):
     build(catalog, StateStore(STATE))
-    data = saved()
-    assert data["format_version"] == 1 and len(data["tools"]) == 13
+    assert sql("PRAGMA user_version") == [(1,)] and len(saved()["tools"]) == 13
     assert vector_count() == 13
 
 
@@ -231,7 +263,7 @@ def test_replacement_through_mutate_is_versioned(catalog):
 def test_a_failed_save_changes_nothing(change, catalog, monkeypatch):
     store = StateStore(STATE)
     engine = build(catalog, store)
-    before_memory, before_disk = engine.snapshot(), (STATE / "catalog.json").read_bytes()
+    before_memory, before_disk = engine.snapshot(), saved()
 
     def fail(state):
         raise StateError("disk full")
@@ -240,15 +272,15 @@ def test_a_failed_save_changes_nothing(change, catalog, monkeypatch):
     with pytest.raises(StateError):
         change(engine)
     assert engine.snapshot() == before_memory
-    assert (STATE / "catalog.json").read_bytes() == before_disk
+    assert saved() == before_disk
 
 
 def test_a_rejected_change_is_not_saved(catalog):
     engine = build(catalog, StateStore(STATE))
-    before = (STATE / "catalog.json").read_bytes()
+    before = DATABASE.read_bytes()
     with pytest.raises(InvalidToolError):
         engine.create_tool(tool(description="short"))
-    assert (STATE / "catalog.json").read_bytes() == before
+    assert DATABASE.read_bytes() == before
 
 
 def test_vectors_of_removed_tools_are_dropped(catalog):
@@ -362,18 +394,18 @@ def test_prune_needs_a_source(serve):
 
 def test_invalid_input_stops_startup_and_keeps_the_saved_file(serve):
     serve("--catalog", write("c.json", tool()))
-    before = (STATE / "catalog.json").read_bytes()
+    before = saved()
     code, _, err = serve("--catalog", write("bad.json", tool(description="short")))
     assert code == 1 and "DESCRIPTION_TOO_VAGUE" in err
-    assert (STATE / "catalog.json").read_bytes() == before
+    assert saved() == before
 
 
 def test_damaged_saved_file_stops_startup(serve):
     STATE.mkdir()
-    (STATE / "catalog.json").write_text("{broken")
+    DATABASE.write_text("{broken")
     code, _, err = serve("--catalog", write("c.json", tool()))
     assert code == 1 and "cannot be read" in err and "Traceback" not in err
-    assert (STATE / "catalog.json").read_text() == "{broken"
+    assert DATABASE.read_text() == "{broken"
 
 
 def test_no_persist_and_state_dir(serve):
@@ -381,13 +413,43 @@ def test_no_persist_and_state_dir(serve):
     serve("--catalog", source, "--no-persist")
     assert sorted(p.name for p in Path.cwd().iterdir()) == ["c.json"]
     serve("--catalog", source, "--state-dir", "elsewhere/state")
-    assert Path("elsewhere/state/catalog.json").exists() and not STATE.exists()
+    assert Path("elsewhere/state/router.db").exists() and not STATE.exists()
 
 
-def test_the_saved_file_is_also_a_normal_catalog_file(serve):
+def test_exported_tools_are_a_normal_catalog_file(serve, capsys):
+    serve("--catalog", write("c.json", tool("a_tool"), tool("b_tool")))
+    assert main(["export", "-o", "out.json"]) == 0
+    assert json.loads(Path("out.json").read_text())["tools"] == saved()["tools"]
+    assert main(["validate", "out.json"]) == 0
+    assert serve("--catalog", "out.json", "--state-dir", "copy")[0] == 0
+    assert StateStore("copy").load().tools == saved()["tools"]
+
+    capsys.readouterr()
+    assert main(["export"]) == 0                     # without -o: only the JSON on stdout
+    assert json.loads(capsys.readouterr().out)["tools"] == saved()["tools"]
+
+
+def test_export_keeps_declared_duplicate_groups(catalog):
+    build(catalog, StateStore(STATE))
+    assert main(["export", "-o", "out.json"]) == 0
+    exported = json.loads(Path("out.json").read_text())
+    assert exported["near_duplicate_groups"] == catalog["near_duplicate_groups"]
+
+
+def test_export_with_nothing_saved_creates_nothing(capsys):
+    assert main(["export"]) == 1
+    assert "no saved tools" in capsys.readouterr().err and not STATE.exists()
+
+
+def test_export_reports_problems_without_damaging_the_database(serve, capsys):
     serve("--catalog", write("c.json", tool()))
-    assert main(["validate", str(STATE / "catalog.json")]) == 0
-    assert serve("--catalog", str(STATE / "catalog.json"), "--state-dir", "copy")[0] == 0
+    before = DATABASE.read_bytes()
+    assert main(["export", "-o", str(DATABASE)]) == 1
+    assert main(["export", "-o", "missing/folder/out.json"]) == 1
+    assert DATABASE.read_bytes() == before
+    DATABASE.write_text("{broken")
+    assert main(["export"]) == 1
+    assert "Traceback" not in capsys.readouterr().err
 
 
 def test_no_old_marker_file_is_created(serve):
