@@ -101,6 +101,25 @@ Earlier development results came from a different 29-query suite on older code t
 
 Tool Router selects tools; it does **not** execute them.
 
+## Website
+
+`tool-router serve` also serves a website at http://127.0.0.1:8080/ui/.
+
+| Section | What you can do |
+|---|---|
+| Dashboard | See tool counts by group and side effect, duplicate groups, and recent requests with routing time and estimated tokens saved |
+| Try it | Type a request and see the chosen tools, their scores and what was dropped |
+| Add tools | Upload a catalog file or scan a remote MCP server, preview the result, then save |
+| Tools | Search, filter, create, edit and delete tools |
+| API | Open the API documentation, or download a Postman collection and the current catalog |
+
+It is plain HTML, CSS and JavaScript, served by the same process, with no build step: a dark theme with a side menu on wide screens and a top menu on phones. Animations stop when your system asks for reduced motion. The website loads nothing from the internet. The API documentation at `/docs` is FastAPI's built-in page, which loads its viewer from a public CDN and so needs an internet connection.
+
+- **Upload** adds and updates by default; "Replace all" removes tools that are not in the upload. Invalid tools are listed and skipped.
+- **MCP scan** accepts URLs only; to load a local server, use `--import-mcp`. A token typed on the page is used for that scan and never saved. Scanning is off when the server accepts other machines, unless started with `--allow-mcp-scan`.
+- **Other websites** cannot make changes: requests that carry another site's `Origin` are refused.
+- There is still **no login**. Anyone who can reach the server can use the website.
+
 ## Interfaces
 
 The same routing engine is available through:
@@ -276,6 +295,12 @@ If a catalog has invalid tools, **nothing is loaded** and every problem is liste
 | `PATCH /registry/mutate` | Add and remove several tools at once |
 | `GET /history` | Totals and the most recent requests (`?limit=20`) |
 | `DELETE /history` | Delete the saved requests |
+| `GET /registry/summary` | Counts by group and side effect |
+| `POST /registry/preview` | Show what an upload would change, without saving |
+| `POST /registry/apply` | Add the valid tools of an upload (`"mode": "merge"` or `"replace"`) |
+| `GET /registry/export` | Download the current tools as a catalog file |
+| `POST /mcp/scan` | List the tools of a remote MCP server |
+| `GET /postman.json` | Download a Postman collection |
 
 A rejected create or update changes nothing. Changes are saved to the `.tool-router` folder (see below).
 
@@ -390,6 +415,8 @@ The local planner is deterministic and works offline. LLM-assisted features depe
 | `tool_router/importers/` | MCP catalog importer |
 | `tool_router/providers/` | Local and hosted model providers |
 | `tool_router/api.py` | REST API |
+| `tool_router/web.py`, `tool_router/ui/` | Website and its endpoints |
+| `tool_router/catalog_changes.py`, `postman.py` | Upload preview; Postman collection |
 | `tool_router/mcp_server.py` | MCP server |
 | `tool_router/cli.py` | Command-line interface |
 | `tool_router/database.py`, `state.py`, `history.py` | The database, the saved registry and request history |

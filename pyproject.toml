@@ -30,5 +30,8 @@ tool-router = "tool_router.cli:main"
 [tool.setuptools.packages.find]
 include = ["tool_router*"]
 
+[tool.setuptools.package-data]
+tool_router = ["ui/*"]                               # the website
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

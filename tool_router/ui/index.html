@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tool Router</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
+  <script src="effects.js" defer></script>
+</head>
+<body>
+  <header>
+    <a class="brand" href="#dashboard">Tool Router</a>
+    <nav>
+      <a href="#dashboard">Dashboard</a>
+      <a href="#try">Try it</a>
+      <a href="#add">Add tools</a>
+      <a href="#tools">Tools</a>
+      <a href="#api">API</a>
+    </nav>
+    <span id="status" class="status" role="status">Connecting…</span>
+  </header>
+
+  <main>
+    <div id="problem" class="notice error" role="alert" hidden></div>
+
+    <section id="dashboard">
+      <div class="title">
+        <h2>Dashboard</h2>
+        <button id="refresh" type="button" class="quiet">Refresh</button>
+      </div>
+      <div id="empty" class="notice" hidden>
+        <strong>No tools yet.</strong> Add a catalog file or scan an MCP server to begin.
+        <a class="button" href="#add">Add tools</a>
+      </div>
+
+      <h3>Registry</h3>
+      <div id="registry-numbers" class="numbers"></div>
+      <div class="columns">
+        <div class="card"><h4>Tools by group</h4><div id="by-group" class="bars"></div></div>
+        <div class="card"><h4>Tools by side effect</h4><div id="by-effect" class="bars"></div></div>
+      </div>
+      <details id="duplicates" class="card" hidden>
+        <summary>Duplicate groups</summary>
+        <ul id="duplicate-list"></ul>
+      </details>
+
+      <div class="title">
+        <h3>Requests</h3>
+        <button id="clear-history" type="button" class="quiet">Clear history</button>
+      </div>
+      <p id="history-note" class="muted"></p>
+      <div id="history">
+        <div id="request-numbers" class="numbers"></div>
+        <div class="columns">
+          <div class="card"><h4>Results</h4><div id="by-result" class="bars"></div></div>
+          <div class="card wide">
+            <h4>Recent requests</h4>
+            <div class="scroll">
+              <table>
+                <thead><tr><th>Request</th><th>Result</th><th class="number">Time</th><th>When</th></tr></thead>
+                <tbody id="recent"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="try">
+      <h2>Try it</h2>
+      <p class="muted">Type a request and see which tools the router chooses. Nothing is run.</p>
+      <form id="route-form" class="row">
+        <input id="query" type="text" maxlength="10000" required autocomplete="off"
+               aria-label="Request" placeholder="For example: find the open issues">
+        <button type="submit">Route</button>
+      </form>
+      <div id="answer" aria-live="polite"></div>
+    </section>
+
+    <section id="add">
+      <h2>Add tools</h2>
+      <div class="columns">
+        <div class="card">
+          <h4>Upload a catalog file</h4>
+          <p class="muted">A JSON file with a <code>tools</code> list.</p>
+          <input id="file" type="file" accept=".json,application/json" aria-label="Catalog file">
+        </div>
+        <form id="scan-form" class="card">
+          <h4>Scan an MCP server</h4>
+          <p id="scan-off" class="notice" hidden></p>
+          <label for="mcp-url">Server URL</label>
+          <input id="mcp-url" type="url" required placeholder="https://example.com/mcp">
+          <label for="mcp-token">Token (optional, never saved)</label>
+          <input id="mcp-token" type="password" autocomplete="off">
+          <details>
+            <summary>More options</summary>
+            <label for="mcp-header">Header that carries the token</label>
+            <input id="mcp-header" type="text" value="Authorization">
+            <label for="mcp-prefix">Group name for the tools</label>
+            <input id="mcp-prefix" type="text" maxlength="60" placeholder="The server's name">
+          </details>
+          <button id="scan" type="submit">Scan</button>
+        </form>
+      </div>
+      <p id="add-message" class="notice" role="status" hidden></p>
+      <div id="found" class="card" hidden></div>
+      <div id="preview" class="card" hidden></div>
+    </section>
+
+    <section id="tools">
+      <div class="title">
+        <h2>Tools</h2>
+        <button id="new-tool" type="button">New tool</button>
+      </div>
+      <div class="row filters">
+        <input id="search" type="search" placeholder="Search by name or description" aria-label="Search tools">
+        <select id="group-filter" aria-label="Group"></select>
+        <select id="effect-filter" aria-label="Side effect">
+          <option value="">All side effects</option>
+          <option>read</option><option>write</option><option>destructive</option>
+        </select>
+      </div>
+      <p id="tool-count" class="muted"></p>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Tool</th><th>Group</th><th>Side effect</th><th>Version</th><th>Description</th></tr></thead>
+          <tbody id="tool-rows"></tbody>
+        </table>
+      </div>
+      <button id="more" type="button" class="quiet" hidden>Show more</button>
+    </section>
+
+    <section id="api">
+      <h2>API</h2>
+      <p class="muted">Everything on this page uses the same REST API that your agent can call.</p>
+      <p class="row">
+        <a class="button" href="../docs" target="_blank" rel="noopener">Open API documentation</a>
+        <a class="button" href="../postman.json" download>Download Postman collection</a>
+        <a id="export" class="button" href="../registry/export" download>Download catalog.json</a>
+      </p>
+      <h4>Route a request</h4>
+      <pre id="curl"></pre>
+    </section>
+  </main>
+
+  <dialog id="editor">
+    <form method="dialog">
+      <h3 id="editor-title">Tool</h3>
+      <textarea id="editor-text" spellcheck="false" aria-label="Tool definition as JSON"></textarea>
+      <div id="editor-error" class="notice error" role="alert" hidden></div>
+      <div class="row end">
+        <button id="delete-tool" type="button" class="danger">Delete</button>
+        <span class="grow"></span>
+        <button value="close" class="quiet">Close</button>
+        <button id="save-tool" type="button">Save</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>

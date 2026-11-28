@@ -93,10 +93,14 @@ def _cmd_serve(args: argparse.Namespace) -> int:
     # Check the Host header on a local server, or whenever names were listed.
     allowed_hosts = (args.allow_host or []) if local_only or args.allow_host else None
     try:
-        app = create_app(catalog, store=store, previous=saved, allowed_hosts=allowed_hosts)
+        app = create_app(catalog, store=store, previous=saved, allowed_hosts=allowed_hosts,
+                         mcp_scan=local_only or args.allow_mcp_scan)
     except ToolRouterError as exc:           # e.g. invalid tools in the catalog
         print(f"error: {exc}", file=sys.stderr)
         return 1
+    shown = "127.0.0.1" if args.host in ("0.0.0.0", "::") else args.host
+    shown = f"[{shown}]" if ":" in shown else shown
+    print(f"Website: http://{shown}:{args.port}/ui/", file=sys.stderr)
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
     return 0
 
@@ -231,6 +235,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_serve.add_argument("--allow-host", action="append", default=None, metavar="NAME",
                          help="also accept requests whose Host header is NAME (for a proxy or a "
                               "custom host name); repeatable")
+    p_serve.add_argument("--allow-mcp-scan", action="store_true",
+                         help="let the website scan MCP servers even when other machines can "
+                              "connect (always allowed on a local server)")
     p_serve.add_argument("--port", type=int, default=8080)
     _add_source_options(p_serve)
     p_serve.add_argument("--rebuild", action="store_true",

@@ -35,6 +35,7 @@ flowchart TB
 | Interface | Command | Can change the registry |
 |---|---|---|
 | REST | `tool-router serve` | Yes |
+| Website (`/ui`), calls the REST API | `tool-router serve` | Yes |
 | MCP over stdio (`find_tools`, `registry_status`) | `tool-router mcp` | No |
 
 Other commands: `import-mcp` (scan an MCP server into a JSON file), `export` (saved tools to a
@@ -71,6 +72,11 @@ If Gemini fails, the router falls back to the local implementation and keeps run
 - The server listens on `127.0.0.1` by default and checks the `Host` header, which blocks DNS
   rebinding. `--host 0.0.0.0` exposes it; the CLI prints a warning.
 - There is **no authentication, TLS or rate limiting**. Put them in front before any network use.
+- Requests that change something and carry another website's `Origin` are refused.
+- Website pages load only their own files (Content-Security-Policy), cannot be framed, and place
+  tool text on the page as text, never as HTML.
+- MCP scanning from the website takes URLs only, never commands or environment variable names,
+  and is off on a server open to other machines unless `--allow-mcp-scan` is given.
 - Input is limited in size (5 MB) and tool count (5,000).
 - Tool descriptions come from whoever registers them. A misleading description can influence
   which tool is chosen.
@@ -103,6 +109,8 @@ See [engine design](engine-design.md) for the rules in each step.
 | `tool_router/database.py` | The one database file and its tables |
 | `tool_router/state.py`, `index_db.py`, `history.py` | Saved registry; saved vectors and duplicate pairs; request history |
 | `tool_router/api.py`, `mcp_server.py`, `cli.py` | Interfaces |
+| `tool_router/web.py`, `ui/` | Website: four static files (page, style, behaviour, animation), no build step, and the endpoints made for it |
+| `tool_router/catalog_changes.py`, `postman.py` | What an upload would change; Postman collection |
 | `tool_router/catalog_loader.py` | Startup sources and merging with saved tools |
 | `tool_router/store.py`, `config.py`, `limits.py`, `netutil.py`, `log.py` | Settings, secrets, limits, network checks, logging |
 | `eval/` | Test catalog, requests and scoring command |

@@ -16,6 +16,9 @@ JSON endpoints (no auth — a documented, deliberate omission for this scope):
 - POST  /setup             save config (provider/model/key) — JSON, same as the others
 - GET   /health            liveness + engine facts (always open, for probes)
 
+The website (``/ui``) and the endpoints made for it (summary, preview, apply,
+export, MCP scan, Postman download) are in ``web.py``.
+
 Non-JSON exception:
 - GET   /setup             a small server-rendered HTML form. This is a deliberate,
                            documented exception to the "everything is JSON" rule above:
@@ -61,6 +64,7 @@ from tool_router.limits import max_input_bytes
 from tool_router.log import get_logger
 from tool_router.netutil import host_name, is_loopback
 from tool_router.state import SavedState, StateStore
+from tool_router.web import OriginCheck, PageHeaders, add_website
 
 logger = get_logger("api")
 
@@ -165,6 +169,7 @@ def create_app(
     store: Optional[StateStore] = None,
     previous: Optional[SavedState] = None,
     allowed_hosts: Optional[list[str]] = None,
+    mcp_scan: bool = False,
 ):
     """App factory. Import of FastAPI is deferred so the core package works
     without the `api` extra installed."""
@@ -189,8 +194,10 @@ def create_app(
         description="Intelligent tool routing: large catalog in, minimal ordered tool plan out.",
     )
     app.add_middleware(_BodyLimit, limit=max_input_bytes())
+    names = frozenset(host_name(h) for h in allowed_hosts or []) - {""}
+    app.add_middleware(PageHeaders)
+    app.add_middleware(OriginCheck, allowed=names)
     if allowed_hosts is not None:           # None = no Host check (see the CLI)
-        names = frozenset(host_name(h) for h in allowed_hosts) - {""}
         app.add_middleware(_HostCheck, allowed=names)      # added last = runs first
     state: dict[str, Optional[RoutingEngine]] = {"engine": None}
 
@@ -410,5 +417,23 @@ def create_app(
             "tool_count": engine.tool_count if engine else 0,
             "planner": type(engine.planner).__name__ if engine else None,
         }
+
+    def _current_state():
+        engine = state["engine"]
+        return engine.snapshot() if engine else previous
+
+    def _apply_catalog(prepare):
+        """Replace the registry with the catalog ``prepare`` returns, one change at a time."""
+        def replace() -> None:
+            catalog, before = prepare()
+            state["engine"] = RoutingEngine(
+                catalog, settings=Settings.from_env(), store=store, previous=before)
+
+        _change(replace)
+
+    add_website(
+        app, current_engine=lambda: state["engine"], current_state=_current_state,
+        apply_catalog=_apply_catalog, run=_apply, saves=store is not None, mcp_scan=mcp_scan,
+    )
 
     return app

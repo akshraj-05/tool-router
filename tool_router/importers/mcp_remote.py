@@ -152,6 +152,25 @@ def build_headers(header_envs: Optional[list[str]] = None) -> dict[str, str]:
     return headers
 
 
+def auth_header(name: str, token: str) -> dict[str, str]:
+    """One authentication header from a token typed by the user.
+
+    For ``Authorization`` a bare token is sent as ``Bearer <token>``; a value that
+    already names its scheme (``Basic ...``) is sent as it is. Errors never repeat
+    the token.
+    """
+    name, token = name.strip(), token.strip()
+    if not _HEADER_NAME.match(name):
+        raise MCPImportError("that is not a valid header name")
+    if name.lower() in _RESERVED_HEADERS:
+        raise MCPImportError(f"the header {name!r} is managed by the protocol and cannot be set")
+    if not token or not token.isascii() or any(c in token for c in "\r\n\0"):
+        raise MCPImportError("the token is empty or has characters a header cannot carry")
+    if name.lower() == "authorization" and " " not in token:
+        token = f"Bearer {token}"
+    return {name: token}
+
+
 def scrub(text: str, url: str, headers: dict[str, str]) -> str:
     """Remove the URL's query string and every secret value from a message."""
     text = text.replace(url, redact_url(url))
