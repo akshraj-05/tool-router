@@ -22,31 +22,22 @@ See [sources and licences](eval/SOURCES.md). Each set is split into a tuning hal
 |---|---:|---:|---:|---:|
 | Keyword search baseline | 18 (45%) | 6 (60%) | 20 (33%) | 44 (40%) |
 | Local mode (no LLM, no key) | 25 (62%) | 8 (80%) | 39 (65%) | **72 (65%)** |
+| Gemini planner | 37 (92%) | 10 (100%) | 57 (95%) | **104 (95%)** |
 
-| Request type, all sets | Local mode |
-|---|---:|
-| One tool | 25/38 |
-| Choosing between similar tools | 15/24 |
-| Several tools in order | 12/20 |
-| Current or old tool version (`custom` only) | 3/6 |
-| Unclear request: should ask a question | 9/11 |
-| No suitable tool: should return nothing | 8/11 |
+| Request type, all sets | Local mode | Gemini planner |
+|---|---:|---:|
+| One tool | 25/38 | 34/38 |
+| Choosing between similar tools | 15/24 | 24/24 |
+| Several tools in order | 12/20 | 19/20 |
+| Current or old tool version (`custom` only) | 3/6 | 5/6 |
+| Unclear request: should ask a question | 9/11 | 11/11 |
+| No suitable tool: should return nothing | 8/11 | 11/11 |
 
-### With the Gemini planner (earlier measurement)
-
-Measured on 2026-11-27 with `gemini-3.5-flash-lite` and local vectors: one run, no failed calls.
-
-| Final half | Passed |
-|---|---:|
-| `custom` | **57/60 (95%)** |
-| GitHub and Playwright tools together in one catalog | **45/50 (90%)** |
-| Both | **102/110 (93%)** |
-
-These numbers are **not** from the current code or layout. Since then, a parameter-matching score was removed from retrieval, the vector and keyword weights changed, and the GitHub and Playwright tools were split into separate catalogs. They have not been re-run with Gemini yet.
+The Gemini planner was measured on 2026-11-28 at commit `947784d`, with `gemini-3.5-flash-lite` and local vectors: one run of 125 calls, none failed. A 95% confidence interval for 104 of 110 is about 89% to 97%. A model's answers can differ between runs.
 
 ### What the results show
 
-- **The LLM planner made the largest difference** in the earlier run, mostly for similar tools, multi-step requests and unrelated requests.
+- **The LLM planner made the largest difference:** 104 of 110 against 72, mostly on similar tools (24/24 against 15/24) and multi-step requests (19/20 against 12/20). These requests were written with an AI assistant, which may favour an LLM (see the limits below).
 - **Choosing one tool in local mode is not clearly better than keyword search.** On requests that expect exactly one tool:
 
   | | `github` | `playwright` | `custom` |
@@ -55,7 +46,7 @@ These numbers are **not** from the current code or layout. Since then, a paramet
   | Local mode | 17/26 | 5/6 | 21/36 |
 
   Local mode's advantage is asking questions, rejecting unrelated requests and planning several steps, which the baseline cannot do.
-- **Speed and cost:** local mode answers in milliseconds. With Gemini a request took roughly 1 to 2 seconds and needs an API key.
+- **Speed and cost:** local mode answers in milliseconds. With Gemini a request took about 1 second and needs an API key.
 - **Gemini embeddings** with the local planner scored about the same as local vectors on the tuning halves (earlier code), so they are not the recommended setup.
 
 ### Limits of these results
